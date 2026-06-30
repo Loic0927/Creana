@@ -1,0 +1,21 @@
+{% extends "socialmanager/base.html" %}
+
+{% block title %}Creana | Archive Subscription{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <h1 class="page-title">Archive subscription</h1>
+                <p>Archive <strong>{{ object.name }}</strong>? This keeps the record for audit and reporting instead of deleting it.</p>
+                <form method="post">
+                    {% csrf_token %}
+                    <button class="btn btn-dark" type="submit">Archive subscription</button>
+                    <a class="btn btn-outline-secondary" href="{% url 'socialmanager:subscription_list' %}">Cancel</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

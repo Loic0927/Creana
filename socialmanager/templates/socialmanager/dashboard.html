@@ -1,0 +1,125 @@
+{% extends "socialmanager/base.html" %}
+{% load i18n static %}
+{% block title %}{% trans "Creana | Dashboard" %}{% endblock %}
+{% block body_class %}dashboard-page{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'socialmanager/css/pages/dashboard.css' %}?v=dashboard-tablet-chart-1" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="stack dashboard-stack">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">{% trans "Dashboard" %}</h1>
+        </div>
+    </div>
+
+    <section class="metrics-grid dashboard-metrics-grid">
+        <article class="card content-card dashboard-metric-card">
+            <p class="metric-label">{% trans "Views" %}</p>
+            <p class="metric-value">{{ summary.views|default:0 }}</p>
+        </article>
+        <article class="card content-card dashboard-metric-card">
+            <p class="metric-label">{% trans "Likes" %}</p>
+            <p class="metric-value">{{ summary.likes|default:0 }}</p>
+        </article>
+        <article class="card content-card dashboard-metric-card">
+            <p class="metric-label">{% trans "Comments" %}</p>
+            <p class="metric-value">{{ summary.comments|default:0 }}</p>
+        </article>
+        <article class="card content-card dashboard-metric-card">
+            <p class="metric-label">{% trans "Shares" %}</p>
+            <p class="metric-value">{{ summary.shares|default:0 }}</p>
+        </article>
+    </section>
+
+    {{ dashboard_trend_data|json_script:"dashboard-trend-data" }}
+    {% trans "Dashboard analytics" as dashboard_aria_label %}
+    {% trans "No engagement data yet" as dashboard_empty_title %}
+    {% trans "Charts will appear once posts receive views, likes, comments, or shares." as dashboard_empty_body %}
+    {% trans "Engagement trend" as dashboard_engagement_trend %}
+    {% trans "renew weekly" as dashboard_renew_weekly %}
+    {% trans "Views" as dashboard_views %}
+    {% trans "Likes" as dashboard_likes %}
+    {% trans "Comments" as dashboard_comments %}
+    {% trans "Shares" as dashboard_shares %}
+    <script>
+        window.dashboardTranslations = {
+            ariaLabel: "{{ dashboard_aria_label|escapejs }}",
+            emptyTitle: "{{ dashboard_empty_title|escapejs }}",
+            emptyBody: "{{ dashboard_empty_body|escapejs }}",
+            engagementTrend: "{{ dashboard_engagement_trend|escapejs }}",
+            renewWeekly: "{{ dashboard_renew_weekly|escapejs }}",
+            views: "{{ dashboard_views|escapejs }}",
+            likes: "{{ dashboard_likes|escapejs }}",
+            comments: "{{ dashboard_comments|escapejs }}",
+            shares: "{{ dashboard_shares|escapejs }}",
+        };
+    </script>
+    <div id="dashboard-analytics-root"></div>
+
+    <section class="insight-box ai-insight-card">
+        <button class="ai-insight-toggle" type="button" data-ai-insight-url="{% url 'socialmanager:dashboard_ai_insight' %}" data-ai-insight-target="dashboard-ai-insight-panel" data-ai-insight-loaded="false">
+            <span class="ai-insight-label">{% trans "AI Insight" %}</span>
+        </button>
+        <div class="ai-insight-panel" id="dashboard-ai-insight-panel" hidden></div>
+    </section>
+
+    <section class="card chart-card dashboard-chart-card">
+        <div>
+            <h2 class="card-title">{% trans "Recent post metrics" %}</h2>
+        </div>
+        {% if metric_rows %}
+            <div class="table-wrap">
+                <table class="dashboard-table">
+                    <thead>
+                        <tr>
+                            <th>{% trans "Post" %}</th>
+                            <th>{% trans "Platform" %}</th>
+                            <th>{% trans "Campaign" %}</th>
+                            <th>{% trans "Views" %}</th>
+                            <th>{% trans "Likes" %}</th>
+                            <th>{% trans "Comments" %}</th>
+                            <th>{% trans "Shares" %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in metric_rows %}
+                            <tr>
+                                <td><a href="{% url 'socialmanager:post_detail' row.post.pk row.post.slug %}">{{ row.post.title }}</a></td>
+                                <td><span class="platform-badge">{% if row.post.get_platform_display %}{{ row.post.get_platform_display }}{% else %}{% trans "No platform selected" %}{% endif %}</span></td>
+                                <td>
+                                    {% for campaign in row.post.campaign_groups.all %}
+                                        <span class="campaign-badge">{{ campaign.name }}</span>
+                                    {% empty %}
+                                        <span class="campaign-badge">{% trans "Unassigned campaign" %}</span>
+                                    {% endfor %}
+                                </td>
+                                <td>{{ row.views }}</td>
+                                <td>{{ row.likes }}</td>
+                                <td>{{ row.comments }}</td>
+                                <td>{{ row.shares }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="analytics-empty-state">
+                <h3 class="card-title">{% trans "No recent posts yet" %}</h3>
+                <p class="metric-meta">{% trans "Create a post to start building your profile activity history." %}</p>
+            </div>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/react-is@18.3.1/umd/react-is.production.min.js"></script>
+<script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
+<script src="https://unpkg.com/recharts@2.15.4/umd/Recharts.js"></script>
+<script src="{% static 'socialmanager/js/dashboard_analytics.js' %}?v=i18n-chart-labels-1"></script>
+{% endblock %}

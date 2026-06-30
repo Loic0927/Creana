@@ -1,0 +1,82 @@
+{% load i18n static %}
+{% load socialmanager_content %}
+<div class="sidebar-inner">
+    <div class="sidebar-brand" aria-label="Creana">
+        <img
+            src="{% static 'socialmanager/images/icon.webp' %}"
+            alt="Creana"
+            class="brand-icon"
+            width="52"
+            height="52"
+        >
+        <img
+            src="{% static 'socialmanager/images/word.webp' %}"
+            alt="Creana"
+            class="brand-word"
+            width="150"
+            height="34"
+        >
+    </div>
+
+    <nav class="sidebar-nav" aria-label="{% trans 'Primary navigation' %}">
+        <a class="nav-item {% if request.resolver_match.url_name == 'profile' %}active{% endif %}" href="{% url 'socialmanager:profile' %}">
+            <span class="material-symbols-outlined">person</span>{% trans "Profile" %}
+        </a>
+        <a class="nav-item {% if request.resolver_match.url_name == 'post_list' %}active{% endif %}" href="{% url 'socialmanager:post_list' %}">
+            <span class="material-symbols-outlined">dynamic_feed</span>{% trans "Feed" %}
+        </a>
+        <a class="nav-item {% if request.resolver_match.url_name == 'post_create' or request.resolver_match.url_name == 'post_update' %}active{% endif %}" href="{% url 'socialmanager:post_create' %}">
+            <span class="material-symbols-outlined">add_box</span>{% trans "Create Post" %}
+        </a>
+        <a class="nav-item {% if request.resolver_match.url_name == 'campaign_list' or request.resolver_match.url_name == 'campaign_create' or request.resolver_match.url_name == 'campaign_detail' or request.resolver_match.url_name == 'campaign_update' or request.resolver_match.url_name == 'campaign_delete' %}active{% endif %}" href="{% url 'socialmanager:campaign_list' %}">
+            <span class="material-symbols-outlined">campaign</span>{% trans "Campaigns" %}
+        </a>
+        <a class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'socialmanager:dashboard' %}">
+            <span class="material-symbols-outlined">dashboard</span>{% trans "Dashboard" %}
+        </a>
+        <form class="sidebar-username-search" method="post" action="{% url 'socialmanager:profile_username_search' %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <label class="sr-only" for="sidebar-username-search-input">{% trans "Search username" %}</label>
+            <input
+                id="sidebar-username-search-input"
+                class="sidebar-username-search-input"
+                type="search"
+                name="username"
+                placeholder="{% trans 'Search username' %}"
+                autocomplete="off"
+            >
+            <button class="sidebar-username-search-button" type="submit" aria-label="{% trans 'Search username' %}">
+                <span class="material-symbols-outlined" aria-hidden="true">search</span>
+            </button>
+        </form>
+        <div class="sidebar-nav-divider" aria-hidden="true"></div>
+        <div class="sidebar-icon-actions" aria-label="{% trans 'System navigation' %}">
+            <a class="app-icon-button notification-nav-item {% if request.resolver_match.url_name == 'notifications' %}active{% endif %}" href="{% url 'socialmanager:notifications' %}" aria-label="{% trans 'Notifications' %}" title="{% trans 'Notifications' %}">
+                <span class="material-symbols-outlined" aria-hidden="true">notifications</span>
+                <span class="sidebar-nav-label">{% trans "Notifications" %}</span>
+                {% if unread_notification_count %}
+                    <span class="notification-badge">
+                        {% if unread_notification_count > 99 %}99+{% else %}{{ unread_notification_count }}{% endif %}
+                    </span>
+                {% endif %}
+            </a>
+            <a class="app-icon-button settings-nav-item {% if request.resolver_match.url_name == 'settings' %}active{% endif %}" href="/settings/" aria-label="{% trans 'Settings' %}" title="{% trans 'Settings' %}">
+                <span class="material-symbols-outlined" aria-hidden="true">settings</span>
+                <span class="sidebar-nav-label">{% trans "Settings" %}</span>
+            </a>
+        </div>
+        <div class="sidebar-nav-divider" aria-hidden="true"></div>
+    </nav>
+
+    <div class="sidebar-user">
+        <img alt="{{ user.username|default:user.email }}" class="avatar sidebar-user-avatar" src="{{ user|avatar_url }}" width="56" height="56">
+        <div class="sidebar-user-copy">
+            <strong class="sidebar-user-name">{{ user.username|default:user.email }}</strong>
+            <form class="sidebar-logout-form" method="post" action="{% url 'socialmanager:logout' %}">
+                {% csrf_token %}
+                <button class="sidebar-logout-button" type="submit">{% trans "Log out" %}</button>
+            </form>
+        </div>
+    </div>
+</div>

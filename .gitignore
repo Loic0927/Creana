@@ -1,0 +1,53 @@
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Django/local runtime output
+staticfiles/
+media/
+db.sqlite3
+*.log
+*.sqlite3.bak*
+db.sqlite3.bak*
+
+# Local debug files
+creana-error-log.json
+
+# Local AI tooling
+.codex-*/
+
+# Google Cloud credentials
+service-account*.json
+credentials*.json
+client_secret*.json
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+._*
+
+# Local test / diagnostic scripts
+list_openai_models.py
+socialmanager/management/commands/test_gemini.py
+socialmanager/management/commands/test_post_ai.py

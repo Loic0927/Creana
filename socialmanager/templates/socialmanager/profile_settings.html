@@ -1,0 +1,178 @@
+{% extends "socialmanager/base.html" %}
+{% load i18n static %}
+{% load socialmanager_content %}
+
+{% block title %}{% trans "Creana | Profile" %}{% endblock %}
+{% block body_class %}profile-page{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'socialmanager/css/pages/profile.css' %}?v=profile-card-footer-fix-1" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="stack">
+    <form class="card stack profile-profile-card" enctype="multipart/form-data" id="profile-inline-form" method="post">
+        {% csrf_token %}
+        <input id="profile-bio-input" name="bio" type="hidden" value="{{ profile_bio }}" maxlength="250">
+        <input id="profile-links-input" name="links" type="hidden" value="{% for link in profile_links %}{% if not forloop.first %}|{% endif %}{{ link }}{% endfor %}">
+        <input id="profile-email-input" name="email" type="hidden" value="{{ user.email }}">
+        <input id="profile-username-input" name="username" type="hidden" value="{{ user.username }}" maxlength="20">
+
+        <div class="profile-hero profile-hero-inline">
+            <div class="profile-hero-main profile-hero-main-inline">
+                <div class="profile-avatar-photo">
+                    <label class="profile-avatar-upload" for="profile-avatar-input" id="profile-avatar-upload">
+                        <img alt="{{ user.username }}" class="avatar-lg profile-avatar-image" id="profile-avatar-preview" src="{{ user|avatar_url }}">
+                    </label>
+                    <input accept="image/*" disabled hidden id="profile-avatar-input" name="avatar" type="file">
+                </div>
+                <div class="creator-meta profile-identity-copy">
+                    <h1 class="card-title profile-name" contenteditable="false" data-character-counter-source="profile-username-count" data-max-length="20" id="profile-username-copy">{{ user.username }}</h1>
+                    <p class="profile-edit-helper character-counter" hidden id="profile-username-count" aria-live="polite"></p>
+                    {% if profile_field_errors.username %}
+                        <p class="field-error">{{ profile_field_errors.username }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            <button class="btn btn-primary edit-profile-btn" id="profile-edit-toggle" type="button">
+                {% trans "Edit profile" %}
+            </button>
+        </div>
+
+        <div class="profile-profile-grid">
+            <article class="profile-meta-card profile-links-card">
+                <h2 class="meta-section-title">{% trans "Bio" %}</h2>
+                <p class="meta-section-copy profile-bio-copy{% if not profile_bio %} is-placeholder{% endif %}" contenteditable="false" data-character-counter-source="profile-bio-count" data-max-length="250" data-placeholder="{% trans 'Please insert your bio here (up to 250 characters)' %}" id="profile-bio-copy">{% if profile_bio %}{{ profile_bio }}{% else %}{% trans "Please insert your bio here (up to 250 characters)" %}{% endif %}</p>
+                <p class="profile-edit-helper character-counter" hidden id="profile-bio-count" aria-live="polite"></p>
+                {% if profile_field_errors.bio %}
+                    <p class="field-error">{{ profile_field_errors.bio }}</p>
+                {% endif %}
+                <p class="profile-edit-helper" hidden id="profile-bio-helper">{% trans "Click the bio text above to edit it." %}</p>
+            </article>
+            <article class="profile-meta-card profile-contact-card">
+                <h2 class="meta-section-title">{% trans "Links" %}</h2>
+                <div class="link-chip-grid profile-link-chip-grid" id="profile-link-chip-grid">
+                    {% for link in profile_link_items %}
+                        {% if link.url %}
+                            <a class="link-chip profile-link-chip" data-value="{{ link.value }}" href="{{ link.url }}"{% if link.opens_new_tab %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ link.label }}</a>
+                        {% else %}
+                            <span class="link-chip profile-link-chip" data-value="{{ link.value }}">{{ link.label }}</span>
+                        {% endif %}
+                    {% endfor %}
+                    <p class="profile-links-placeholder" data-links-placeholder hidden>{% trans "Please add your link here" %}</p>
+                </div>
+                <input class="field-input profile-link-input" id="profile-link-entry" placeholder="{% trans 'Add a link or contact and press Enter' %}" type="text" hidden>
+                {% if profile_field_errors.links %}
+                    <p class="field-error">{{ profile_field_errors.links }}</p>
+                {% endif %}
+                <p class="profile-edit-helper" hidden id="profile-links-helper">{% trans "Add up to 5 links. Click an existing chip to edit it, or type a new contact and press Enter." %}</p>
+            </article>
+        </div>
+
+        <div class="profile-stats profile-stats-mockup">
+            <article class="profile-stat">
+                <p class="metric-label">{% trans "Posts" %}</p>
+                <p class="metric-value">{{ profile_stats.posts }}</p>
+            </article>
+            <article class="profile-stat">
+                <p class="metric-label">{% trans "Followers" %}</p>
+                <p class="metric-value">{{ profile_stats.followers }}</p>
+            </article>
+            <article class="profile-stat">
+                <p class="metric-label">{% trans "Following" %}</p>
+                <p class="metric-value">{{ profile_stats.following }}</p>
+            </article>
+        </div>
+    </form>
+
+    <section class="stack posts-section">
+        <div class="section-head posts-section-head">
+            <div>
+                <h2 class="posts-section-title">{% trans "Posts" %}</h2>
+            </div>
+            <div class="filter-tabs profile-view-tabs" data-filter-group="view">
+                <button aria-selected="true" class="filter-tab active" data-post-tab="all" data-view="post" data-filter="all" type="button">{% trans "Post" %}</button>
+                <button aria-selected="false" class="filter-tab" data-post-tab="shared" data-view="shared" data-filter="all" type="button">{% trans "Shared post" %}</button>
+            </div>
+        </div>
+
+        <div class="filter-tabs profile-status-tabs" data-filter-group="status">
+            <button aria-selected="true" class="filter-tab active" data-post-tab="all" data-filter="all" type="button">{% trans "All posts" %}</button>
+            <button aria-selected="false" class="filter-tab" data-post-tab="published" data-filter="published" type="button">{% trans "Published" %}</button>
+            <button aria-selected="false" class="filter-tab" data-post-tab="draft" data-filter="draft" type="button">{% trans "Draft" %}</button>
+            <button aria-selected="false" class="filter-tab" data-post-tab="scheduled" data-filter="scheduled" type="button">{% trans "Scheduled" %}</button>
+            <button aria-selected="false" class="filter-tab" data-post-tab="private" data-filter="private" type="button">{% trans "Private" %}</button>
+        </div>
+
+        <div class="post-stack">
+            {% url 'socialmanager:post_create' as post_create_url %}
+            {% url 'socialmanager:post_list' as feed_url %}
+            {% trans "No posts yet" as no_posts_title %}
+            {% trans "Your creative space is waiting. Start by sharing your first post." as no_posts_text %}
+            {% trans "Create post" as create_post_text %}
+            {% trans "No published posts yet" as no_published_title %}
+            {% trans "No draft posts yet" as no_drafts_title %}
+            {% trans "Draft posts you create will appear here." as no_drafts_text %}
+            {% trans "No scheduled posts yet" as no_scheduled_title %}
+            {% trans "Scheduled posts will appear here when you plan content ahead." as no_scheduled_text %}
+            {% trans "No private posts yet" as no_private_title %}
+            {% trans "Private posts will appear here when you save content for yourself." as no_private_text %}
+            {% trans "No shared posts yet" as no_shared_title %}
+            {% trans "Posts you share will appear here." as no_shared_text %}
+            {% trans "Browse feed" as browse_feed_text %}
+
+            <div class="profile-tab-panel is-active" data-post-panel="all">
+                {% for post in profile_posts %}
+                    {% include "socialmanager/partials/post_card.html" with badge_context="own_profile" %}
+                {% empty %}
+                    {% include "socialmanager/partials/empty_state.html" with extra_class="profile-post-empty-state" title=no_posts_title text=no_posts_text button_text=create_post_text button_url=post_create_url %}
+                {% endfor %}
+            </div>
+
+            <div class="profile-tab-panel" data-post-panel="published" hidden>
+                {% for post in published_posts %}
+                    {% include "socialmanager/partials/post_card.html" with badge_context="own_profile" %}
+                {% empty %}
+                    {% include "socialmanager/partials/empty_state.html" with extra_class="profile-post-empty-state" title=no_published_title text=no_posts_text button_text=create_post_text button_url=post_create_url %}
+                {% endfor %}
+            </div>
+
+            <div class="profile-tab-panel" data-post-panel="draft" hidden>
+                {% for post in draft_posts %}
+                    {% include "socialmanager/partials/post_card.html" with badge_context="own_profile" %}
+                {% empty %}
+                    {% include "socialmanager/partials/empty_state.html" with extra_class="profile-post-empty-state" title=no_drafts_title text=no_drafts_text button_text=create_post_text button_url=post_create_url %}
+                {% endfor %}
+            </div>
+
+            <div class="profile-tab-panel" data-post-panel="scheduled" hidden>
+                {% for post in scheduled_posts %}
+                    {% include "socialmanager/partials/post_card.html" with badge_context="own_profile" %}
+                {% empty %}
+                    {% include "socialmanager/partials/empty_state.html" with extra_class="profile-post-empty-state" title=no_scheduled_title text=no_scheduled_text button_text=create_post_text button_url=post_create_url %}
+                {% endfor %}
+            </div>
+
+            <div class="profile-tab-panel" data-post-panel="private" hidden>
+                {% for post in private_posts %}
+                    {% include "socialmanager/partials/post_card.html" with badge_context="own_profile" %}
+                {% empty %}
+                    {% include "socialmanager/partials/empty_state.html" with extra_class="profile-post-empty-state" title=no_private_title text=no_private_text button_text=create_post_text button_url=post_create_url %}
+                {% endfor %}
+            </div>
+
+            <div class="profile-tab-panel" data-post-panel="shared" hidden>
+                {% for shared_post in shared_posts %}
+                    {% include "socialmanager/partials/shared_post_card.html" with profile_user=request.user %}
+                {% empty %}
+                    {% include "socialmanager/partials/empty_state.html" with extra_class="profile-post-empty-state" title=no_shared_title text=no_shared_text button_text=browse_feed_text button_url=feed_url %}
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'socialmanager/js/profile.js' %}?v=empty-panels-source-1"></script>
+{% endblock %}

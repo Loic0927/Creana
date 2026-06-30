@@ -1,0 +1,60 @@
+{% extends "socialmanager/base.html" %}
+
+{% block title %}Creana | Subscriptions{% endblock %}
+
+{% block content %}
+<section class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="page-title">Subscription management</h1>
+        <p class="text-secondary mb-0">Admin-only subscription CRUD with archive instead of delete.</p>
+    </div>
+    <a class="btn btn-primary" href="{% url 'socialmanager:subscription_create' %}">New subscription</a>
+</section>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body">
+        {% if object_list %}
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Plan</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for subscription in object_list %}
+                            <tr>
+                                <td>{{ subscription.name }}</td>
+                                <td>{{ subscription.get_plan_display }}</td>
+                                <td>
+                                    {% if subscription.is_archived %}
+                                        <span class="badge text-bg-secondary">Archived</span>
+                                    {% else %}
+                                        <span class="badge text-bg-success">Active</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <a class="btn btn-sm btn-outline-primary" href="{% url 'socialmanager:subscription_update' subscription.pk %}">Edit</a>
+                                    {% if not subscription.is_archived %}
+                                        <a class="btn btn-sm btn-outline-dark" href="{% url 'socialmanager:subscription_archive' subscription.pk %}">Archive</a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% include "socialmanager/partials/pagination.html" %}
+        {% else %}
+            <div class="empty-state">
+                <h2 class="h5">No subscriptions yet</h2>
+                <p class="text-secondary mb-3">Create a subscription to manage a new tenant workspace.</p>
+                <a class="btn btn-outline-primary" href="{% url 'socialmanager:subscription_create' %}">Create subscription</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

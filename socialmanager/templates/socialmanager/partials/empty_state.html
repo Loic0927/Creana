@@ -1,0 +1,19 @@
+{% load static %}
+<article class="card {{ extra_class|default:'' }} creana-empty-state">
+    <img
+        alt=""
+        class="creana-empty-illustration"
+        src="{% static 'socialmanager/images/Noitem.png' %}"
+        loading="lazy"
+        decoding="async"
+        width="320"
+        height="320"
+    >
+    <h3 class="creana-empty-title">{{ title }}</h3>
+    <p class="creana-empty-text">{{ text }}</p>
+    {% if button_text and button_url %}
+        <div class="creana-empty-actions">
+            <a class="btn btn-primary" href="{{ button_url }}">{{ button_text }}</a>
+        </div>
+    {% endif %}
+</article>

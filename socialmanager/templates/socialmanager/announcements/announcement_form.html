@@ -1,0 +1,36 @@
+{% extends "socialmanager/base.html" %}
+{% load i18n static %}
+
+{% block title %}Creana | {% if object %}{% trans "Edit announcement" %}{% else %}{% trans "New announcement" %}{% endif %}{% endblock %}
+{% block body_class %}announcement-form-page{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'socialmanager/css/pages/feed.css' %}?v=announcements-1" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="announcement-form-shell">
+    <form class="announcement-form-card" method="post" novalidate>
+        {% csrf_token %}
+        <div class="announcement-form-card__header">
+            <h1>{% if object %}{% trans "Edit announcement" %}{% else %}{% trans "New announcement" %}{% endif %}</h1>
+        </div>
+        {% for field in form %}
+            <div class="announcement-form-field{% if field.name == 'content' %} announcement-form-field--content{% endif %}">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}
+                    <p class="helper-text">{{ field.help_text }}</p>
+                {% endif %}
+                {% if field.errors %}
+                    <div class="field-error">{{ field.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+        {% endfor %}
+        <div class="announcement-form-actions">
+            <button class="announcement-form-submit" type="submit">{% trans "Save announcement" %}</button>
+            <a class="announcement-form-cancel" href="{% url 'socialmanager:post_list' %}">{% trans "Cancel" %}</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

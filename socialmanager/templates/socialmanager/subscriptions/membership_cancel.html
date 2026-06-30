@@ -1,0 +1,16 @@
+{% extends "socialmanager/base.html" %}
+{% load i18n %}
+
+{% block title %}Creana | {% trans "Checkout cancelled" %}{% endblock %}
+
+{% block content %}
+<section class="membership-page-shell">
+    <article class="membership-pricing-card">
+        <div class="membership-card-header">
+            <h1>{% trans "Checkout cancelled" %}</h1>
+            <p>{% trans "Your membership checkout was cancelled. You can return whenever you are ready." %}</p>
+        </div>
+        <a class="btn btn-primary membership-apply-button" href="{% url 'socialmanager:membership_apply' %}">{% trans "Return to membership" %}</a>
+    </article>
+</section>
+{% endblock %}

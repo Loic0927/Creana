@@ -1,0 +1,1416 @@
+/* Profile */
+
+.profile-hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: 8px;
+}
+
+.profile-hero-main {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+}
+
+.profile-meta-grid {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+    gap: 20px;
+}
+
+.profile-meta-card,
+.profile-stat {
+    border: 1px solid #e1e7f5;
+    border-radius: var(--radius);
+    background: var(--gradient-card);
+    box-shadow:
+        0 12px 28px rgba(79, 140, 255, 0.08),
+        0 4px 12px rgba(139, 92, 246, 0.05);
+    padding: 20px;
+}
+
+.profile-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.public-profile-page .public-profile-post-card .post-card-body {
+    gap: 14px;
+}
+
+.public-profile-page .profile-follow-form {
+    margin: 0;
+}
+
+.public-profile-page .profile-action-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-left: auto;
+}
+
+.public-profile-page .profile-follow-btn {
+    min-height: 52px;
+    padding: 0 24px;
+    border: 1px solid #d7e0ea;
+    border-radius: 14px;
+    background: #ffffff;
+    color: #0f172a;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+        background-color 0.2s ease,
+        border-color 0.2s ease,
+        color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.public-profile-page .profile-follow-btn:hover,
+.public-profile-page .profile-follow-btn:focus {
+    border-color: #cdddff;
+    color: var(--color-primary);
+    background: var(--bg-secondary);
+}
+
+.public-profile-page .profile-follow-btn.is-following {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #ffffff;
+    box-shadow: 0 14px 28px rgba(79, 140, 255, 0.2);
+}
+
+.public-profile-page .profile-follow-btn.is-following:hover,
+.public-profile-page .profile-follow-btn.is-following:focus {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #ffffff;
+}
+
+.public-profile-page .profile-action-menu {
+    position: relative;
+}
+
+.public-profile-page .profile-action-menu summary {
+    list-style: none;
+}
+
+.public-profile-page .profile-action-menu summary::-webkit-details-marker {
+    display: none;
+}
+
+.public-profile-page .profile-action-menu-toggle {
+    width: 52px;
+    height: 52px;
+    border: 1px solid #d7e0ea;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.88);
+    color: #0f172a;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 12px 26px rgba(79, 140, 255, 0.08);
+    transition:
+        background-color 0.2s ease,
+        border-color 0.2s ease,
+        color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.public-profile-page .profile-action-menu-toggle:hover,
+.public-profile-page .profile-action-menu-toggle:focus {
+    border-color: #cdddff;
+    color: var(--color-primary);
+    background: var(--bg-secondary);
+    outline: none;
+}
+
+.public-profile-page .profile-action-menu-toggle .material-symbols-outlined {
+    font-size: 24px;
+}
+
+.public-profile-page .profile-action-menu-panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 20;
+    width: min(260px, calc(100vw - 32px));
+    padding: 8px;
+    border: 1px solid rgba(215, 224, 234, 0.92);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow:
+        0 20px 48px rgba(15, 23, 42, 0.12),
+        0 8px 20px rgba(79, 140, 255, 0.1);
+    backdrop-filter: blur(14px);
+}
+
+.public-profile-page .profile-action-menu-panel form {
+    margin: 0;
+}
+
+.public-profile-page .profile-action-menu-item {
+    width: 100%;
+    min-height: 42px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    font-size: 14px;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+}
+
+.public-profile-page .profile-action-menu-item:hover,
+.public-profile-page .profile-action-menu-item:focus {
+    background: var(--bg-secondary);
+    color: var(--color-primary);
+    outline: none;
+}
+
+.public-profile-page .public-profile-post-meta-row {
+    width: 100%;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.public-profile-page .public-profile-post-date {
+    margin-left: auto;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.public-profile-page .public-profile-post-copy {
+    min-width: 0;
+}
+
+.public-profile-page .public-profile-post-card .post-preview {
+    min-height: 0;
+}
+
+.public-profile-page .public-profile-post-actions-row {
+    margin-top: 0;
+    align-items: center;
+}
+
+.public-profile-page .public-profile-post-actions-row .engagement-row {
+    flex: 1 1 auto;
+}
+
+.public-profile-page .public-profile-post-actions-row .button-row {
+    width: auto;
+    margin-left: auto;
+    flex: 0 0 auto;
+}
+
+.profile-page .own-profile-post-meta-row {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 12px;
+}
+
+.profile-page .own-profile-post-date {
+    margin-left: auto;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.profile-post-empty-state {
+    padding: 40px;
+    text-align: center;
+}
+
+.profile-settings-grid {
+    display: grid;
+    gap: 24px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.profile-settings-email {
+    grid-column: 1 / -1;
+}
+
+.profile-page .stack > * + * {
+    margin-top: 26px;
+}
+
+.profile-page .profile-profile-card {
+    padding: 24px;
+    border-radius: 16px;
+}
+
+.profile-page .profile-name {
+    margin-bottom: 6px;
+    font-size: 28px;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+}
+
+.profile-page .edit-profile-btn {
+    min-height: 44px;
+    padding: 0 20px;
+    border-radius: 14px;
+    font-size: 15px;
+}
+
+.profile-page .profile-hero-inline {
+    align-items: flex-start;
+    margin-bottom: 10px;
+}
+
+.profile-page .profile-hero-main-inline {
+    align-items: center;
+    gap: 22px;
+}
+
+.profile-page .profile-avatar-photo .avatar-lg {
+    width: 150px;
+    height: 150px;
+}
+
+.profile-page .profile-avatar-fallback .material-symbols-outlined {
+    font-size: 44px;
+}
+
+.profile-page .profile-avatar-image {
+    width: 150px;
+    height: 150px;
+    border-radius: 999px;
+    object-fit: cover;
+}
+
+.profile-page .profile-avatar-upload {
+    display: inline-flex;
+    pointer-events: none;
+    cursor: default;
+}
+
+.profile-page .profile-avatar-upload.is-editing {
+    pointer-events: auto;
+    cursor: pointer;
+}
+
+.profile-page .profile-profile-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(360px, 0.8fr);
+    gap: 18px;
+}
+
+.profile-page .profile-meta-card {
+    padding: 24px 26px;
+    border-radius: 16px;
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
+        background 0.2s ease;
+}
+
+.profile-page .meta-section-title {
+    margin-bottom: 14px;
+    font-size: 16px;
+}
+
+.profile-page .meta-section-copy {
+    line-height: 1.75;
+    margin-bottom: 0;
+    min-height: 128px;
+    font-size: 16px;
+    color: #5d7392;
+}
+
+.profile-page .profile-bio-copy.is-placeholder,
+.profile-page .profile-links-placeholder {
+    color: var(--color-muted);
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.profile-page .profile-links-placeholder {
+    margin: 0;
+    line-height: 1.6;
+}
+
+.profile-page .profile-stat {
+    padding: 20px 22px 18px;
+    border-radius: 16px;
+}
+
+.profile-page .profile-stat .metric-label {
+    margin-bottom: 12px;
+    font-size: 14px;
+}
+
+.profile-page .profile-stat .metric-value {
+    margin-bottom: 0;
+    font-size: 34px;
+}
+
+.profile-page .profile-stats-mockup {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.profile-page .profile-link-chip-grid {
+    align-items: flex-start;
+}
+
+.profile-page .profile-link-chip {
+    min-height: 46px;
+    max-width: 100%;
+    padding: 0 18px;
+    border-color: #cdddff;
+    color: var(--color-primary);
+    background: #f3f8ff;
+    font-size: 14px;
+    font-weight: 700;
+    gap: 8px;
+    text-decoration: none;
+}
+
+.profile-page .profile-link-chip-label {
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.profile-page .profile-link-remove {
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(79, 140, 255, 0.12);
+    color: var(--color-primary);
+    display: inline-grid;
+    place-items: center;
+    cursor: pointer;
+    flex: 0 0 auto;
+}
+
+.profile-page .profile-link-remove:hover,
+.profile-page .profile-link-remove:focus {
+    background: rgba(139, 92, 246, 0.18);
+}
+
+.profile-page .profile-link-remove .material-symbols-outlined {
+    font-size: 16px;
+}
+
+.profile-page .profile-link-input {
+    margin-top: 14px;
+    min-height: 46px;
+}
+
+.profile-page .profile-edit-helper {
+    margin: 10px 0 0;
+    color: var(--color-primary);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.profile-page .profile-profile-card.is-editing .profile-meta-card {
+    border-color: var(--primary);
+    background: var(--bg-secondary);
+    box-shadow: 0 12px 28px rgba(79, 140, 255, 0.12);
+}
+
+.profile-page .profile-profile-card.is-editing .profile-link-chip {
+    cursor: pointer;
+}
+
+.profile-page [contenteditable="true"] {
+    outline: none;
+    border-radius: 12px;
+    box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.1);
+    background: var(--bg-secondary);
+}
+
+.profile-page .profile-bio-copy[contenteditable="true"] {
+    padding: 10px 12px;
+}
+
+.profile-page .profile-name[contenteditable="true"] {
+    padding: 6px 10px;
+}
+
+.profile-page .posts-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+}
+
+.profile-page .posts-section-title {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+}
+
+.profile-page .profile-view-tabs {
+    justify-content: flex-end;
+    margin-left: auto;
+}
+
+.profile-page .profile-view-tabs .filter-tab {
+    min-height: 42px;
+    padding-inline: 18px;
+}
+
+.profile-page .shared-post-card {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+}
+
+.profile-page .shared-post-media {
+    height: 250px;
+}
+
+.profile-page .shared-post-body {
+    justify-content: space-between;
+}
+
+.profile-page .shared-post-meta {
+    align-items: center;
+    width: 100%;
+}
+
+.profile-page .shared-post-date {
+    margin-left: auto;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.profile-page .shared-post-source {
+    margin: 0 0 8px;
+    color: var(--color-muted);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.profile-card-media-badge {
+    display: none;
+}
+
+.profile-page .post-card-action-buttons {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 16px;
+    width: auto;
+    margin-left: auto;
+    flex: 0 0 auto;
+}
+
+.profile-page .post-card-action-buttons a,
+.profile-page .post-card-action-buttons button,
+.profile-page .post-card-action-buttons .card-action-btn {
+    width: auto;
+    min-width: 128px;
+    flex: 0 0 auto;
+}
+
+.profile-page .post-card-action-buttons .card-action-btn {
+    min-height: 46px;
+    padding: 0 16px;
+    border: 1px solid var(--color-border);
+    border-radius: 14px;
+    background: #ffffff;
+    color: var(--color-text);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-sizing: border-box;
+    font-weight: 700;
+    text-align: center;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.profile-page .post-card-action-buttons .card-action-btn:hover,
+.profile-page .post-card-action-buttons .card-action-btn:focus {
+    background: #f8fafc;
+    color: var(--color-text);
+}
+
+.profile-page .post-card-action-buttons .card-action-btn span,
+.profile-page .post-card-action-buttons .card-action-btn {
+    white-space: nowrap;
+}
+
+.profile-page .post-card-action-buttons .card-action-btn .share-icon,
+.profile-page
+    .post-card-action-buttons
+    .card-action-btn
+    .material-symbols-outlined {
+    flex-shrink: 0;
+}
+
+.profile-page .post-card-action-buttons .card-action-btn .share-icon {
+    width: 18px;
+    height: 16px;
+}
+
+.public-profile-page .shared-post-actions-row .engagement-row {
+    flex: 1 1 auto;
+}
+
+.public-profile-page .shared-post-actions-row .shared-post-actions {
+    width: auto;
+    margin-left: auto;
+    flex: 0 0 auto;
+}
+
+@media (min-width: 768px) {
+    .public-profile-page .public-profile-post-card {
+        align-items: stretch;
+    }
+
+    .public-profile-page .public-profile-post-card .post-card-media {
+        height: 220px;
+    }
+
+    .public-profile-page .public-profile-post-card .post-card-body {
+        align-self: stretch;
+        min-height: 220px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .public-profile-page .public-profile-post-card .post-card-top {
+        flex: 0 1 auto;
+    }
+
+    .public-profile-page
+        .public-profile-post-card
+        .public-profile-post-actions-row {
+        margin-top: auto;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-2);
+    }
+
+    .public-profile-page
+        .public-profile-post-card
+        .public-profile-post-actions-row
+        .engagement-row {
+        flex: 1 1 auto;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 1024px) {
+    .profile-page .stack > * + * {
+        margin-top: 20px;
+    }
+
+    .profile-page .profile-profile-card {
+        width: min(100%, 760px);
+        margin-right: auto;
+        margin-left: auto;
+        padding: 22px;
+    }
+
+    .public-profile-page .profile-profile-card {
+        position: relative;
+    }
+
+    .profile-page .profile-hero-inline {
+        align-items: center;
+        margin-bottom: 0;
+    }
+
+    .profile-page .profile-hero-main-inline {
+        gap: 18px;
+    }
+
+    .public-profile-page .profile-hero-inline {
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        text-align: center;
+    }
+
+    .public-profile-page .profile-hero-main-inline {
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        text-align: center;
+    }
+
+    .public-profile-page .profile-identity-copy,
+    .public-profile-page .profile-name {
+        text-align: center;
+    }
+
+    .public-profile-page .profile-action-row {
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin-left: 0;
+    }
+
+    .public-profile-page .profile-action-menu {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        left: auto;
+        bottom: auto;
+        transform: none;
+    }
+
+    .public-profile-page .profile-action-menu-toggle {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+    }
+
+    .profile-page .profile-avatar-photo .avatar-lg,
+    .profile-page .profile-avatar-image {
+        width: 118px;
+        height: 118px;
+    }
+
+    .profile-page .profile-name {
+        font-size: 26px;
+    }
+
+    .profile-page .profile-profile-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 14px;
+    }
+
+    .profile-page .profile-links-card {
+        order: 1;
+        min-height: 210px;
+    }
+
+    .profile-page .profile-contact-card {
+        order: 2;
+        min-height: 112px;
+    }
+
+    .profile-page .profile-meta-card {
+        padding: 20px 22px;
+    }
+
+    .profile-page .profile-links-card .meta-section-copy {
+        min-height: 138px;
+    }
+
+    .profile-page .profile-contact-card .profile-link-chip-grid {
+        min-height: 0;
+    }
+
+    .profile-page .profile-link-chip {
+        min-height: 40px;
+        padding: 0 14px;
+    }
+
+    .profile-page .profile-stats-mockup {
+        gap: 12px;
+    }
+
+    .profile-page .profile-stat {
+        padding: 16px 18px;
+    }
+
+    .profile-page .own-profile-post-card .post-card-media,
+    .profile-page .public-profile-post-card .post-card-media,
+    .profile-page .shared-post-media {
+        width: 160px;
+        min-width: 160px;
+    }
+
+    .profile-page .post-card-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        width: 100%;
+    }
+
+    .profile-page .post-card-stats {
+        flex: 0 1 auto;
+        flex-wrap: nowrap;
+    }
+
+    .profile-page .post-card-action-buttons {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 16px;
+        flex: 0 0 auto;
+        width: auto;
+        margin-left: auto;
+    }
+
+    .profile-page .post-card-action-buttons .card-action-btn {
+        width: auto;
+        min-width: 128px;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .profile-page .profile-profile-card {
+        display: grid;
+        grid-template-columns: 1fr;
+        justify-items: center;
+        gap: 12px;
+        padding: 16px;
+        border-radius: 20px;
+    }
+
+    .profile-page .profile-profile-card > * + * {
+        margin-top: 0;
+    }
+
+    .public-profile-page .profile-profile-card {
+        position: relative;
+    }
+
+    .profile-page .profile-hero-inline {
+        display: contents;
+    }
+
+    .public-profile-page .profile-hero-inline {
+        order: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        text-align: center;
+    }
+
+    .profile-page .profile-hero-main-inline {
+        order: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        text-align: center;
+    }
+
+    .public-profile-page .profile-hero-main-inline {
+        width: 100%;
+        min-width: 0;
+        align-items: center;
+        text-align: center;
+    }
+
+    .public-profile-page .profile-action-row {
+        order: 2;
+        align-self: center;
+        justify-content: center;
+        width: auto;
+        margin-left: 0;
+        gap: 8px;
+    }
+
+    .public-profile-page .profile-action-menu {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        left: auto;
+        bottom: auto;
+        transform: none;
+    }
+
+    .public-profile-page .profile-follow-form {
+        flex: 0 0 auto;
+    }
+
+    .public-profile-page .profile-follow-btn {
+        width: auto;
+        min-height: 42px;
+        padding: 0 16px;
+        border-radius: 13px;
+        font-size: 14px;
+        white-space: nowrap;
+    }
+
+    .public-profile-page .profile-action-menu-toggle {
+        width: 42px;
+        height: 42px;
+        border-radius: 13px;
+    }
+
+    .public-profile-page .profile-action-menu-panel {
+        right: 0;
+        width: min(250px, calc(100vw - 28px));
+    }
+
+    .profile-page .profile-avatar-photo .avatar-lg,
+    .profile-page .profile-avatar-image {
+        width: 76px;
+        height: 76px;
+    }
+
+    .profile-page .profile-avatar-fallback .material-symbols-outlined {
+        font-size: 32px;
+    }
+
+    .profile-page .profile-identity-copy {
+        min-width: 0;
+        width: 100%;
+        text-align: center;
+    }
+
+    .profile-page .profile-name {
+        margin: 0;
+        font-size: 22px;
+        line-height: 1.05;
+        text-align: center;
+        overflow-wrap: anywhere;
+    }
+
+    .profile-page .profile-profile-grid {
+        order: 3;
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 14px;
+        width: 100%;
+    }
+
+    .profile-page .profile-meta-card {
+        width: 100%;
+        padding: 16px;
+        border-radius: 18px;
+    }
+
+    .profile-page .profile-links-card {
+        min-height: 174px;
+    }
+
+    .profile-page .profile-contact-card {
+        min-height: 126px;
+    }
+
+    .profile-page .meta-section-title {
+        margin-bottom: 8px;
+        font-size: 16px;
+    }
+
+    .profile-page .meta-section-copy {
+        min-height: 8em;
+        font-size: 14px;
+        line-height: 1.6;
+    }
+
+    .profile-page .profile-bio-copy {
+        display: -webkit-box;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 5;
+    }
+
+    .profile-page .profile-bio-copy.is-expanded {
+        display: block;
+        overflow: visible;
+        -webkit-line-clamp: unset;
+    }
+
+    .profile-page .profile-link-chip-grid {
+        gap: 10px;
+        max-height: 96px;
+        overflow: hidden;
+    }
+
+    .profile-page .profile-link-chip-grid.is-expanded {
+        max-height: none;
+        overflow: visible;
+    }
+
+    .profile-page .profile-link-chip {
+        min-height: 38px;
+        padding: 0 18px;
+        border-radius: 999px;
+        font-size: 12px;
+    }
+
+    .profile-page .edit-profile-btn {
+        order: 4;
+        grid-column: 1 / -1;
+        width: 100%;
+        min-height: 42px;
+        border-radius: 14px;
+        font-size: 14px;
+    }
+
+    .profile-page .profile-more-toggle {
+        width: fit-content;
+        min-height: 34px;
+        margin-top: 10px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: var(--color-primary);
+        font: inherit;
+        font-size: 13px;
+        font-weight: 800;
+        cursor: pointer;
+    }
+
+    .profile-page .profile-stats-mockup {
+        order: 2;
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+        min-width: 0;
+    }
+
+    .profile-page .profile-stat {
+        min-width: 0;
+        padding: 12px 10px;
+        border-radius: 14px;
+    }
+
+    .profile-page .profile-stat .metric-label {
+        margin-bottom: 6px;
+        font-size: 11px;
+        white-space: normal;
+    }
+
+    .profile-page .profile-stat .metric-value {
+        font-size: 20px;
+        line-height: 1;
+    }
+
+    .profile-page .posts-section {
+        gap: 18px;
+    }
+
+    .profile-page .posts-section-head {
+        gap: 12px;
+    }
+
+    .profile-page .posts-section-head {
+        align-items: flex-start;
+        text-align: left;
+    }
+
+    .profile-page .posts-section-title {
+        font-size: 20px;
+    }
+
+    .profile-page .posts-section-controls,
+    .profile-page .profile-status-tabs,
+    .profile-page .profile-view-tabs {
+        width: 100%;
+    }
+
+    .profile-page .profile-status-tabs,
+    .profile-page .profile-view-tabs {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .profile-page .profile-status-tabs .filter-tab,
+    .profile-page .profile-view-tabs .filter-tab {
+        flex: 0 0 auto;
+        min-height: 40px;
+        padding-inline: 18px;
+        font-size: 14px;
+    }
+
+    .public-profile-page .profile-stats-mockup {
+        order: 3;
+    }
+
+    .public-profile-page .profile-profile-grid {
+        order: 4;
+    }
+
+    .profile-page .post-stack {
+        gap: 16px;
+    }
+
+    .profile-page .post-card,
+    .profile-page .shared-post-card {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        border-radius: 14px;
+        overflow: hidden;
+    }
+
+    .profile-page .shared-post-card,
+    .profile-page .own-profile-post-card {
+        position: relative;
+    }
+
+    .profile-page .own-profile-post-card .post-card-top-meta {
+        display: none;
+    }
+
+    .profile-page .own-profile-post-card .post-card-meta .type-badge,
+    .profile-page .post-card-meta .meta-item-date {
+        display: none;
+    }
+
+    .profile-page .own-profile-post-card .profile-card-media-badge,
+    .profile-page .public-profile-post-card .profile-card-media-badge,
+    .profile-page .shared-post-card .profile-card-media-badge {
+        position: absolute;
+        z-index: 2;
+        top: 12px;
+        display: inline-flex;
+        min-height: 28px;
+        max-width: calc(50% - 18px);
+        padding: 0 9px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 1.2;
+        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+        backdrop-filter: blur(8px);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .profile-page .own-profile-post-card .type-badge.profile-card-media-badge,
+    .profile-page
+        .public-profile-post-card
+        .type-badge.profile-card-media-badge,
+    .profile-page .shared-post-card .type-badge.profile-card-media-badge,
+    .profile-page .own-profile-post-card .meta-item.profile-card-media-badge,
+    .profile-page .public-profile-post-card .meta-item.profile-card-media-badge,
+    .profile-page .shared-post-card .meta-item.profile-card-media-badge {
+        background: rgba(255, 255, 255, 0.88);
+        color: var(--color-muted);
+        border: 1px solid rgba(226, 232, 240, 0.8);
+    }
+
+    .profile-page .own-profile-post-card .profile-card-type-badge,
+    .profile-page .public-profile-post-card .profile-card-type-badge,
+    .profile-page .shared-post-card .profile-card-type-badge {
+        left: 12px;
+    }
+
+    .profile-page .own-profile-post-card .own-profile-inline-status-badge {
+        display: none;
+    }
+
+    .profile-page .own-profile-post-card .profile-card-date-badge,
+    .profile-page .public-profile-post-card .profile-card-date-badge,
+    .profile-page .shared-post-card .profile-card-date-badge {
+        right: 12px;
+    }
+
+    .profile-page .profile-card-date-badge .material-symbols-outlined {
+        font-size: 15px;
+    }
+
+    .profile-page .shared-post-body {
+        display: grid;
+        gap: 16px;
+        padding: 14px;
+        box-sizing: border-box;
+    }
+
+    .profile-page .own-profile-post-meta-row {
+        width: 100%;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .public-profile-page .public-profile-post-meta-row,
+    .profile-page .shared-post-meta {
+        display: none;
+    }
+
+    .profile-page .shared-post-source {
+        display: none;
+    }
+
+    .profile-page .post-card {
+        position: relative;
+        padding-top: 48px;
+    }
+
+    .profile-page .post-card .engagement-row.feed-engagement-actions {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        align-items: center;
+    }
+}
+
+/* Restored profile post action cascade from the pre-split stylesheet. */
+
+.feed-engagement-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.feed-engagement-actions .feed-engagement-button {
+    appearance: none;
+    -webkit-appearance: none;
+    font-family: inherit;
+    box-sizing: border-box;
+    min-height: 38px;
+    padding: 0 13px;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: #ffffff;
+    color: var(--color-muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+    text-decoration: none;
+    cursor: pointer;
+    outline: 0;
+    transition:
+        background-color 0.2s ease,
+        border-color 0.2s ease,
+        color 0.2s ease;
+}
+
+.feed-engagement-actions .feed-engagement-button:hover,
+.feed-engagement-actions .feed-engagement-button:focus {
+    border-color: #cdddff;
+    color: var(--color-primary);
+    background: var(--bg-secondary);
+}
+
+.feed-engagement-actions .feed-engagement-button .material-symbols-outlined {
+    font-size: 19px;
+}
+
+.feed-engagement-actions .feed-engagement-button .share-icon {
+    width: 18px;
+    height: 16px;
+}
+
+.feed-engagement-actions .feed-engagement-button.is-liked {
+    border-color: #ef4444;
+    background: #ef4444;
+    color: #ffffff;
+}
+
+.feed-engagement-actions
+    .feed-engagement-button.is-liked
+    .material-symbols-outlined {
+    color: #ffffff;
+    font-variation-settings:
+        "FILL" 1,
+        "wght" 600,
+        "GRAD" 0,
+        "opsz" 24;
+}
+
+.feed-engagement-actions .feed-engagement-button.is-shared {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+    color: #ffffff;
+}
+
+@media (max-width: 767.98px) {
+    .profile-page .post-card .engagement-row,
+    .campaign-detail-page .campaign-detail-post-card .engagement-row {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        width: 100%;
+        max-width: none;
+        margin-right: 0;
+        margin-left: 0;
+    }
+
+    .profile-page .post-card .engagement-row.feed-engagement-actions {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        align-items: center;
+    }
+
+    .profile-page .engagement-row:not(.feed-engagement-actions) .meta-item,
+    .profile-page .post-card .feed-engagement-button {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .feed-engagement-actions .feed-engagement-button {
+        width: 100%;
+        min-width: 0;
+        min-height: 34px;
+        padding: 0 8px;
+        gap: 5px;
+        font-size: 12px;
+    }
+
+    .feed-engagement-actions
+        .feed-engagement-button
+        .material-symbols-outlined {
+        font-size: 16px;
+    }
+
+    .feed-engagement-actions .feed-engagement-button .share-icon {
+        width: 15px;
+        height: 13px;
+    }
+
+    .profile-page .post-card-actions,
+    .campaign-detail-page
+        .campaign-detail-post-card
+        .post-card-actions
+        .button-row {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: center;
+        justify-content: stretch;
+        gap: 10px;
+        width: 100%;
+    }
+
+    .profile-page .post-card-actions .card-action-btn,
+    .campaign-detail-page
+        .campaign-detail-post-card
+        .post-card-actions
+        .button-row
+        .card-action-btn {
+        width: 100%;
+        max-width: none;
+        min-width: 0;
+        min-height: 46px;
+        padding: 0 16px;
+        border: 1px solid var(--color-border);
+        border-radius: 14px;
+        background: #ffffff;
+        color: var(--color-text);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        text-align: center;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    .profile-page .post-card-actions .card-action-btn:only-child,
+    .campaign-detail-page
+        .campaign-detail-post-card
+        .post-card-actions
+        .button-row
+        .card-action-btn:only-child {
+        grid-column: 1 / -1;
+        justify-self: center;
+        width: min(100%, 220px);
+    }
+
+    .public-profile-page .public-profile-post-actions-row .button-row {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+    }
+
+    .public-profile-page .public-profile-post-actions-row .card-action-btn {
+        width: min(220px, 100%);
+    }
+}
+
+/* Restore profile mobile shared-card centering after page CSS split. */
+
+@media (max-width: 767.98px) {
+    .profile-page .post-card,
+    .profile-page .shared-post-card {
+        --profile-card-content-width: min(100%, 540px);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .profile-page .post-card-media,
+    .profile-page .shared-post-media {
+        width: var(--profile-card-content-width);
+        margin-right: auto;
+        margin-left: auto;
+    }
+
+    .profile-page .post-card-image,
+    .profile-page .shared-post-media img {
+        display: block;
+        margin-right: auto;
+        margin-left: auto;
+    }
+
+    .profile-page .post-card-body,
+    .profile-page .shared-post-body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        box-sizing: border-box;
+        gap: 16px;
+        padding: 14px;
+        width: var(--profile-card-content-width);
+    }
+
+    .profile-page .post-card-top {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+        width: var(--profile-card-content-width);
+        margin-right: auto;
+        margin-left: auto;
+    }
+
+    .profile-page .post-card-footer {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        width: var(--profile-card-content-width);
+        margin-right: auto;
+        margin-left: auto;
+    }
+
+    .profile-page .campaign-badge,
+    .profile-page .own-profile-post-meta-row .campaign-badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 32px;
+        max-width: 100%;
+        padding: 0 12px;
+        border: 1px solid #99f6e4;
+        border-radius: 999px;
+        background: #f0fdfa;
+        color: #0f766e;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.2;
+        overflow-wrap: anywhere;
+    }
+}

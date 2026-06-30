@@ -1,0 +1,486 @@
+{% extends "socialmanager/base.html" %}
+{% load i18n static %}
+{% load socialmanager_content %}
+
+{% block title %}Creana | {{ object.title }}{% endblock %}
+{% block body_class %}post-detail-page{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'socialmanager/css/pages/post_detail.css' %}?v=comments-youtube-3" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="detail-layout">
+    <article class="card detail-article post-detail-card post-detail-content-shell {% if object.content_format != 'article' and media_images or object.content_format == 'video' and object.cached_video_url or object.content_format != 'article' and object.image %}has-detail-media{% else %}has-no-detail-media{% endif %}">
+        {% if request.user == object.author %}
+            <div class="detail-card-actions-menu">
+                <button aria-expanded="false" class="icon-button detail-menu-button" type="button" data-detail-menu-button>
+                    <span class="material-symbols-outlined" aria-hidden="true">more_horiz</span>
+                    <span class="sr-only">{% trans "Post options" %}</span>
+                </button>
+                <div class="detail-menu-dropdown" hidden data-detail-menu-dropdown>
+                    <button type="button" data-detail-edit-target="main">{% if object.content_format == 'article' %}{% trans "Edit article" %}{% else %}{% trans "Edit" %}{% endif %}</button>
+                    <form method="post" action="{% url 'socialmanager:post_delete' object.pk %}?next={{ request.get_full_path|urlencode }}" data-confirm-delete>
+                        {% csrf_token %}
+                        <button class="detail-menu-delete" type="submit">{% trans "Delete" %}</button>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+        <div class="detail-header post-detail-header author-row">
+            <div class="author-info">
+                <a class="author-avatar-link" href="{% if object.author_id == request.user.id %}{% url 'socialmanager:profile' %}{% else %}{% url 'socialmanager:public_profile' object.author.pk %}{% endif %}" aria-label="View {{ object.author.username|default:object.author.email }} profile">
+                    <img alt="{{ object.author.username|default:object.author.email }}" class="avatar" src="{{ object.author|avatar_url }}">
+                </a>
+                <div>
+                    <a class="author-name-link" href="{% if object.author_id == request.user.id %}{% url 'socialmanager:profile' %}{% else %}{% url 'socialmanager:public_profile' object.author.pk %}{% endif %}">{{ object.author.username|default:object.author.email }}</a>
+                    <span class="muted detail-time">
+                        {% if object.status == 'scheduled' and object.scheduled_for %}
+                            {% blocktrans with date=object.scheduled_for|date:"M d, Y" %}Scheduled for {{ date }}{% endblocktrans %}
+                        {% elif object.published_at %}
+                            {% blocktrans with date=object.published_at|date:"M d, Y" %}Published {{ date }}{% endblocktrans %}
+                        {% else %}
+                            {% blocktrans with date=object.updated_at|date:"M d, Y" %}Updated {{ date }}{% endblocktrans %}
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+            <div class="detail-action-row" aria-label="{% trans 'Post actions' %}">
+                {% if request.user.is_authenticated %}
+                <button class="detail-action-button{% if liked_by_user %} is-liked{% endif %}" type="button" aria-pressed="{% if liked_by_user %}true{% else %}false{% endif %}" data-detail-like data-engagement-url="{% url 'socialmanager:post_engagement_toggle' object.pk 'like' %}">
+                    <span class="material-symbols-outlined" aria-hidden="true">favorite</span>
+                    <span>{% trans "Like" %}</span>
+                    <span class="detail-action-count" data-detail-like-count>{{ object.like_count }}</span>
+                </button>
+                <button class="detail-action-button{% if shared_by_user %} is-shared{% endif %}" type="button" aria-pressed="{% if shared_by_user %}true{% else %}false{% endif %}" data-detail-share data-engagement-url="{% url 'socialmanager:post_engagement_toggle' object.pk 'share' %}">
+                    <svg class="share-icon" aria-hidden="true" viewBox="0 0 64 56" focusable="false">
+                        <path d="M3 52C5 30 18 17 35 17V3L61 27L35 51V37C21 37 11 42 3 52Z" />
+                    </svg>
+                    <span>{% trans "Share" %}</span>
+                    <span class="detail-action-count" data-detail-share-count>{{ object.share_count }}</span>
+                </button>
+                {% endif %}
+                {% if request.user != object.author %}
+                    <a class="detail-action-button detail-profile-button" href="{% url 'socialmanager:public_profile' object.author.pk %}">
+                        <span class="material-symbols-outlined" aria-hidden="true">person</span>
+                        <span>{% trans "View Profile" %}</span>
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if object.content_format != 'article' %}
+            <div class="post-media detail-media post-detail-media{% if object.content_format == 'video' %} is-video-detail-media{% endif %}{% if object.content_format == 'image' or object.content_format == 'carousel' %}{% if not media_images %} empty-detail-media{% endif %}{% elif object.content_format == 'video' %}{% if not object.cached_video_url %} empty-detail-media{% endif %}{% elif not object.image %} empty-detail-media{% endif %}">
+                {% if object.content_format == 'image' or object.content_format == 'carousel' %}
+                    <div class="detail-carousel" data-detail-carousel>
+                        <div class="detail-carousel-track">
+                            {% for post_image in media_images %}
+                                <div class="detail-carousel-slide{% if forloop.first %} is-active{% endif %}" data-carousel-slide{% if post_image.pk %} data-existing-image-id="{{ post_image.pk }}"{% endif %}>
+                                    {# Intentional full-size detail carousel URL; media_images is the post's own bounded image set. #}
+                                    <img alt="{{ object.title }} photo {{ forloop.counter }}" class="detail-cover" src="{{ post_image.image.url }}" decoding="async" width="1200" height="1200" role="button" tabindex="0" data-lightbox-media data-media-type="image" data-media-src="{{ post_image.image.url }}">
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <button class="detail-carousel-control detail-carousel-prev" type="button" aria-label="{% trans 'Previous photo' %}" data-carousel-prev{% if media_images|length <= 1 %} hidden{% endif %}>
+                            <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>
+                        </button>
+                        <button class="detail-carousel-control detail-carousel-next" type="button" aria-label="{% trans 'Next photo' %}" data-carousel-next{% if media_images|length <= 1 %} hidden{% endif %}>
+                            <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+                        </button>
+                        <button class="detail-carousel-delete" type="button" aria-label="{% trans 'Delete current photo' %}" data-carousel-delete hidden>
+                            <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                        </button>
+                        <span class="detail-carousel-count" data-carousel-count{% if media_images|length <= 1 %} hidden{% endif %}>{% if media_images %}1 / {{ media_images|length }}{% else %}0 / 0{% endif %}</span>
+                    </div>
+                {% elif object.content_format == 'video' and object.cached_video_url %}
+                    <video class="detail-cover" src="{{ object.cached_video_url }}"{% if object.video_thumbnail %} poster="{{ object.video_thumbnail.url }}"{% endif %} controls preload="metadata" playsinline webkit-playsinline data-track-watch-url="{% url 'socialmanager:track_video_watch' object.pk %}" data-post-id="{{ object.pk }}"></video>
+                {% elif object.image %}
+                    {# Intentional full-size legacy detail image fallback. #}
+                    <img alt="{{ object.title }}" class="detail-cover" src="{{ object.image.url }}" decoding="async" width="1200" height="1200" role="button" tabindex="0" data-lightbox-media data-media-type="image" data-media-src="{{ object.image.url }}">
+                {% endif %}
+            </div>
+        {% endif %}
+
+        {% if object.content_format == 'video' and object.video_file and can_analyze_video %}
+            <section class="detail-section video-analysis-card">
+                <div class="video-analysis-header">
+                    <div>
+                        <h2 class="card-title">{% trans "Video content analysis" %}</h2>
+                        <p class="muted">{% trans "Google Video Intelligence reads the clip; Gemini turns its annotations into caption ideas, hashtags, and improvements." %}</p>
+                    </div>
+                    <button class="btn btn-primary" type="button" data-video-analysis-url="{% url 'socialmanager:post_video_analysis' object.pk %}" data-video-analysis-target="video-detail-analysis-panel" data-ai-requires-membership="true">
+                        {% trans "Analyze video" %}
+                    </button>
+                </div>
+                <div class="video-analysis-results" id="video-detail-analysis-panel" hidden></div>
+            </section>
+        {% endif %}
+
+        <section class="detail-section detail-body-section post-detail-body">
+            <div class="detail-body">
+                <div class="detail-body-content is-collapsed" data-detail-body-content data-detail-view>
+                    <h1 class="detail-article-title">{{ object.title }}</h1>
+                    {% if object.content_format == 'article' %}
+                        <div class="rich-article-content">{{ object.caption|default:"<p>No article added yet.</p>"|safe_article_html }}</div>
+                    {% else %}
+                        <p>{{ object.caption|default:"No caption added yet."|linebreaksbr }}</p>
+                    {% endif %}
+                </div>
+                <button class="btn btn-secondary detail-body-toggle" type="button" data-detail-body-toggle hidden>
+                    {% trans "View full article" %}
+                </button>
+            </div>
+        </section>
+
+        {% if object.content_format == 'article' %}
+            <section class="detail-section article-detail-meta-section" data-detail-view>
+                <div class="detail-caption-block">
+                    <h2 class="card-title detail-meta-title">{% trans "Caption" %}</h2>
+                    {% if object.article_caption %}
+                        <p class="detail-caption-copy">{{ object.article_caption|linebreaksbr }}</p>
+                    {% else %}
+                        <p class="detail-caption-copy muted">{% trans "No caption added." %}</p>
+                    {% endif %}
+                </div>
+                <div class="detail-tags-block">
+                    <h2 class="card-title detail-meta-title">{% trans "Tags" %}</h2>
+                    <div class="link-chip-grid">
+                        {% if object.hashtags %}
+                            {% for tag in object.hashtags.split %}
+                                <span class="link-chip">{{ tag }}</span>
+                            {% endfor %}
+                        {% else %}
+                            <span class="link-chip">{% trans "No tags added yet" %}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </section>
+        {% else %}
+            <section class="detail-section detail-tags-section">
+                <div class="link-chip-grid">
+                    {% if object.hashtags %}
+                        {% for tag in object.hashtags.split %}
+                            <span class="link-chip">{{ tag }}</span>
+                        {% endfor %}
+                    {% else %}
+                        <span class="link-chip">{% trans "No hashtags added yet" %}</span>
+                    {% endif %}
+                </div>
+            </section>
+        {% endif %}
+        {% if request.user == object.author %}
+            <form class="detail-edit-form" method="post" enctype="multipart/form-data" action="{% if object.content_format == 'article' %}{% url 'socialmanager:post_detail_section_update' object.pk 'article' %}{% else %}{% url 'socialmanager:post_detail_section_update' object.pk 'post' %}{% endif %}" data-detail-edit-form="main" hidden>
+                {% csrf_token %}
+                {% if object.content_format == 'article' %}
+                    <div class="field">
+                        <label for="detail-title">{% trans "Title" %}</label>
+                        <input class="field-input" data-character-counter="true" data-character-counter-max="50" id="detail-title" maxlength="50" name="title" type="text" value="{{ object.title }}">
+                        {% if post_detail_field_errors.title %}
+                            <p class="field-error">{{ post_detail_field_errors.title }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="field">
+                        <label for="detail-article-body">{% trans "Article" %}</label>
+                        <textarea class="field-textarea" id="detail-article-body" name="caption" rows="12">{{ object.caption }}</textarea>
+                    </div>
+                    <div class="field">
+                        <label for="detail-article-caption">{% trans "Caption" %}</label>
+                        <textarea class="field-textarea" data-character-counter="true" data-character-counter-max="250" id="detail-article-caption" maxlength="250" name="article_caption" rows="4">{{ object.article_caption }}</textarea>
+                        <p class="helper-text">{% trans "Use 250 characters or fewer." %}</p>
+                        {% if post_detail_field_errors.article_caption %}
+                            <p class="field-error">{{ post_detail_field_errors.article_caption }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="field">
+                        <label for="detail-article-tags">{% trans "Tags" %}</label>
+                        <div class="detail-tag-editor" data-tag-editor>
+                            <div class="tag-chip-list"></div>
+                            <input type="text" class="tag-input-chip-field" placeholder="{% trans 'Type hashtag and press Enter (up to 5 hashtags)' %}">
+                            <input type="hidden" name="hashtags" class="tag-hidden-field" value="{{ object.hashtags }}">
+                        </div>
+                        <p class="helper-text">{% trans "Add up to 5 hashtags." %}</p>
+                        {% if post_detail_field_errors.hashtags %}
+                            <p class="field-error">{{ post_detail_field_errors.hashtags }}</p>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    {% if object.content_format == 'image' or object.content_format == 'carousel' %}
+                        <div class="field">
+                            <input name="deleted_image_ids" type="hidden" value="" data-deleted-image-ids>
+                            <label class="detail-upload-field">
+                                <span>{% trans "Add photos" %}</span>
+                                <input accept="image/*" multiple name="new_images" type="file" data-new-images-input>
+                            </label>
+                            <p class="field-error" hidden data-image-edit-error>{% trans "At least one image is required." %}</p>
+                            {% if post_detail_field_errors.image %}
+                                <p class="field-error">{{ post_detail_field_errors.image }}</p>
+                            {% endif %}
+                        </div>
+                    {% elif object.content_format == 'video' %}
+                        <div class="field">
+                            <label for="detail-video-upload">{% trans "Replace video" %}</label>
+                            <input accept="video/mp4,video/webm,video/quicktime,video/*" class="field-input" id="detail-video-upload" name="replacement_video" type="file">
+                            {% if post_detail_field_errors.replacement_video %}
+                                <p class="field-error">{{ post_detail_field_errors.replacement_video }}</p>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                    <div class="field">
+                        <label for="detail-caption">{% trans "Caption" %}</label>
+                        <textarea class="field-textarea" data-character-counter="true" data-character-counter-max="250" id="detail-caption" maxlength="250" name="caption" rows="5">{{ object.caption }}</textarea>
+                        <p class="helper-text">{% trans "Use 250 characters or fewer." %}</p>
+                        {% if post_detail_field_errors.caption %}
+                            <p class="field-error">{{ post_detail_field_errors.caption }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="field">
+                        <label for="detail-hashtags">{% trans "Tags" %}</label>
+                        <div class="detail-tag-editor" data-tag-editor>
+                            <div class="tag-chip-list"></div>
+                            <input type="text" class="tag-input-chip-field" placeholder="{% trans 'Type hashtag and press Enter (up to 5 hashtags)' %}">
+                            <input type="hidden" name="hashtags" class="tag-hidden-field" value="{{ object.hashtags }}">
+                        </div>
+                        <p class="helper-text">{% trans "Add up to 5 hashtags." %}</p>
+                        {% if post_detail_field_errors.hashtags %}
+                            <p class="field-error">{{ post_detail_field_errors.hashtags }}</p>
+                        {% endif %}
+                    </div>
+                {% endif %}
+                <div class="detail-save-row">
+                    <button class="btn btn-primary detail-save-button" type="submit">{% trans "Save" %}</button>
+                </div>
+            </form>
+        {% endif %}
+    </article>
+
+    <section class="post-comments post-detail-content-shell" id="comments">
+        <div class="post-comments__header">
+            <h2 class="post-comments__title">{% trans "Comments" %}</h2>
+            <span class="post-comments__count">{{ comments_count }}</span>
+        </div>
+
+        {% if request.user.is_authenticated %}
+        <form class="comment-composer" method="post">
+            {% csrf_token %}
+            <input type="hidden" name="video_second" value="0" data-video-engagement-second>
+            <div class="comment-composer__avatar" aria-hidden="true">
+                <img alt="" src="{{ request.user|avatar_url }}">
+            </div>
+            <div class="comment-composer__body">
+                <textarea class="comment-composer__textarea" id="comment-body" name="{{ comment_form.body.html_name }}" placeholder="{% trans 'Add a comment...' %}" rows="3">{% if comment_form.body.value %}{{ comment_form.body.value }}{% endif %}</textarea>
+                {% if comment_form.body.errors %}
+                    <div class="field-error">{{ comment_form.body.errors|join:", " }}</div>
+                {% endif %}
+                <div class="comment-composer__actions">
+                    <button class="btn btn-primary" type="submit">{% trans "Comment" %}</button>
+                </div>
+            </div>
+        </form>
+        {% endif %}
+
+        <div class="comment-list{% if comments_count > 3 %} is-collapsed{% endif %}" data-comments-list>
+            {% for comment in comments %}
+                <article class="comment-card{% if forloop.counter > 3 %} is-extra-comment{% endif %}" id="comment-{{ comment.pk }}" data-comment-id="{{ comment.pk }}">
+                    <a class="comment-card__avatar" href="{% if comment.author_id == request.user.id %}{% url 'socialmanager:profile' %}{% else %}{% url 'socialmanager:public_profile' comment.author.pk %}{% endif %}" aria-label="View {{ comment.author.username|default:comment.author.email }} profile">
+                        <img alt="{{ comment.author.username|default:comment.author.email }}" src="{{ comment.author|avatar_url }}">
+                    </a>
+
+                    <div class="comment-card__body">
+                        <div class="comment-card__meta">
+                            <a class="comment-card__author" href="{% if comment.author_id == request.user.id %}{% url 'socialmanager:profile' %}{% else %}{% url 'socialmanager:public_profile' comment.author.pk %}{% endif %}">{{ comment.author.username|default:comment.author.email }}</a>
+                            <span>{{ comment.display_time }}</span>
+                            {% if request.user == comment.author %}
+                                <div class="comment-card__menu">
+                                    <button class="icon-button comment-menu-button" type="button" aria-label="{% trans 'Comment options' %}" aria-expanded="false" data-comment-menu-toggle data-comment-id="{{ comment.pk }}">
+                                        <span class="material-symbols-outlined">more_horiz</span>
+                                    </button>
+                                    <div class="comment-menu-dropdown" hidden data-comment-menu="{{ comment.pk }}">
+                                        <button type="button" data-comment-edit-trigger>{% trans "Edit" %}</button>
+                                        <form method="post" action="{% url 'socialmanager:comment_delete' comment.pk %}" data-comment-delete-form data-delete-confirm="{% trans 'Delete comment?' %}">
+                                            {% csrf_token %}
+                                            <button class="comment-menu-delete" type="submit">{% trans "Delete" %}</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <p class="comment-card__text" data-comment-body-copy>{{ comment.body|linebreaksbr }}</p>
+                        {% if request.user == comment.author %}
+                            <form class="comment-edit-form" method="post" action="{% url 'socialmanager:comment_update' comment.pk %}" hidden data-comment-edit-form>
+                                {% csrf_token %}
+                                <textarea class="comment-composer__textarea" name="body" rows="3">{{ comment.body }}</textarea>
+                                <div class="comment-composer__actions">
+                                    <button class="btn btn-secondary" type="button" data-comment-edit-cancel>{% trans "Cancel" %}</button>
+                                    <button class="btn btn-primary" type="submit">{% trans "Save" %}</button>
+                                </div>
+                            </form>
+                        {% endif %}
+
+                        <div class="comment-card__actions">
+                            <button type="button" class="comment-action comment-like-button{% if comment.user_has_liked %} is-active{% endif %}" aria-label="{% trans 'Like comment' %}" aria-pressed="{% if comment.user_has_liked %}true{% else %}false{% endif %}" data-comment-like-button data-comment-id="{{ comment.pk }}" data-like-url="{% url 'socialmanager:toggle_comment_like' comment.pk %}">
+                                <span class="material-symbols-outlined" aria-hidden="true">favorite</span>
+                            </button>
+                            <span class="comment-like-count" data-comment-like-count>{{ comment.likes_total }}</span>
+                            <button type="button" class="comment-action comment-reply-button" data-comment-reply-toggle data-comment-id="{{ comment.pk }}">{% trans "Reply" %}</button>
+                            {% if comment.is_edited %}
+                                <span class="comment-edited-label">({% trans "edited" %})</span>
+                            {% endif %}
+                        </div>
+
+                        <form class="comment-reply-form" method="post" hidden data-comment-reply-form="{{ comment.pk }}">
+                            {% csrf_token %}
+                            <input type="hidden" name="parent_id" value="{{ comment.pk }}">
+                            <input type="hidden" name="video_second" value="0" data-video-engagement-second>
+                            <textarea class="comment-composer__textarea" name="body" rows="3" placeholder="{% trans 'Add a reply...' %}"></textarea>
+                            <div class="comment-composer__actions">
+                                <button class="btn btn-primary" type="submit">{% trans "Reply" %}</button>
+                            </div>
+                        </form>
+
+                        {% if comment.thread_replies %}
+                            <div class="comment-replies">
+                                {% for reply in comment.thread_replies %}
+                                    <article class="comment-card comment-card--reply" id="comment-{{ reply.pk }}" data-comment-id="{{ reply.pk }}">
+                                        <a class="comment-card__avatar" href="{% if reply.author_id == request.user.id %}{% url 'socialmanager:profile' %}{% else %}{% url 'socialmanager:public_profile' reply.author.pk %}{% endif %}" aria-label="View {{ reply.author.username|default:reply.author.email }} profile">
+                                            <img alt="{{ reply.author.username|default:reply.author.email }}" src="{{ reply.author|avatar_url }}">
+                                        </a>
+
+                                        <div class="comment-card__body">
+                                            <div class="comment-card__meta">
+                                                <a class="comment-card__author" href="{% if reply.author_id == request.user.id %}{% url 'socialmanager:profile' %}{% else %}{% url 'socialmanager:public_profile' reply.author.pk %}{% endif %}">{{ reply.author.username|default:reply.author.email }}</a>
+                                                {% if reply.parent %}
+                                                    <span class="reply-to-label">{% trans "reply to" %} {{ reply.parent.author.username|default:reply.parent.author.email }}</span>
+                                                {% endif %}
+                                                <span>{{ reply.display_time }}</span>
+                                                {% if request.user == reply.author %}
+                                                    <div class="comment-card__menu">
+                                                        <button class="icon-button comment-menu-button" type="button" aria-label="{% trans 'Comment options' %}" aria-expanded="false" data-comment-menu-toggle data-comment-id="{{ reply.pk }}">
+                                                            <span class="material-symbols-outlined">more_horiz</span>
+                                                        </button>
+                                                        <div class="comment-menu-dropdown" hidden data-comment-menu="{{ reply.pk }}">
+                                                            <button type="button" data-comment-edit-trigger>{% trans "Edit" %}</button>
+                                                            <form method="post" action="{% url 'socialmanager:comment_delete' reply.pk %}" data-comment-delete-form data-delete-confirm="{% trans 'Delete comment?' %}">
+                                                                {% csrf_token %}
+                                                                <button class="comment-menu-delete" type="submit">{% trans "Delete" %}</button>
+                                                            </form>
+                                                        </div>
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+
+                                            <p class="comment-card__text" data-comment-body-copy>{{ reply.body|linebreaksbr }}</p>
+                                            {% if request.user == reply.author %}
+                                                <form class="comment-edit-form" method="post" action="{% url 'socialmanager:comment_update' reply.pk %}" hidden data-comment-edit-form>
+                                                    {% csrf_token %}
+                                                    <textarea class="comment-composer__textarea" name="body" rows="3">{{ reply.body }}</textarea>
+                                                    <div class="comment-composer__actions">
+                                                        <button class="btn btn-secondary" type="button" data-comment-edit-cancel>{% trans "Cancel" %}</button>
+                                                        <button class="btn btn-primary" type="submit">{% trans "Save" %}</button>
+                                                    </div>
+                                                </form>
+                                            {% endif %}
+
+                                            <div class="comment-card__actions">
+                                                <button type="button" class="comment-action comment-like-button{% if reply.user_has_liked %} is-active{% endif %}" aria-label="{% trans 'Like reply' %}" aria-pressed="{% if reply.user_has_liked %}true{% else %}false{% endif %}" data-comment-like-button data-comment-id="{{ reply.pk }}" data-like-url="{% url 'socialmanager:toggle_comment_like' reply.pk %}">
+                                                    <span class="material-symbols-outlined" aria-hidden="true">favorite</span>
+                                                </button>
+                                                <span class="comment-like-count" data-comment-like-count>{{ reply.likes_total }}</span>
+                                                <button type="button" class="comment-action comment-reply-button" data-comment-reply-toggle data-comment-id="{{ reply.pk }}">{% trans "Reply" %}</button>
+                                                {% if reply.is_edited %}
+                                                    <span class="comment-edited-label">({% trans "edited" %})</span>
+                                                {% endif %}
+                                            </div>
+
+                                            <form class="comment-reply-form" method="post" hidden data-comment-reply-form="{{ reply.pk }}">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="parent_id" value="{{ reply.pk }}">
+                                                <input type="hidden" name="video_second" value="0" data-video-engagement-second>
+                                                <textarea class="comment-composer__textarea" name="body" rows="3" placeholder="{% trans 'Add a reply...' %}"></textarea>
+                                                <div class="comment-composer__actions">
+                                                    <button class="btn btn-primary" type="submit">{% trans "Reply" %}</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </article>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </article>
+            {% empty %}
+                <p class="comment-empty">
+                    <span>{% trans "No comments yet" %}</span>
+                    <span>{% trans "Start the conversation" %}</span>
+                </p>
+            {% endfor %}
+        </div>
+
+        {% if comments_count > 3 %}
+            <button class="comment-expand-button" type="button" data-comments-toggle data-show-more-label="{% trans 'Show more' %}" data-show-less-label="{% trans 'Show less' %}">{% trans "Show more" %}</button>
+        {% endif %}
+    </section>
+
+    <section class="stack more-posts-section post-detail-content-shell">
+        <div class="section-head">
+            <div>
+                <h2 class="section-title">{% trans "More Posts" %}</h2>
+            </div>
+        </div>
+
+        <div class="more-posts-grid">
+            {% for post in related_posts %}
+                <article class="card mini-post-card">
+                    <div class="post-media{% if not post.cached_primary_image_url and post.content_format != 'video' and post.content_format != 'article' %} empty-detail-media{% endif %}">
+                        {% if post.content_format == 'video' %}
+                            <div class="video-card-preview" aria-label="{% blocktrans with title=post.title %}{{ title }} video preview{% endblocktrans %}">
+                                <img alt="{% blocktrans with title=post.title %}{{ title }} video thumbnail{% endblocktrans %}" class="post-card-image" src="{% if post.cached_video_thumbnail_url %}{{ post.cached_video_thumbnail_url }}{% else %}{% static 'socialmanager/images/default_video_placeholder.webp' %}{% endif %}" loading="lazy" decoding="async" width="640" height="640">
+                                <span class="video-play-overlay" aria-hidden="true">&#9654;</span>
+                            </div>
+                        {% elif post.cached_primary_image_url %}
+                            <img alt="{{ post.title }}" class="post-card-image" src="{{ post.cached_primary_image_url }}" loading="lazy" decoding="async" width="640" height="640" role="button" tabindex="0" data-lightbox-media data-media-type="image" data-media-src="{{ post.cached_primary_original_image_url }}">
+                        {% elif post.content_format == 'article' %}
+                            <img alt="{{ post.title }} default article cover" class="post-card-image" src="{% static 'socialmanager/images/Article_img.PNG' %}" loading="lazy" decoding="async" width="640" height="640" role="button" tabindex="0" data-lightbox-media data-media-type="image" data-media-src="{% static 'socialmanager/images/Article_img.PNG' %}">
+                        {% endif %}
+                    </div>
+                    <div class="mini-post-body">
+                        <h3 class="card-title">{{ post.title }}</h3>
+                        <p class="post-preview">
+                            {% if post.content_format == 'article' %}
+                                {% if post.article_caption %}{{ post.article_caption|striptags }}{% else %}{% trans "No summary added yet." %}{% endif %}
+                            {% else %}
+                                {% if post.caption %}{{ post.caption|striptags }}{% else %}{% trans "No caption added yet." %}{% endif %}
+                            {% endif %}
+                        </p>
+                        <a class="btn btn-primary" href="{% url 'socialmanager:post_detail' post.pk post.slug %}">{% trans "View Post" %}</a>
+                    </div>
+                </article>
+            {% empty %}
+                <article class="card profile-post-empty-state creana-empty-state">
+                    <img
+                        alt=""
+                        aria-hidden="true"
+                        class="creana-empty-illustration"
+                        src="{% static 'socialmanager/images/Noitem.png' %}"
+                        loading="lazy"
+                        decoding="async"
+                    >
+                    <h3 class="creana-empty-title">{% trans "No more posts yet" %}</h3>
+                    {% if show_more_posts_create_button %}
+                        <p class="creana-empty-text">{% trans "You have no other posts yet. Share another post when you are ready." %}</p>
+                        <div class="creana-empty-actions">
+                            <a class="btn btn-primary" href="{% url 'socialmanager:post_create' %}">{% trans "Create post" %}</a>
+                        </div>
+                    {% else %}
+                        <p class="creana-empty-text">{% trans "This creator has not shared more posts yet." %}</p>
+                    {% endif %}
+                </article>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script defer src="{% static 'socialmanager/js/post_detail.js' %}?v=comments-events-3"></script>
+{% endblock %}

@@ -1,0 +1,145 @@
+{% load i18n static %}
+{% load socialmanager_content %}
+{% for post in object_list %}
+<article
+    class="card post-card feed-post feed-post-card"
+    data-search="{{ post.title }} {{ post.caption }} {{ post.article_caption }} {{ post.hashtags }} {{ post.author.username }} {{ post.author.email }}"
+    data-status="{{ post.status }}"
+>
+    <div class="post-media{% if post.cached_primary_image_url or post.content_format == 'video' or post.content_format == 'article' %} has-image{% endif %}">
+        {% if post.content_format == 'video' %}
+        <div class="video-card-preview" aria-label="{% blocktrans with title=post.title %}{{ title }} video preview{% endblocktrans %}">
+            <img
+                alt="{% blocktrans with title=post.title %}{{ title }} video thumbnail{% endblocktrans %}"
+                class="post-card-image"
+                src="{% if post.cached_video_thumbnail_url %}{{ post.cached_video_thumbnail_url }}{% else %}{% static 'socialmanager/images/default_video_placeholder.webp' %}{% endif %}"
+                loading="{% if forloop.first %}eager{% else %}lazy{% endif %}"
+                {% if forloop.first %}fetchpriority="high"{% endif %}
+                decoding="async"
+                width="640"
+                height="640"
+            />
+            <span class="video-play-overlay" aria-hidden="true">&#9654;</span>
+        </div>
+        {% elif post.cached_primary_image_url %}
+        <img
+            alt="{{ post.title }}"
+            class="post-card-image"
+            src="{{ post.cached_primary_image_url }}"
+            loading="{% if forloop.first %}eager{% else %}lazy{% endif %}"
+            {% if forloop.first %}fetchpriority="high"{% endif %}
+            decoding="async"
+            width="640"
+            height="640"
+            role="button"
+            tabindex="0"
+            data-lightbox-media
+            data-media-type="image"
+            data-media-src="{{ post.cached_primary_original_image_url }}"
+        />
+        {% elif post.content_format == 'article' %}
+        <img
+            alt="{% blocktrans with title=post.title %}{{ title }} default article cover{% endblocktrans %}"
+            class="post-card-image"
+            src="{% static 'socialmanager/images/Article_img.PNG' %}"
+            loading="{% if forloop.first %}eager{% else %}lazy{% endif %}"
+            {% if forloop.first %}fetchpriority="high"{% endif %}
+            decoding="async"
+            width="640"
+            height="640"
+            role="button"
+            tabindex="0"
+            data-lightbox-media
+            data-media-type="image"
+            data-media-src="{% static 'socialmanager/images/Article_img.PNG' %}"
+        />
+        {% endif %}
+    </div>
+
+    <div class="feed-post-info">
+        <div class="post-header">
+            <div class="post-author-group">
+                <a class="feed-author-avatar-link" href="{% if post.author_id == request.user.id %}{% url 'socialmanager:profile' %}{% else %}{% url 'socialmanager:public_profile' post.author.pk %}{% endif %}" aria-label="{% blocktrans with name=post.author.username|default:post.author.email %}View {{ name }} profile{% endblocktrans %}">
+                    <img alt="{{ post.author.username|default:post.author.email }}" class="avatar feed-author-avatar" src="{{ post.author|avatar_url }}" loading="lazy" decoding="async" width="56" height="56">
+                </a>
+                <div class="feed-author-copy">
+                    <a class="post-author" href="{% if post.author_id == request.user.id %}{% url 'socialmanager:profile' %}{% else %}{% url 'socialmanager:public_profile' post.author.pk %}{% endif %}">
+                        {{ post.author.username|default:post.author.email }}
+                    </a>
+                    <span class="post-time post-time-author">
+                        {% blocktrans with age=post.updated_at|timesince %}{{ age }} ago{% endblocktrans %}
+                    </span>
+                </div>
+                <span class="post-time post-time-mobile">
+                    {% blocktrans with age=post.updated_at|timesince %}{{ age }} ago{% endblocktrans %}
+                </span>
+            </div>
+            <div class="feed-post-meta-actions">
+                <div class="feed-engagement-actions feed-engagement-actions-desktop" aria-label="{% trans 'Post engagement actions' %}">
+                    <button class="feed-engagement-button{% if post.user_has_liked %} is-liked{% endif %}" type="button" aria-label="{% trans 'Like post' %}" aria-pressed="{% if post.user_has_liked %}true{% else %}false{% endif %}" data-feed-engagement="like" data-engagement-url="{% url 'socialmanager:post_engagement_toggle' post.pk 'like' %}">
+                        <span class="material-symbols-outlined" aria-hidden="true">favorite</span>
+                        <span data-feed-like-count>{{ post.like_count }}</span>
+                    </button>
+                    <button class="feed-engagement-button{% if post.user_has_shared %} is-shared{% endif %}" type="button" aria-label="{% trans 'Share post' %}" aria-pressed="{% if post.user_has_shared %}true{% else %}false{% endif %}" data-feed-engagement="share" data-engagement-url="{% url 'socialmanager:post_engagement_toggle' post.pk 'share' %}">
+                        <svg class="share-icon" aria-hidden="true" viewBox="0 0 64 56" focusable="false">
+                            <path d="M3 52C5 30 18 17 35 17V3L61 27L35 51V37C21 37 11 42 3 52Z" />
+                        </svg>
+                        <span data-feed-share-count>{{ post.share_count }}</span>
+                    </button>
+                    <a class="feed-engagement-button feed-comment-button" href="{% url 'socialmanager:post_detail' post.pk post.slug %}#comments" aria-label="{% trans 'View comments' %}">
+                        <span class="material-symbols-outlined" aria-hidden="true">chat_bubble</span>
+                        <span>{{ post.comment_count }}</span>
+                    </a>
+                </div>
+                <span class="post-tag">
+                    {{ post.get_content_format_display }}
+                </span>
+            </div>
+        </div>
+
+        <h3 class="feed-post-title">{{ post.title }}</h3>
+        <p class="post-content feed-post-copy">
+            {% if post.content_format == 'article' %}
+                {% if post.article_caption %}
+                    {{ post.article_caption|striptags|truncatechars:220 }}
+                {% elif post.caption %}
+                    {{ post.caption|striptags|truncatechars:220 }}
+                {% else %}
+                    {% trans "No caption added yet." %}
+                {% endif %}
+            {% else %}
+                {% if post.caption %}{{ post.caption|striptags|truncatechars:220 }}{% else %}{% trans "No caption added yet." %}{% endif %}
+            {% endif %}
+        </p>
+
+        <div class="feed-engagement-actions feed-engagement-actions-mobile" aria-label="{% trans 'Post engagement actions' %}">
+            <button class="feed-engagement-button{% if post.user_has_liked %} is-liked{% endif %}" type="button" aria-label="{% trans 'Like post' %}" aria-pressed="{% if post.user_has_liked %}true{% else %}false{% endif %}" data-feed-engagement="like" data-engagement-url="{% url 'socialmanager:post_engagement_toggle' post.pk 'like' %}">
+                <span class="material-symbols-outlined" aria-hidden="true">favorite</span>
+                <span data-feed-like-count>{{ post.like_count }}</span>
+            </button>
+            <button class="feed-engagement-button{% if post.user_has_shared %} is-shared{% endif %}" type="button" aria-label="{% trans 'Share post' %}" aria-pressed="{% if post.user_has_shared %}true{% else %}false{% endif %}" data-feed-engagement="share" data-engagement-url="{% url 'socialmanager:post_engagement_toggle' post.pk 'share' %}">
+                <svg class="share-icon" aria-hidden="true" viewBox="0 0 64 56" focusable="false">
+                    <path d="M3 52C5 30 18 17 35 17V3L61 27L35 51V37C21 37 11 42 3 52Z" />
+                </svg>
+                <span data-feed-share-count>{{ post.share_count }}</span>
+            </button>
+            <a class="feed-engagement-button feed-comment-button" href="{% url 'socialmanager:post_detail' post.pk post.slug %}#comments" aria-label="{% trans 'View comments' %}">
+                <span class="material-symbols-outlined" aria-hidden="true">chat_bubble</span>
+                <span>{{ post.comment_count }}</span>
+            </a>
+        </div>
+
+        {% if post.hashtags %}
+        <div class="link-chip-grid feed-post-tags">
+            {% for tag in post.hashtags.split %}
+                <span class="link-chip">{{ tag }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="button-row feed-post-actions">
+            <a class="btn btn-primary card-link" href="{% url 'socialmanager:post_detail' post.pk post.slug %}">{% trans "View Post" %}</a>
+        </div>
+    </div>
+</article>
+{% endfor %}

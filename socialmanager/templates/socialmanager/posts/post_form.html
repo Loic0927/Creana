@@ -1,0 +1,320 @@
+{% extends "socialmanager/base.html" %}
+{% load i18n static %}
+
+{% block title %}Creana | {% if object %}{% trans "Edit Post" %}{% else %}{% trans "Create Post" %}{% endif %}{% endblock %}
+{% block body_class %}create-post-page{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'socialmanager/css/pages/create_post.css' %}?v=video-preview-bounds-1" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="stack">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">{% if object %}{% trans "Edit Post" %}{% else %}{% trans "Create Post" %}{% endif %}</h1>
+            <div class="post-type-selector" aria-label="{% trans 'Select post type' %}" role="tablist">
+                <button aria-selected="{% if initial_post_type == 'article' %}true{% else %}false{% endif %}" class="post-type-tab {% if initial_post_type == 'article' %}active{% endif %}" data-type="article" type="button">{% trans "Article" %}</button>
+                <button aria-selected="{% if initial_post_type == 'illustration' %}true{% else %}false{% endif %}" class="post-type-tab {% if initial_post_type == 'illustration' %}active{% endif %}" data-type="illustration" type="button">{% trans "Image" %}</button>
+                <button aria-selected="{% if initial_post_type == 'video' %}true{% else %}false{% endif %}" class="post-type-tab {% if initial_post_type == 'video' %}active{% endif %}" data-type="video" type="button">{% trans "Video" %}</button>
+                <button aria-selected="false" class="post-type-tab" data-type="draft" type="button">{% trans "Draft" %}</button>
+            </div>
+        </div>
+    </div>
+
+    <form
+        method="post"
+        enctype="multipart/form-data"
+        novalidate
+        autocomplete="off"
+        data-ai-feedback-url="{% url 'socialmanager:post_ai_feedback' %}"
+        data-video-upload-start-url="{% url 'socialmanager:video_upload_start' %}"
+        data-direct-video-upload-enabled="{{ direct_video_upload_enabled|yesno:'true,false' }}"
+        data-direct-video-upload-max-bytes="{{ direct_video_upload_max_bytes }}"
+        data-gemini-video-max-bytes="{{ gemini_video_max_bytes }}"
+        data-gemini-video-max-seconds="{{ gemini_video_max_seconds }}"
+        data-is-editing="{{ object.pk|yesno:'true,false' }}"
+        data-post-id="{{ object.pk|default:'' }}"
+        data-label-title="{% trans 'Title' %}"
+        data-label-caption="{% trans 'Caption' %}"
+        data-label-caption-body="{% trans 'Caption' %}"
+        data-label-article="{% trans 'Article' %}"
+        data-label-body="{% trans 'Body' %}"
+        data-label-size="{% trans 'Size' %}"
+        data-label-write-article="{% trans 'Write your article...' %}"
+    >
+        {% csrf_token %}
+        {% if redirect_next_url %}
+            <input type="hidden" name="next" value="{{ redirect_next_url }}">
+        {% endif %}
+
+        <input id="{{ form.content_format.id_for_label }}" name="{{ form.content_format.html_name }}" type="hidden" value="{{ form.content_format.value|default:'article' }}">
+        <input id="{{ form.status.id_for_label }}" name="{{ form.status.html_name }}" type="hidden" value="{{ form.status.value|default:initial_post_status|default:'draft' }}">
+        <input id="{{ form.scheduled_for.id_for_label }}" name="{{ form.scheduled_for.html_name }}" type="hidden" value="{{ form.scheduled_for.value|default:'' }}">
+        <input id="uploaded-video-object-name" name="uploaded_video_object_name" type="hidden" value="{{ request.POST.uploaded_video_object_name|default:'' }}">
+
+        <div class="form-grid">
+            <section class="stack create-post-main-stack">
+                <article class="card post-editor-card">
+                    <section class="post-type-panel" id="article-section" {% if initial_post_type != 'article' %}hidden{% endif %}>
+                        <div class="stack article-editor-panel">
+                            <div class="field" id="article-media-panel">
+                                <label for="{{ form.image.id_for_label }}" id="image-upload-label">{% trans "Cover picture (optional)" %}</label>
+                                <div id="article-upload-state" {% if form.instance.image and form.instance.content_format != 'video' %}hidden{% endif %}>
+                                    <label class="upload-box upload-control" for="{{ form.image.id_for_label }}" id="article-upload-control">
+                                    {{ form.image }}
+                                        <div>
+                                            <span class="material-symbols-outlined upload-icon">cloud_upload</span>
+                                            <p class="upload-title">{% trans "Drag cover picture here or browse files" %}</p>
+                                            <p class="helper-text">{% trans "Optional for articles. Recommended size: 1600 x 900, PNG or JPG" %}</p>
+                                        </div>
+                                    </label>
+                                </div>
+                                <div class="media-preview" hidden id="article-preview-wrap" {% if form.instance.image and form.instance.content_format != 'video' %}data-existing-src="{{ form.instance.image.url }}"{% endif %}>
+                                    <img alt="{% trans 'Cover preview' %}" class="media-preview-image" id="article-preview">
+                                    <p class="helper-text media-preview-note" hidden id="article-preview-note"></p>
+                                    <div class="media-actions">
+                                        <button class="btn btn-secondary" id="replace-article-media-btn" type="button">{% trans "Replace media" %}</button>
+                                        <button class="btn btn-secondary danger-btn" id="remove-article-media-btn" type="button">{% trans "Remove media" %}</button>
+                                    </div>
+                                </div>
+                                {% if form.image.errors %}
+                                    <div class="field-error">{{ form.image.errors|join:", " }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="field article-title-field-slot" id="article-title-slot"></div>
+                            <div class="field article-body-field-slot" id="article-body-slot"></div>
+                        </div>
+                    </section>
+                </article>
+
+                <section class="post-type-panel" id="draft-section" hidden>
+                    <div class="post-stack draft-list" id="draft-list">
+                        {% for draft in draft_posts %}
+                            <article class="card post-card draft-card" data-content-format="{{ draft.content_format }}" data-draft-id="{{ draft.pk }}" data-view="draft" data-status="draft">
+                                        <div class="post-card-media">
+                                            {% if draft.content_format == 'video' %}
+                                                <div class="video-card-preview" aria-label="{% blocktrans with title=draft.title %}{{ title }} video preview{% endblocktrans %}">
+                                                    <img alt="{% blocktrans with title=draft.title %}{{ title }} video thumbnail{% endblocktrans %}" class="post-card-image" src="{% if draft.cached_video_thumbnail_url %}{{ draft.cached_video_thumbnail_url }}{% else %}{% static 'socialmanager/images/default_video_placeholder.webp' %}{% endif %}" loading="lazy" decoding="async" width="640" height="640">
+                                                    <span class="video-play-overlay" aria-hidden="true">&#9654;</span>
+                                                </div>
+                                            {% elif draft.cached_primary_image_url %}
+                                                <img alt="{{ draft.title }} draft preview" class="post-card-image" src="{{ draft.cached_primary_image_url }}" loading="lazy" decoding="async" width="640" height="640">
+                                            {% elif draft.content_format == 'article' %}
+                                                <img alt="{{ draft.title }} default article cover" class="post-card-image" src="{% static 'socialmanager/images/Article_img.PNG' %}" loading="lazy" decoding="async" width="640" height="640">
+                                            {% else %}
+                                                <div class="post-card-image placeholder-cover"></div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="mobile-date-row">
+                                            <span class="meta-item"><span class="material-symbols-outlined">edit_calendar</span>{% blocktrans with date=draft.updated_at|date:"M d, Y" %}Last edited {{ date }}{% endblocktrans %}</span>
+                                        </div>
+                                        <div class="post-card-body">
+                                            <div class="post-card-top">
+                                                <div class="post-card-meta">
+                                                    <span class="status-badge draft">{% trans "Draft" %}</span>
+                                                    <span class="type-badge">{{ draft.get_content_format_display }}</span>
+                                                    <span class="platform-badge">{% if draft.get_platform_display %}{{ draft.get_platform_display }}{% else %}{% trans "No platform selected" %}{% endif %}</span>
+                                                    {% for campaign in draft.campaign_groups.all %}
+                                                        <span class="campaign-badge">{{ campaign.name }}</span>
+                                                    {% empty %}
+                                                        <span class="campaign-badge">{% trans "Unassigned campaign" %}</span>
+                                                    {% endfor %}
+                                                    <span class="meta-item meta-item-date"><span class="material-symbols-outlined">edit_calendar</span>{% blocktrans with date=draft.updated_at|date:"M d, Y" %}Last edited {{ date }}{% endblocktrans %}</span>
+                                                </div>
+                                                <div>
+                                                    <h3 class="card-title feed-post-title">{{ draft.title }}</h3>
+                                                    <p class="post-preview">{% if draft.caption %}{{ draft.caption|truncatechars:160 }}{% else %}{% trans "No caption added yet." %}{% endif %}</p>
+                                                </div>
+                                            </div>
+                                            <div class="post-card-actions">
+                                                <div class="engagement-row"></div>
+                                                <div class="button-row">
+                                                    <a class="btn btn-primary card-link edit-draft-link" data-draft-id="{{ draft.pk }}" href="{% url 'socialmanager:post_update' draft.pk %}?next={{ request.get_full_path|urlencode }}">{% trans "Edit draft" %}</a>
+                                                </div>
+                                            </div>
+                                        </div>
+                            </article>
+                        {% empty %}
+                            <div class="creana-empty-state">
+                                <img class="creana-empty-illustration" src="{% static 'socialmanager/images/Noitem.png' %}" alt="" loading="lazy" decoding="async">
+                                <h2 class="creana-empty-title">{% trans "No posts yet" %}</h2>
+                                <p class="creana-empty-text">{% trans "Your creative space is waiting. Start by sharing your first post." %}</p>
+                                <a class="btn btn-primary" href="{% url 'socialmanager:post_create' %}">{% trans "Create post" %}</a>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </section>
+
+                <article class="card stack media-upload-card shared-editor-section" id="media-upload-card">
+                    <div class="field">
+                        <div id="illustration-media-panel" hidden>
+                            <label for="id_illustration_images">{% trans "Upload image" %}</label>
+                            <div id="illustration-upload-state" {% if initial_post_type == 'illustration' and form.instance.image %}hidden{% endif %}>
+                                <label class="upload-box upload-control" for="id_illustration_images" id="illustration-upload-control">
+                                    <input accept="image/*" class="field-input field-file-input illustration-images-input" disabled id="id_illustration_images" multiple name="illustration_images" type="file">
+                                    <div>
+                                        <span class="material-symbols-outlined upload-icon">cloud_upload</span>
+                                        <p class="upload-title">{% trans "Drag image here or browse files" %}</p>
+                                        <p class="helper-text">{% trans "Select up to 10 images. PNG or JPG recommended." %}</p>
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="media-preview" hidden id="illustration-preview-wrap" {% if initial_post_type == 'illustration' and form.instance.image %}data-existing-src="{{ form.instance.image.url }}"{% endif %}>
+                                <div class="multi-image-preview-grid" hidden id="illustration-preview-grid" aria-label="{% trans 'Selected images' %}"></div>
+                                <p class="helper-text media-preview-note" hidden id="illustration-preview-note"></p>
+                                <div class="media-actions">
+                                    <button class="btn btn-secondary" id="replace-illustration-btn" type="button">{% trans "Replace media" %}</button>
+                                    <button class="btn btn-secondary danger-btn" id="remove-illustration-btn" type="button">{% trans "Remove media" %}</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="video-media-panel" hidden>
+                            <label for="{{ form.video_file.id_for_label }}">{% trans "Upload video" %}</label>
+                            <div id="video-upload-state" {% if form.instance.cached_video_url %}hidden{% endif %}>
+                                <label class="upload-box upload-control" for="{{ form.video_file.id_for_label }}" id="video-upload-control">
+                                    <input
+                                        accept="video/mp4,video/webm,video/quicktime,video/*"
+                                        class="field-input field-file-input"
+                                        data-direct-upload-max-bytes="{{ direct_video_upload_max_bytes }}"
+                                        data-fallback-max-bytes="{{ video_upload_max_bytes }}"
+                                        data-max-bytes="{{ video_upload_max_bytes }}"
+                                        id="{{ form.video_file.id_for_label }}"
+                                        name="{{ form.video_file.html_name }}"
+                                        type="file"
+                                    >
+                                    <div>
+                                        <span class="material-symbols-outlined upload-icon">video_call</span>
+                                        <p class="upload-title">{% trans "Drop a video here or browse files" %}</p>
+                                        <p class="helper-text">{% trans "Supported formats: MP4, WebM, or MOV. Landscape 16:9 recommended." %}</p>
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="media-preview" hidden id="video-preview-wrap" {% if form.instance.cached_video_url %}data-existing-src="{{ form.instance.cached_video_url }}"{% endif %}>
+                                <div class="video-upload-preview-frame">
+                                    <video class="video-upload-preview-media" controls id="video-preview" preload="metadata"></video>
+                                </div>
+                                <p class="helper-text media-preview-note" hidden id="video-preview-note"></p>
+                                <div class="media-actions">
+                                    <button class="btn btn-secondary" id="replace-video-btn" type="button">{% trans "Replace media" %}</button>
+                                    <button class="btn btn-secondary danger-btn" id="remove-video-btn" type="button">{% trans "Remove media" %}</button>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="field-error" hidden id="illustration-upload-error"></p>
+                        {% if form.video_file.errors %}
+                            <div class="field-error">{{ form.video_file.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </article>
+
+                <article class="card stack post-details-card shared-editor-section">
+                    <div class="create-post-hidden-fields" aria-hidden="true" hidden id="create-post-hidden-fields">
+                    </div>
+                    <div class="field field-shell" id="caption-field-shell" data-ai-field="caption">
+                        <div class="field-label-row">
+                            <label for="{{ form.caption.id_for_label }}">{% trans "Caption" %}</label>
+                            <button class="create-post-ai-link" data-ai-target="caption" type="button">{% trans "AI Feedback" %}</button>
+                        </div>
+                        {{ form.caption }}
+                        <p aria-live="polite" class="helper-text character-counter" data-character-counter-for="{{ form.caption.id_for_label }}" hidden></p>
+                        {% if form.caption.errors %}
+                            <div class="field-error">{{ form.caption.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="field" id="shared-title-slot"></div>
+                    <div class="field" id="shared-caption-slot"></div>
+                    <div class="field field-shell" id="title-field-shell" data-ai-field="title">
+                        <div class="field-label-row">
+                            <label for="{{ form.title.id_for_label }}">{{ form.title.label }}</label>
+                            <button class="create-post-ai-link" data-ai-target="title" type="button">{% trans "AI Feedback" %}</button>
+                        </div>
+                        {{ form.title }}
+                        <p aria-live="polite" class="helper-text character-counter" data-character-counter-for="{{ form.title.id_for_label }}" hidden></p>
+                        {% if form.title.errors %}
+                            <div class="field-error">{{ form.title.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="field field-shell" id="article-caption-field-shell" data-ai-field="caption">
+                        <div class="field-label-row">
+                            <label for="{{ form.article_caption.id_for_label }}">{{ form.article_caption.label }}</label>
+                            <button class="create-post-ai-link" data-ai-target="caption" type="button">{% trans "AI Feedback" %}</button>
+                        </div>
+                        {{ form.article_caption }}
+                        <p aria-live="polite" class="helper-text character-counter" data-character-counter-for="{{ form.article_caption.id_for_label }}" hidden></p>
+                        {% if form.article_caption.errors %}
+                            <div class="field-error">{{ form.article_caption.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="field field-shell" data-ai-field="hashtags">
+                        <div class="field-label-row">
+                            <label for="{{ form.hashtags.id_for_label }}">{{ form.hashtags.label }}</label>
+                            <button class="create-post-ai-link" data-ai-target="hashtags" type="button">{% trans "AI Feedback" %}</button>
+                        </div>
+                        {{ form.hashtags }}
+                        {% if form.hashtags.errors %}
+                            <div class="field-error">{{ form.hashtags.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="field">
+                        <label for="{{ form.visibility.id_for_label }}">{% trans "Visibility" %}</label>
+                        {{ form.visibility }}
+                    </div>
+                    <div class="field">
+                        <label for="{{ form.platform.id_for_label }}">{{ form.platform.label }}</label>
+                        {{ form.platform }}
+                        {% if form.platform.errors %}
+                            <div class="field-error">{{ form.platform.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="field">
+                        <div class="field-label-row">
+                            <label for="{{ form.campaign.id_for_label }}">{{ form.campaign.label }}</label>
+                            <a class="text-link" href="{% url 'socialmanager:campaign_create' %}">{% trans "Create new campaign" %}</a>
+                        </div>
+                        {{ form.campaign }}
+                        {% if form.campaign.errors %}
+                            <div class="field-error">{{ form.campaign.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </article>
+
+                <article class="card stack post-actions-card shared-editor-section" id="schedule-section">
+                    <div class="button-row post-actions-row">
+                        <button class="btn btn-primary" id="publish-btn" type="submit">{% trans "Publish post" %}</button>
+                        <button class="btn btn-secondary" id="draft-btn" type="submit">{% trans "Save draft" %}</button>
+                        <button aria-controls="schedule-panel" aria-expanded="false" class="btn btn-secondary" id="schedule-btn" type="button">{% trans "Schedule post" %}</button>
+                    </div>
+                    <section class="schedule-panel" hidden id="schedule-panel">
+                        <h3 class="card-title">{% trans "Schedule publishing" %}</h3>
+                        <p class="helper-text schedule-copy">{% trans "Choose when this post should be published automatically." %}</p>
+                        <div class="schedule-fields">
+                            <div class="field">
+                                <label for="schedule-date">{% trans "Date" %}</label>
+                                <input class="field-input" id="schedule-date" type="date" value="{{ initial_schedule_date }}">
+                            </div>
+                            <div class="field">
+                                <label for="schedule-time">{% trans "Time" %}</label>
+                                <input class="field-input" id="schedule-time" type="time" value="{{ initial_schedule_time }}">
+                            </div>
+                        </div>
+                        {% if form.scheduled_for.errors %}
+                            <div class="field-error">{{ form.scheduled_for.errors|join:", " }}</div>
+                        {% endif %}
+                        <div class="button-row">
+                            <button class="btn btn-secondary confirm-schedule-btn" id="confirm-schedule-btn" type="submit">{% trans "Confirm schedule" %}</button>
+                        </div>
+                        <p aria-live="polite" class="schedule-message" id="schedule-message"></p>
+                    </section>
+                </article>
+            </section>
+
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script defer src="{% static 'socialmanager/js/create_post.js' %}?v=gemini-video-validation-2"></script>
+{% endblock %}

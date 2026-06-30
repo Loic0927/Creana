@@ -1,0 +1,206 @@
+{% extends "socialmanager/base.html" %}
+{% load i18n static %}
+
+{% block title %}Creana | {{ post.title }} Analytics{% endblock %}
+{% block body_class %}post-analytics-page{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'socialmanager/css/pages/post_analytics.css' %}?v=post-analytics-metric-text-1" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="analytics-layout post-analytics-shell">
+    <section class="card analytics-post-card">
+        <div class="analytics-preview">
+            <div class="analytics-preview-media{% if post.content_format != 'article' and not post.cached_primary_image_url and not post.cached_video_url %} analytics-preview-empty{% endif %}">
+                {% if post.content_format == 'video' and post.cached_video_url %}
+                    <video src="{{ post.cached_video_url }}"{% if post.video_thumbnail %} poster="{{ post.video_thumbnail.url }}"{% endif %} controls preload="metadata" playsinline webkit-playsinline data-track-watch-url="{% url 'socialmanager:track_video_watch' post.pk %}" data-post-id="{{ post.pk }}"></video>
+                {% elif post.cached_primary_image_url %}
+                    <img alt="{{ post.title }}" src="{{ post.cached_primary_image_url }}">
+                {% elif post.content_format == 'article' %}
+                    <img alt="{{ post.title }} default article cover" src="{% static 'socialmanager/images/Article_img.PNG' %}">
+                {% endif %}
+            </div>
+            <div class="analytics-preview-copy">
+                <h1 class="analytics-post-title">{{ post.title }}</h1>
+                {% if post.article_caption or post.caption %}
+                    <p class="analytics-post-copy">{{ post.article_caption|default:post.caption|linebreaksbr }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    <section class="analytics-kpis post-analytics-kpis" aria-label="{% trans 'Post metrics' %}">
+        <article class="card analytics-kpi-card">
+            <p class="metric-label">{% trans "Views" %}</p>
+            <p class="metric-value">{{ metrics.views }}</p>
+        </article>
+        <article class="card analytics-kpi-card">
+            <p class="metric-label">{% trans "Likes" %}</p>
+            <p class="metric-value">{{ metrics.likes }}</p>
+        </article>
+        <article class="card analytics-kpi-card">
+            <p class="metric-label">{% trans "Comments" %}</p>
+            <p class="metric-value">{{ metrics.comments }}</p>
+        </article>
+        <article class="card analytics-kpi-card">
+            <p class="metric-label">{% trans "Shares" %}</p>
+            <p class="metric-value">{{ metrics.shares }}</p>
+        </article>
+    </section>
+
+    <section class="analytics-main-grid">
+        <article class="card analytics-panel analytics-trend-card">
+            <div class="post-analytics-chart-header">
+                <h2 class="card-title">{% trans "Performance Over Time" %}</h2>
+                <div class="chart-legend post-analytics-chart-legend">
+                    {% for series in performance_chart.series %}
+                        <span><span class="legend-dot" style="background: {{ series.color }}"></span>{{ series.label }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="post-performance-chart">
+                <svg aria-label="{% trans 'Post performance trend chart' %}" viewBox="0 0 {{ performance_chart.width }} {{ performance_chart.height }}" role="img">
+                    <g class="post-performance-grid">
+                        {% for tick in performance_chart.y_ticks %}
+                            <line x1="{{ performance_chart.left }}" x2="{{ performance_chart.right }}" y1="{{ tick.y }}" y2="{{ tick.y }}"></line>
+                        {% endfor %}
+                    </g>
+                    <g class="post-performance-axis">
+                        <line x1="{{ performance_chart.left }}" x2="{{ performance_chart.right }}" y1="{{ performance_chart.bottom }}" y2="{{ performance_chart.bottom }}"></line>
+                        <line x1="{{ performance_chart.left }}" x2="{{ performance_chart.left }}" y1="{{ performance_chart.top }}" y2="{{ performance_chart.bottom }}"></line>
+                    </g>
+                    <g class="post-performance-y-labels">
+                        {% for tick in performance_chart.y_ticks %}
+                            <text x="48" y="{{ tick.y }}">{{ tick.value }}</text>
+                        {% endfor %}
+                    </g>
+                    <g class="post-performance-x-labels">
+                        {% for tick in performance_chart.x_ticks %}
+                            <text x="{{ tick.x }}" y="300">{{ tick.label }}</text>
+                        {% endfor %}
+                    </g>
+                    <g class="post-performance-lines">
+                        {% for series in performance_chart.series %}
+                            <path d="{{ series.path }}" fill="none" stroke="{{ series.color }}" stroke-linecap="round" stroke-linejoin="round"></path>
+                            {% for point in series.points %}
+                                <circle cx="{{ point.x }}" cy="{{ point.y }}" r="4" fill="{{ series.color }}">
+                                    <title>{{ series.label }} on {{ point.date }}: {{ point.value }}</title>
+                                </circle>
+                            {% endfor %}
+                        {% endfor %}
+                    </g>
+                </svg>
+            </div>
+        </article>
+
+        <article class="card analytics-panel">
+            <h2 class="card-title">{% trans "Engagement Breakdown" %}</h2>
+            <div class="analytics-breakdown-bars">
+                {% for item in engagement_breakdown %}
+                    <article class="analytics-breakdown-row">
+                        <div class="analytics-breakdown-meta">
+                            <span>{{ item.label }}</span>
+                            <strong>{{ item.value }}%</strong>
+                        </div>
+                        <div class="bar-track"><div class="bar-fill" style="width: {{ item.width }}%"></div></div>
+                    </article>
+                {% endfor %}
+            </div>
+        </article>
+    </section>
+
+    <section class="insight-box ai-insight-card">
+        <button class="ai-insight-toggle" type="button" data-ai-insight-url="{% url 'socialmanager:post_ai_insight' post.pk %}" data-ai-insight-target="post-ai-insight-panel" data-ai-insight-loaded="false">
+            <span class="ai-insight-label">{% trans "AI Insight" %}</span>
+        </button>
+        <div class="ai-insight-panel" id="post-ai-insight-panel" hidden></div>
+    </section>
+
+    {% if is_video_post %}
+        {% if post.video_file %}
+        <section class="card analytics-panel video-analysis-card">
+            <div class="video-analysis-header">
+                <div>
+                    <h2 class="card-title">{% trans "Video content analysis" %}</h2>
+                    <p class="muted">{% trans "Google Video Intelligence reads the clip for labels, shots, and safety signals; Gemini summarizes those annotations without receiving the video file in this panel." %}</p>
+                </div>
+                <button class="btn btn-primary" type="button" data-video-analysis-url="{% url 'socialmanager:post_video_analysis' post.pk %}" data-video-analysis-target="video-analysis-panel" data-ai-requires-membership="true">
+                    {% trans "Analyze video" %}
+                </button>
+            </div>
+            <div class="video-analysis-results" id="video-analysis-panel" hidden></div>
+        </section>
+        {% endif %}
+
+        <section class="card analytics-panel video-insights">
+            <h2 class="card-title">{% trans "Audience Engagement & Retention" %}</h2>
+            {% if retention_chart %}
+                <div class="post-performance-chart video-insights-chart">
+                    <svg aria-label="{% trans 'Audience engagement and retention chart' %}" viewBox="0 0 {{ retention_chart.width }} {{ retention_chart.height }}" role="img">
+                        <defs>
+                            <linearGradient id="engagement-area-gradient" x1="0" x2="0" y1="0" y2="1">
+                                <stop offset="0%" stop-color="#2563eb" stop-opacity="0.22"></stop>
+                                <stop offset="100%" stop-color="#2563eb" stop-opacity="0.02"></stop>
+                            </linearGradient>
+                        </defs>
+                        <g class="post-performance-grid">
+                            {% for tick in retention_chart.y_ticks %}
+                                <line x1="{{ retention_chart.left }}" x2="{{ retention_chart.right }}" y1="{{ tick.y }}" y2="{{ tick.y }}"></line>
+                            {% endfor %}
+                        </g>
+                        <g class="post-performance-axis">
+                            <line x1="{{ retention_chart.left }}" x2="{{ retention_chart.right }}" y1="{{ retention_chart.bottom }}" y2="{{ retention_chart.bottom }}"></line>
+                            <line x1="{{ retention_chart.left }}" x2="{{ retention_chart.left }}" y1="{{ retention_chart.top }}" y2="{{ retention_chart.bottom }}"></line>
+                        </g>
+                        <g class="post-performance-y-labels">
+                            {% for tick in retention_chart.y_ticks %}
+                                <text x="48" y="{{ tick.y }}">{{ tick.value }}%</text>
+                            {% endfor %}
+                        </g>
+                        <g class="post-performance-x-labels">
+                            {% for tick in retention_chart.x_ticks %}
+                                <text x="{{ tick.x }}" y="300">{{ tick.label }}</text>
+                            {% endfor %}
+                        </g>
+                        <g class="video-insights-area">
+                            <path d="{{ retention_chart.engagement_area_path }}"></path>
+                        </g>
+                        <g class="post-performance-lines video-insights-lines">
+                            <path d="{{ retention_chart.engagement_path }}" class="engagement-line" fill="none" stroke-linecap="round" stroke-linejoin="round"></path>
+                            <path d="{{ retention_chart.retention_path }}" class="retention-line" fill="none" stroke-linecap="round" stroke-linejoin="round"></path>
+                            {% for point in retention_chart.points %}
+                                <circle class="engagement-point" cx="{{ point.x }}" cy="{{ point.engagement_y }}" r="4">
+                                    <title>{{ point.label }}&#10;Engagement: {{ point.engagement }}%&#10;Retention: {{ point.retention }}%</title>
+                                </circle>
+                                <circle class="retention-point" cx="{{ point.x }}" cy="{{ point.retention_y }}" r="4">
+                                    <title>{{ point.label }}&#10;Engagement: {{ point.engagement }}%&#10;Retention: {{ point.retention }}%</title>
+                                </circle>
+                                <circle class="video-insights-hover-point" cx="{{ point.x }}" cy="{{ point.retention_y }}" r="14">
+                                    <title>{{ point.label }}&#10;Engagement: {{ point.engagement }}%&#10;Retention: {{ point.retention }}%</title>
+                                </circle>
+                            {% endfor %}
+                        </g>
+                    </svg>
+                </div>
+                <div class="video-insights-legend">
+                    <span><span class="legend-dot engagement-dot"></span>{% trans "Engagement" %}</span>
+                    <span><span class="legend-dot retention-dot"></span>{% trans "Viewer retention" %}</span>
+                </div>
+                {% if has_video_retention_insight %}
+                    <section class="insight-box ai-insight-card">
+                        <button class="ai-insight-toggle" type="button" data-ai-insight-url="{% url 'socialmanager:post_retention_ai_insight' post.pk %}" data-ai-insight-target="post-retention-ai-insight-panel" data-ai-insight-loaded="false">
+                            <span class="ai-insight-label">{% trans "AI Insight" %}</span>
+                        </button>
+                        <div class="ai-insight-panel" id="post-retention-ai-insight-panel" hidden></div>
+                    </section>
+                {% endif %}
+            {% else %}
+                <div class="analytics-empty-state">
+                    <p class="card-title">{% trans "No retention data yet" %}</p>
+                </div>
+            {% endif %}
+        </section>
+    {% endif %}
+</div>
+{% endblock %}

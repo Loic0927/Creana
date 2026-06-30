@@ -1,0 +1,148 @@
+{% extends "socialmanager/base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Creana | Settings" %}{% endblock %}
+{% block body_class %}settings-page{% endblock %}
+
+{% block content %}
+<div class="settings-shell" data-settings-update-url="{% url 'socialmanager:settings_update' %}">
+    <div class="page-header settings-page-header">
+        <div>
+            <h1 class="page-title">{% trans "Settings" %}</h1>
+        </div>
+    </div>
+
+    <form class="settings-form" method="post" novalidate>
+        {% csrf_token %}
+
+        <section class="card content-card settings-card">
+            <div class="settings-control">
+                <label class="settings-label" for="{{ form.language.id_for_label }}">{% trans "Language" %}</label>
+                <span class="settings-select-wrap">
+                    <select id="{{ form.language.id_for_label }}" name="{{ form.language.name }}" data-settings-field="language">
+                        <option value="en" {% if form.language.value == "en" %}selected{% endif %}>{% trans "English" %}</option>
+                        <option value="zh-hant" {% if form.language.value == "zh-hant" %}selected{% endif %}>&#32321;&#39636;&#20013;&#25991;</option>
+                    </select>
+                </span>
+                {% if form.language.errors %}<p class="field-error">{{ form.language.errors|join:", " }}</p>{% endif %}
+            </div>
+        </section>
+
+        <section class="card content-card settings-card settings-card-vertical">
+            <div class="settings-card-copy">
+                <h2 class="card-title">{% trans "Notifications" %}</h2>
+            </div>
+            <div class="settings-toggle-list">
+                <label class="settings-toggle-row">
+                    <span><strong>{% trans "Post likes" %}</strong></span>
+                    {{ form.notify_post_like }}<span class="toggle-switch" aria-hidden="true"></span>
+                </label>
+                <label class="settings-toggle-row">
+                    <span><strong>{% trans "Post comments" %}</strong></span>
+                    {{ form.notify_post_comment }}<span class="toggle-switch" aria-hidden="true"></span>
+                </label>
+                <label class="settings-toggle-row">
+                    <span><strong>{% trans "Post shares" %}</strong></span>
+                    {{ form.notify_post_share }}<span class="toggle-switch" aria-hidden="true"></span>
+                </label>
+                <label class="settings-toggle-row">
+                    <span><strong>{% trans "Comment likes" %}</strong></span>
+                    {{ form.notify_comment_like }}<span class="toggle-switch" aria-hidden="true"></span>
+                </label>
+                <label class="settings-toggle-row">
+                    <span><strong>{% trans "Comment replies" %}</strong></span>
+                    {{ form.notify_comment_reply }}<span class="toggle-switch" aria-hidden="true"></span>
+                </label>
+                <label class="settings-toggle-row">
+                    <span><strong>{% trans "Follows" %}</strong></span>
+                    {{ form.notify_follow }}<span class="toggle-switch" aria-hidden="true"></span>
+                </label>
+            </div>
+        </section>
+
+        <section class="card content-card settings-card settings-card-vertical">
+            <div class="settings-card-copy">
+                <h2 class="card-title">{% trans "AI Caption Preferences" %}</h2>
+            </div>
+            <div class="settings-preference-list">
+                <div class="settings-row">
+                    <div>
+                        <label class="settings-label" for="{{ form.ai_tone.id_for_label }}">{% trans "Default Tone" %}</label>
+                    </div>
+                    <span class="settings-select-wrap">
+                        <select id="{{ form.ai_tone.id_for_label }}" name="{{ form.ai_tone.name }}" data-settings-field="ai_tone">
+                            {% for value, label in form.ai_tone.field.choices %}
+                                <option value="{{ value }}" {% if form.ai_tone.value == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </span>
+                </div>
+                <div class="settings-row">
+                    <div>
+                        <label class="settings-label" for="{{ form.ai_language.id_for_label }}">{% trans "Caption Language" %}</label>
+                    </div>
+                    <span class="settings-select-wrap">
+                        <select id="{{ form.ai_language.id_for_label }}" name="{{ form.ai_language.name }}" data-settings-field="ai_language">
+                            {% for value, label in form.ai_language.field.choices %}
+                                <option value="{{ value }}" {% if form.ai_language.value == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </span>
+                </div>
+                <div class="settings-row">
+                    <div>
+                        <label class="settings-label" for="{{ form.ai_hashtag_count.id_for_label }}">{% trans "Default Hashtag Count" %}</label>
+                    </div>
+                    <span class="settings-select-wrap">
+                        <select id="{{ form.ai_hashtag_count.id_for_label }}" name="{{ form.ai_hashtag_count.name }}" data-settings-field="ai_hashtag_count">
+                            {% for value, label in form.ai_hashtag_count.field.widget.choices %}
+                                <option value="{{ value }}" {% if form.ai_hashtag_count.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </span>
+                </div>
+            </div>
+            {% if form.ai_tone.errors %}<p class="field-error">{{ form.ai_tone.errors|join:", " }}</p>{% endif %}
+            {% if form.ai_language.errors %}<p class="field-error">{{ form.ai_language.errors|join:", " }}</p>{% endif %}
+            {% if form.ai_hashtag_count.errors %}<p class="field-error">{{ form.ai_hashtag_count.errors|join:", " }}</p>{% endif %}
+        </section>
+
+        <div class="settings-bottom-actions">
+            <span aria-hidden="true"></span>
+            <button class="settings-delete-link" type="button" data-delete-account-open>{% trans "Delete Account" %}</button>
+        </div>
+    </form>
+</div>
+
+<div class="settings-modal-backdrop" data-delete-account-modal hidden>
+    <div class="settings-modal" role="dialog" aria-modal="true" aria-labelledby="delete-account-title">
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete_account">
+            <div class="settings-modal-header">
+                <h2 id="delete-account-title">{% trans "Delete Account" %}</h2>
+                <button class="icon-button" type="button" aria-label="{% trans 'Close' %}" data-delete-account-close>
+                    <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                </button>
+            </div>
+            <p class="danger-zone-warning">
+                {% blocktrans trimmed %}
+                    This action cannot be undone. All posts, campaigns, analytics data, notifications,
+                    and profile information will be permanently deleted.
+                {% endblocktrans %}
+            </p>
+            <div class="field">
+                <label for="delete-password">{% trans "Password" %}</label>
+                <input class="field-input" id="delete-password" name="delete_password" type="password" autocomplete="current-password" required>
+            </div>
+            <div class="field">
+                <label for="delete-confirmation">{% trans "Type DELETE to confirm" %}</label>
+                <input class="field-input" id="delete-confirmation" name="delete_confirmation" type="text" autocomplete="off" required data-delete-confirmation>
+            </div>
+            <div class="settings-modal-actions">
+                <button class="btn btn-secondary" type="button" data-delete-account-close>{% trans "Cancel" %}</button>
+                <button class="btn btn-danger-secondary" type="submit" data-delete-submit disabled>{% trans "Delete Account" %}</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

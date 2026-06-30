@@ -1,0 +1,493 @@
+{% extends "socialmanager/base.html" %}
+{% load static %}
+
+{% block title %}Creana | AI Social Media Content Management{% endblock %}
+
+{% block body_class %}landing-page{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'socialmanager/css/pages/landing.css' %}?v=creana-tour-popup-card-1" rel="stylesheet">
+{% endblock %}
+
+{% block public_content %}
+<div class="landing-page-surface">
+    <header class="landing-header">
+        <div class="marketing-wrap landing-nav">
+            <input
+                class="landing-menu-toggle"
+                id="landing-menu-toggle"
+                type="checkbox"
+            />
+            <div class="landing-nav-inner">
+                <div class="brand landing-brand" aria-label="Creana">
+                    <img
+                        alt=""
+                        class="landing-brand-icon"
+                        src="{% static 'socialmanager/images/icon.webp' %}"
+                        width="44"
+                        height="44"
+                    >
+                    <img
+                        alt="Creana"
+                        class="landing-brand-text"
+                        src="{% static 'socialmanager/images/word.webp' %}"
+                        width="150"
+                        height="34"
+                    >
+                </div>
+                <nav class="landing-links">
+                    <button
+                        class="landing-policy-link"
+                        type="button"
+                        data-policy-modal="introduction"
+                        >Introduction</button
+                    >
+                    <button
+                        class="landing-policy-link"
+                        type="button"
+                        data-policy-modal="community"
+                        >Community</button
+                    >
+                    <button
+                        class="landing-policy-link"
+                        type="button"
+                        data-policy-modal="privacy"
+                        >Privacy</button
+                    >
+                    <button
+                        class="landing-policy-link"
+                        type="button"
+                        data-policy-modal="terms"
+                        >Terms</button
+                    >
+                    <button
+                        class="landing-policy-link"
+                        type="button"
+                        data-policy-modal="ai"
+                        >AI Policy</button
+                    >
+                    <a
+                        class="btn btn-primary"
+                        href="{% url 'socialmanager:login' %}"
+                        >Login</a
+                    >
+                </nav>
+                <label
+                    class="landing-mobile-menu landing-menu-shell"
+                    for="landing-menu-toggle"
+                    aria-label="Open navigation"
+                >
+                    <span class="material-symbols-outlined">menu</span>
+                </label>
+            </div>
+            <div class="landing-mobile-menu-panel">
+                <button
+                    class="landing-policy-link"
+                    type="button"
+                    data-policy-modal="introduction"
+                    >Introduction</button
+                >
+                <button
+                    class="landing-policy-link"
+                    type="button"
+                    data-policy-modal="community"
+                    >Community</button
+                >
+                <button
+                    class="landing-policy-link"
+                    type="button"
+                    data-policy-modal="privacy"
+                    >Privacy</button
+                >
+                <button
+                    class="landing-policy-link"
+                    type="button"
+                    data-policy-modal="terms"
+                    >Terms</button
+                >
+                <button
+                    class="landing-policy-link"
+                    type="button"
+                    data-policy-modal="ai"
+                    >AI Policy</button
+                >
+                <a
+                    class="btn btn-primary"
+                    href="{% url 'socialmanager:login' %}"
+                    >Login</a
+                >
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="landing-hero section">
+            <div class="marketing-wrap">
+                <div class="landing-hero__layout">
+                    <div class="landing-hero__content">
+                        <h1 class="landing-hero__title hero-title">
+                            <span class="landing-hero__title-line hero-title-line">Create Smarter.</span>
+                            <span class="landing-hero__title-line hero-title-line">Analyse Better.</span>
+                        </h1>
+                        <p class="landing-hero__subtitle">
+                            Create content, schedule campaigns, and gain
+                            AI-powered insights &mdash; all in one creative
+                            workspace.
+                        </p>
+                        <div class="landing-hero__actions">
+                            <a
+                                class="btn btn-primary"
+                                href="{% url 'socialmanager:login' %}"
+                                >Get Started</a
+                            >
+                            <a
+                                class="btn btn-secondary"
+                                href="{% url 'socialmanager:signup' %}"
+                                >Create Account</a
+                            >
+                        </div>
+                    </div>
+                    <div class="landing-hero__visual" aria-hidden="true">
+                        <img
+                            alt=""
+                            class="landing-hero__fox"
+                            src="{% static 'socialmanager/images/logo.PNG' %}"
+                        >
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section
+            class="section creana-tour"
+            id="how-to-use"
+            data-creana-tour
+            data-creana-tour-image-dir="{% static 'socialmanager/images/drive-download-20260618T053231Z-3-001/' %}"
+        >
+            <div class="marketing-wrap">
+                <div class="section-intro creana-tour__intro">
+                    <h2 class="section-title">How to Use Creana</h2>
+                    <p class="section-copy">
+                        Follow the path from sign in to performance insights.
+                    </p>
+                </div>
+                <div class="creana-tour__map" data-creana-tour-map>
+                    <span class="creana-tour__snow creana-tour__snow--1"></span>
+                    <span class="creana-tour__snow creana-tour__snow--2"></span>
+                    <span class="creana-tour__snow creana-tour__snow--3"></span>
+                    <span class="creana-tour__ice creana-tour__ice--1"></span>
+                    <span class="creana-tour__ice creana-tour__ice--2"></span>
+                    <span class="creana-tour__spark creana-tour__spark--1"></span>
+                    <span class="creana-tour__spark creana-tour__spark--2"></span>
+                    <span class="creana-tour__tree creana-tour__tree--1"></span>
+                    <span class="creana-tour__tree creana-tour__tree--2"></span>
+                    <span class="creana-tour__tree creana-tour__tree--3"></span>
+                    <span class="creana-tour__mound creana-tour__mound--1"></span>
+                    <span class="creana-tour__mound creana-tour__mound--2"></span>
+                    <span class="creana-tour__ice-patch creana-tour__ice-patch--1"></span>
+                    <span class="creana-tour__ice-patch creana-tour__ice-patch--2"></span>
+                    <span class="creana-tour__snow-dot creana-tour__snow-dot--1"></span>
+                    <span class="creana-tour__snow-dot creana-tour__snow-dot--2"></span>
+                    <span class="creana-tour__sparkle creana-tour__sparkle--1"></span>
+                    <span class="creana-tour__footprint creana-tour__footprint--1"></span>
+                    <svg
+                        class="creana-tour__path creana-tour__path--desktop creana-tour__desktop-path"
+                        viewBox="0 0 1000 1120"
+                        preserveAspectRatio="xMidYMid meet"
+                        aria-hidden="true"
+                    >
+                        <path
+                            class="creana-tour__path-road-glow"
+                            d="M336 62 C594 120 672 216 548 322 C424 428 248 458 304 612 C362 772 724 732 704 892 C686 1038 472 1044 334 1062"
+                        ></path>
+                        <path
+                            class="creana-tour__path-road-surface"
+                            d="M336 62 C594 120 672 216 548 322 C424 428 248 458 304 612 C362 772 724 732 704 892 C686 1038 472 1044 334 1062"
+                        ></path>
+                        <path
+                            class="creana-tour__path-center-dash"
+                            d="M336 62 C594 120 672 216 548 322 C424 428 248 458 304 612 C362 772 724 732 704 892 C686 1038 472 1044 334 1062"
+                        ></path>
+                        <path
+                            class="creana-tour__path-main"
+                            d="M336 62 C594 120 672 216 548 322 C424 428 248 458 304 612 C362 772 724 732 704 892 C686 1038 472 1044 334 1062"
+                        ></path>
+                        <path
+                            class="creana-tour__path-side creana-tour__path-side--upper"
+                            d="M326 72 C574 130 650 218 532 316 C408 420 238 462 292 616 C350 778 706 744 688 892 C670 1024 466 1028 328 1046"
+                        ></path>
+                        <path
+                            class="creana-tour__path-side creana-tour__path-side--lower"
+                            d="M346 52 C614 110 694 220 564 328 C442 432 274 456 316 606 C374 766 742 720 720 894 C704 1054 482 1060 340 1078"
+                        ></path>
+                    </svg>
+                    <svg
+                        class="creana-tour__path creana-tour__path--mobile creana-tour__mobile-path"
+                        viewBox="0 0 360 940"
+                        preserveAspectRatio="xMidYMid meet"
+                        aria-hidden="true"
+                    >
+                        <path
+                            class="creana-tour__path-road-glow"
+                            d="M164 54 C292 102 292 206 188 296 C74 394 82 508 186 606 C308 720 298 820 150 894"
+                        ></path>
+                        <path
+                            class="creana-tour__path-road-surface"
+                            d="M164 54 C292 102 292 206 188 296 C74 394 82 508 186 606 C308 720 298 820 150 894"
+                        ></path>
+                        <path
+                            class="creana-tour__path-center-dash"
+                            d="M164 54 C292 102 292 206 188 296 C74 394 82 508 186 606 C308 720 298 820 150 894"
+                        ></path>
+                        <path
+                            class="creana-tour__path-main"
+                            d="M164 54 C292 102 292 206 188 296 C74 394 82 508 186 606 C308 720 298 820 150 894"
+                        ></path>
+                        <path
+                            class="creana-tour__path-side creana-tour__path-side--upper"
+                            d="M156 64 C274 110 274 208 178 292 C64 392 72 512 176 612 C286 720 276 808 142 876"
+                        ></path>
+                        <path
+                            class="creana-tour__path-side creana-tour__path-side--lower"
+                            d="M172 44 C312 96 312 214 198 304 C90 396 94 504 196 598 C328 720 318 834 160 912"
+                        ></path>
+                    </svg>
+                    <img
+                        alt=""
+                        class="creana-tour__fox"
+                        data-creana-tour-fox
+                        src="{% static 'socialmanager/images/icon.webp' %}"
+                        width="82"
+                        height="82"
+                    >
+                    <button class="creana-tour__node creana-tour__node--1" type="button" data-creana-tour-step="0">
+                        <span class="creana-tour__node-dot"></span>
+                        <span class="creana-tour__node-label">Sign in</span>
+                    </button>
+                    <button class="creana-tour__node creana-tour__node--2" type="button" data-creana-tour-step="1">
+                        <span class="creana-tour__node-dot"></span>
+                        <span class="creana-tour__node-label">Feed</span>
+                    </button>
+                    <button class="creana-tour__node creana-tour__node--3" type="button" data-creana-tour-step="2">
+                        <span class="creana-tour__node-dot"></span>
+                        <span class="creana-tour__node-label">Profile</span>
+                    </button>
+                    <button class="creana-tour__node creana-tour__node--4" type="button" data-creana-tour-step="3">
+                        <span class="creana-tour__node-dot"></span>
+                        <span class="creana-tour__node-label">Create Post</span>
+                    </button>
+                    <button class="creana-tour__node creana-tour__node--5" type="button" data-creana-tour-step="4">
+                        <span class="creana-tour__node-dot"></span>
+                        <span class="creana-tour__node-label">Campaigns</span>
+                    </button>
+                    <button class="creana-tour__node creana-tour__node--6" type="button" data-creana-tour-step="5">
+                        <span class="creana-tour__node-dot"></span>
+                        <span class="creana-tour__node-label">Dashboard</span>
+                    </button>
+                    <div class="creana-tour__popup" data-creana-tour-popup hidden>
+                        <div class="creana-tour__popup-overlay" data-creana-tour-close></div>
+                        <div
+                            class="creana-tour__dialog"
+                            role="dialog"
+                            aria-modal="true"
+                            aria-labelledby="creana-tour-title"
+                            aria-describedby="creana-tour-description"
+                            tabindex="-1"
+                        >
+                            <div class="creana-tour__header">
+                                <div>
+                                    <p class="creana-tour__eyebrow" data-creana-tour-step-label></p>
+                                    <h3 id="creana-tour-title" data-creana-tour-title></h3>
+                                </div>
+                                <button
+                                    class="creana-tour__icon-button"
+                                    type="button"
+                                    aria-label="Close introduction"
+                                    data-creana-tour-close
+                                >
+                                    <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                                </button>
+                            </div>
+                            <div class="creana-tour__media">
+                                <img alt="" data-creana-tour-image>
+                            </div>
+                            <div class="creana-tour__body">
+                                <p class="creana-tour__slide-title" data-creana-tour-slide-title></p>
+                                <p id="creana-tour-description" class="creana-tour__description" data-creana-tour-description></p>
+                            </div>
+                            <div class="creana-tour__footer">
+                                <span class="creana-tour__count" data-creana-tour-count></span>
+                                <div class="creana-tour__actions">
+                                    <button
+                                        class="creana-tour__arrow"
+                                        type="button"
+                                        data-creana-tour-previous
+                                        aria-label="Previous slide"
+                                    >
+                                        <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>
+                                    </button>
+                                    <button
+                                        class="creana-tour__arrow"
+                                        type="button"
+                                        data-creana-tour-next
+                                        aria-label="Next slide"
+                                    >
+                                        <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="marketing-wrap">
+                <div class="card bottom-cta">
+                    <img
+                        alt=""
+                        class="bottom-cta__illustration"
+                        src="{% static 'socialmanager/images/landing_start.png' %}"
+                    >
+                    <h2 class="section-title">
+                        Ready to create smarter content?
+                    </h2>
+                    <a
+                        class="btn btn-primary"
+                        href="{% url 'socialmanager:signup' %}"
+                        >Start Now</a
+                    >
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="marketing-wrap landing-footer-inner">
+            <p>&copy; 2026 Creana. All rights reserved.</p>
+            <nav class="landing-footer-links" aria-label="Policy links">
+                <button
+                    class="landing-policy-link"
+                    type="button"
+                    data-policy-modal="introduction"
+                    >Introduction</button
+                >
+                <button
+                    class="landing-policy-link"
+                    type="button"
+                    data-policy-modal="community"
+                    >Community</button
+                >
+                <button
+                    class="landing-policy-link"
+                    type="button"
+                    data-policy-modal="privacy"
+                    >Privacy</button
+                >
+                <button
+                    class="landing-policy-link"
+                    type="button"
+                    data-policy-modal="terms"
+                    >Terms</button
+                >
+                <button
+                    class="landing-policy-link"
+                    type="button"
+                    data-policy-modal="ai"
+                    >AI Policy</button
+                >
+            </nav>
+        </div>
+    </footer>
+
+    <div
+        class="landing-policy-modal"
+        data-policy-modal-root
+        hidden
+    >
+        <div class="landing-policy-modal__overlay" data-policy-close></div>
+        <div
+            class="landing-policy-modal__dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="landing-policy-title"
+            tabindex="-1"
+        >
+            <div class="landing-policy-modal__header">
+                <h2 id="landing-policy-title"></h2>
+                <button
+                    class="landing-policy-modal__x"
+                    type="button"
+                    aria-label="Close policy dialog"
+                    data-policy-close
+                >
+                    <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                </button>
+            </div>
+            <div class="landing-policy-modal__content" data-policy-content></div>
+            <div class="landing-policy-modal__actions">
+                <button
+                    class="btn btn-primary"
+                    type="button"
+                    data-policy-close
+                    >Close</button
+                >
+            </div>
+        </div>
+    </div>
+
+    <template data-policy-template="introduction" data-policy-title="What is Creana?">
+        <p>
+            Creana is an AI-powered social media content management platform
+            designed to help creators, influencers, and businesses create,
+            schedule, analyse, and improve content from one workspace.
+        </p>
+        <ul>
+            <li><strong>Content Creation</strong><br>Create articles, images, videos, and social media posts.</li>
+            <li><strong>AI Assistance</strong><br>Generate captions, hashtags, and content suggestions.</li>
+            <li><strong>Smart Scheduling</strong><br>Plan and publish content at the right time.</li>
+            <li><strong>Analytics</strong><br>Track performance and gain actionable insights.</li>
+        </ul>
+    </template>
+
+    <template data-policy-template="privacy" data-policy-title="Privacy Policy">
+        <ul>
+            <li>Creana collects basic account information such as username, email address, profile details, posts, uploaded media, and engagement data.</li>
+            <li>This information is used to provide account access, content creation, post scheduling, analytics, AI suggestions, and platform security.</li>
+            <li>Creana does not sell user personal information.</li>
+            <li>Users are responsible for keeping their login details secure.</li>
+        </ul>
+    </template>
+
+    <template data-policy-template="terms" data-policy-title="Terms of Service">
+        <ul>
+            <li>By using Creana, users agree to use the platform responsibly.</li>
+            <li>Users are responsible for the content they create, upload, publish, comment on, or share.</li>
+            <li>Users must not misuse the service, attack the system, attempt unauthorized access, or disrupt platform functionality.</li>
+            <li>Creana may update, restrict, or remove features when necessary for security, maintenance, or platform improvement.</li>
+        </ul>
+    </template>
+
+    <template data-policy-template="community" data-policy-title="Community Guidelines">
+        <ul>
+            <li>Users must not post pornographic content, nudity, sexual content, hate speech, harassment, threats, violent content, illegal content, scams, spam, or misleading content.</li>
+            <li>Users must respect other users and avoid abusive behaviour.</li>
+            <li>Creana may remove content, restrict accounts, or suspend users who violate these guidelines.</li>
+        </ul>
+    </template>
+
+    <template data-policy-template="ai" data-policy-title="AI Usage Policy">
+        <ul>
+            <li>Creana provides AI-powered caption suggestions, hashtag suggestions, content ideas, and analytics insights.</li>
+            <li>AI-generated content is for reference only and may not always be accurate, complete, or suitable.</li>
+            <li>Users are responsible for reviewing, editing, and verifying AI-generated content before publishing.</li>
+            <li>Users must not use AI features to generate prohibited, harmful, illegal, misleading, or abusive content.</li>
+        </ul>
+    </template>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'socialmanager/js/landing.js' %}?v=creana-tour-popup-card-1"></script>
+{% endblock %}

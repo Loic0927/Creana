@@ -1,0 +1,1440 @@
+msgid ""
+msgstr "Project-Id-Version: Creana\nReport-Msgid-Bugs-To: \nPOT-Creation-Date: 2026-06-05 00:00+1000\nPO-Revision-Date: 2026-06-05 00:00+1000\nLast-Translator: Creana\nLanguage-Team: Creana\nLanguage: zh_Hant\nMIME-Version: 1.0\nContent-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\n"
+
+msgid "AI features are available for members only."
+msgstr "AI 功能僅供會員使用。"
+
+msgid "This feature is available for members only. Would you like to upgrade your plan?"
+msgstr "此功能僅供會員使用。你想升級方案嗎？"
+
+msgid "AI features are available for members only. Would you like to upgrade your plan?"
+msgstr "AI 功能僅供會員使用。你想升級方案嗎？"
+
+msgid "Members only feature"
+msgstr "會員專屬功能"
+
+msgid "Members only"
+msgstr "會員專屬"
+
+msgid "Not now"
+msgstr "暫時不要"
+
+msgid "View plans"
+msgstr "查看方案"
+
+msgid "Active member"
+msgstr "有效會員"
+
+msgid "Allows this user to access member-only AI tools."
+msgstr "允許此使用者存取會員專屬 AI 工具。"
+
+msgid "Would you like to upgrade your plan?"
+msgstr "你想升級方案嗎？"
+
+msgid "The membership is 5 US dollars per month."
+msgstr "會員費用為每月 5 美元。"
+
+msgid "Apply"
+msgstr "申請"
+
+msgid "Confirm membership"
+msgstr "確認會員資格"
+
+msgid "Creana Membership"
+msgstr "Creana 會員"
+
+msgid "Plan"
+msgstr "方案"
+
+msgid "Price"
+msgstr "價格"
+
+msgid "5 US dollars per month"
+msgstr "每月 5 美元"
+
+msgid "Membership unlocks AI caption, hashtag, feedback, and analytics tools."
+msgstr "會員可解鎖 AI 文案、hashtag、回饋與分析工具。"
+
+msgid "Membership confirmed. AI tools are now unlocked."
+msgstr "會員資格已確認。AI 工具現已解鎖。"
+
+msgid "Unlock AI tools for smarter content creation."
+msgstr "解鎖 AI 工具，讓內容創作更聰明。"
+
+msgid "US$5"
+msgstr "US$5"
+
+msgid "/ month"
+msgstr "/ 月"
+
+msgid "AI caption suggestions"
+msgstr "AI 文案建議"
+
+msgid "AI hashtag suggestions"
+msgstr "AI hashtag 建議"
+
+msgid "AI feedback for title, caption, and hashtags"
+msgstr "針對標題、文案與 hashtag 的 AI 回饋"
+
+msgid "AI analytics and retention insights"
+msgstr "AI 分析與留存洞察"
+
+msgid "Apply membership"
+msgstr "申請會員"
+
+msgid "Demo mode: payment is simulated for this project."
+msgstr "展示模式：此專案中的付款為模擬流程。"
+
+msgid "You are already a Creana member."
+msgstr "你已經是 Creana 會員。"
+
+msgid "English"
+msgstr "英文"
+
+msgid "Traditional Chinese"
+msgstr "繁體中文"
+
+msgid "Light"
+msgstr "淺色"
+
+msgid "Dark"
+msgstr "深色"
+
+msgid "System"
+msgstr "跟隨系統"
+
+msgid "Professional"
+msgstr "專業"
+
+msgid "Friendly"
+msgstr "友善"
+
+msgid "Marketing"
+msgstr "行銷"
+
+msgid "Casual"
+msgstr "輕鬆"
+
+msgid "Auto Detect"
+msgstr "自動偵測"
+
+msgid "Choose between 1 and 5 hashtags."
+msgstr "請選擇 1 到 5 個 hashtag。"
+
+msgid "Settings updated successfully."
+msgstr "設定已成功更新。"
+
+msgid "Please check the settings form."
+msgstr "請檢查設定表單。"
+
+msgid "Type DELETE to confirm account deletion."
+msgstr "請輸入 DELETE 以確認刪除帳號。"
+
+msgid "Password confirmation failed."
+msgstr "密碼確認失敗。"
+
+msgid "Your account has been deleted."
+msgstr "你的帳號已刪除。"
+
+msgid "This setting cannot be updated."
+msgstr "此設定無法更新。"
+
+msgid "Choose a supported language."
+msgstr "請選擇支援的語言。"
+
+msgid "Choose a supported tone."
+msgstr "請選擇支援的語氣。"
+
+msgid "Choose a supported caption language."
+msgstr "請選擇支援的字幕語言。"
+
+msgid "Creana | Settings"
+msgstr "Creana | 設定"
+
+msgid "Settings"
+msgstr "設定"
+
+msgid "Manage your Creana experience, notifications, and AI defaults."
+msgstr "管理你的 Creana 使用體驗、通知與 AI 預設值。"
+
+msgid "Saving..."
+msgstr "儲存中..."
+
+msgid "Saved"
+msgstr "已儲存"
+
+msgid "Could not save"
+msgstr "無法儲存"
+
+msgid "Language"
+msgstr "語言"
+
+msgid "Choose the language preference Creana should remember for your account."
+msgstr "選擇 Creana 要為你的帳號記住的語言偏好。"
+
+msgid "Notifications"
+msgstr "通知"
+
+msgid "Choose which activity should create notifications for your account."
+msgstr "選擇哪些活動會為你的帳號建立通知。"
+
+msgid "Likes"
+msgstr "讚"
+
+msgid "Notify when someone likes my post"
+msgstr "有人按讚我的貼文時通知我"
+
+msgid "Comments"
+msgstr "留言"
+
+msgid "Notify when someone comments on my post"
+msgstr "有人留言我的貼文時通知我"
+
+msgid "Shares"
+msgstr "分享"
+
+msgid "Notify when someone shares my post"
+msgstr "有人分享我的貼文時通知我"
+
+msgid "Follows"
+msgstr "追蹤"
+
+msgid "Notify when someone follows me"
+msgstr "有人追蹤我時通知我"
+
+msgid "AI Caption Preferences"
+msgstr "AI 文案偏好"
+
+msgid "Set the defaults Creana should use when preparing future AI caption suggestions."
+msgstr "設定 Creana 未來準備 AI 文案建議時要使用的預設值。"
+
+msgid "Default Tone"
+msgstr "預設語氣"
+
+msgid "The writing style selected by default."
+msgstr "預設選取的寫作風格。"
+
+msgid "Caption Language"
+msgstr "文案語言"
+
+msgid "The preferred language for generated captions."
+msgstr "生成文案時偏好的語言。"
+
+msgid "Default Hashtag Count"
+msgstr "預設 Hashtag 數量"
+
+msgid "How many hashtags to prepare by default."
+msgstr "預設要準備多少個 hashtag。"
+
+msgid "Changes save automatically."
+msgstr "變更會自動儲存。"
+
+msgid "Delete Account"
+msgstr "刪除帳號"
+
+msgid "Close"
+msgstr "關閉"
+
+msgid "This action cannot be undone. All posts, campaigns, analytics data, notifications, and profile information will be permanently deleted."
+msgstr "此操作無法復原。所有貼文、活動、分析資料、通知與個人檔案資訊都會被永久刪除。"
+
+msgid "Password"
+msgstr "密碼"
+
+msgid "Type DELETE to confirm"
+msgstr "輸入 DELETE 以確認"
+
+msgid "Cancel"
+msgstr "取消"
+
+msgid "Primary navigation"
+msgstr "主要導覽"
+
+msgid "Profile"
+msgstr "個人檔案"
+
+msgid "Feed"
+msgstr "動態牆"
+
+msgid "Create Post"
+msgstr "建立貼文"
+
+msgid "Campaigns"
+msgstr "活動"
+
+msgid "Dashboard"
+msgstr "儀表板"
+
+msgid "System navigation"
+msgstr "系統導覽"
+
+msgid "Log out"
+msgstr "登出"
+
+msgid "Open sidebar"
+msgstr "開啟側邊欄"
+
+msgid "Close sidebar"
+msgstr "關閉側邊欄"
+
+msgid "Media viewer"
+msgstr "媒體檢視器"
+
+msgid "Close media viewer"
+msgstr "關閉媒體檢視器"
+
+msgid "Creana | Notifications"
+msgstr "Creana | 通知"
+
+msgid "Mark all as read"
+msgstr "全部標為已讀"
+
+msgid "liked your post"
+msgstr "對你的貼文按讚"
+
+msgid "shared your post"
+msgstr "分享了你的貼文"
+
+msgid "commented on your post"
+msgstr "在你的貼文留言"
+
+msgid "replied to your comment"
+msgstr "回覆了你的留言"
+
+msgid "liked your comment"
+msgstr "按讚了你的留言"
+
+msgid "Reply has been deleted"
+msgstr "回覆已刪除"
+
+msgid "Comment has been deleted"
+msgstr "留言已刪除"
+
+msgid "started following you"
+msgstr "開始追蹤你"
+
+msgid "%(age)s ago"
+msgstr "%(age)s前"
+
+msgid "Unread"
+msgstr "未讀"
+
+msgid "No notifications yet"
+msgstr "目前沒有通知"
+
+msgid "Likes, shares, comments, and follows will appear here."
+msgstr "讚、分享、留言與追蹤會顯示在這裡。"
+
+msgid "Creana | Login"
+msgstr "Creana | 登入"
+
+msgid "Back to homepage"
+msgstr "回到首頁"
+
+msgid "Sign in"
+msgstr "登入"
+
+msgid "Continue with Google"
+msgstr "使用 Google 繼續"
+
+msgid "or sign in with email"
+msgstr "或使用電子郵件登入"
+
+msgid "Invalid username/email or password. Please try again."
+msgstr "使用者名稱/電子郵件或密碼無效，請再試一次。"
+
+msgid "Forgot password?"
+msgstr "忘記密碼？"
+
+msgid "Don't have an account?"
+msgstr "還沒有帳號？"
+
+msgid "Create account"
+msgstr "建立帳號"
+
+msgid "Creana | Feed"
+msgstr "Creana | 動態牆"
+
+msgid "No posts match this filter"
+msgstr "沒有符合篩選條件的貼文"
+
+msgid "Try a different hashtag or broaden the keyword search to bring more posts back into view."
+msgstr "請嘗試其他 hashtag，或放寬關鍵字搜尋以顯示更多貼文。"
+
+msgid "Loading more posts..."
+msgstr "正在載入更多貼文..."
+
+msgid "No more posts"
+msgstr "沒有更多貼文"
+
+msgid "No public posts yet"
+msgstr "目前沒有公開貼文"
+
+msgid "Create post"
+msgstr "建立貼文"
+
+msgid "No posts yet"
+msgstr "尚未有貼文"
+
+msgid "No published posts yet"
+msgstr "尚未有已發布貼文"
+
+msgid "Your creative space is waiting. Start by sharing your first post."
+msgstr "你的創作空間正在等待第一篇貼文。"
+
+msgid "Feed filters"
+msgstr "動態牆篩選"
+
+msgid "Filter the feed"
+msgstr "篩選動態牆"
+
+msgid "Search by hashtag or keyword"
+msgstr "依 hashtag 或關鍵字搜尋"
+
+msgid "Creana | Profile"
+msgstr "Creana | 個人檔案"
+
+msgid "Bio"
+msgstr "自我介紹"
+
+msgid "Links"
+msgstr "連結"
+
+msgid "Posts"
+msgstr "貼文"
+
+msgid "Followers"
+msgstr "追蹤者"
+
+msgid "Following"
+msgstr "正在追蹤"
+
+msgid "Edit profile"
+msgstr "編輯個人檔案"
+
+msgid "Post"
+msgstr "貼文"
+
+msgid "Shared post"
+msgstr "分享的貼文"
+
+msgid "All posts"
+msgstr "所有貼文"
+
+msgid "Published"
+msgstr "已發布"
+
+msgid "Draft"
+msgstr "草稿"
+
+msgid "Scheduled"
+msgstr "已排程"
+
+msgid "Private"
+msgstr "私人"
+
+msgid "No posts created yet"
+msgstr "尚未建立貼文"
+
+msgid "No shared posts yet."
+msgstr "尚未分享貼文。"
+
+msgid "No shared posts yet"
+msgstr "尚未有分享的貼文"
+
+msgid "Share a post from its detail page to collect it here."
+msgstr "從貼文詳細頁分享貼文後，會收集在這裡。"
+
+msgid "Posts you share will appear here."
+msgstr "你分享的貼文會顯示在這裡。"
+
+msgid "Browse feed"
+msgstr "瀏覽動態牆"
+
+msgid "Please insert your bio here"
+msgstr "請在這裡填寫自我介紹"
+
+msgid "Please insert your bio here (up to 250 letters)"
+msgstr "請輸入您的自我介紹（最多 250 字）"
+
+msgid "Please add your link here"
+msgstr "請在這裡新增連結"
+
+msgid "Add a link or contact and press Enter"
+msgstr "新增連結或聯絡方式後按 Enter"
+
+msgid "Click the bio text above to edit it."
+msgstr "點擊上方自我介紹文字即可編輯。"
+
+msgid "Click an existing chip to edit it, or type a new contact and press Enter."
+msgstr "點擊現有項目可編輯，或輸入新的聯絡方式後按 Enter。"
+
+msgid "View Analytics"
+msgstr "查看分析"
+
+msgid "View Post"
+msgstr "查看貼文"
+
+msgid "View full content"
+msgstr "查看完整內容"
+
+msgid "Unassigned campaign"
+msgstr "未分配活動"
+
+msgid "No platform selected"
+msgstr "尚未選擇平台"
+
+msgid "No caption added yet."
+msgstr "尚未新增文案。"
+
+msgid "Post engagement actions"
+msgstr "貼文互動操作"
+
+msgid "View comments"
+msgstr "查看留言"
+
+msgid "likes"
+msgstr "讚"
+
+msgid "comments"
+msgstr "留言"
+
+msgid "shares"
+msgstr "分享"
+
+msgid "Edit"
+msgstr "編輯"
+
+msgid "Delete"
+msgstr "刪除"
+
+msgid "Edit draft"
+msgstr "編輯草稿"
+
+msgid "Reschedule"
+msgstr "重新排程"
+
+msgid "Creana | Dashboard"
+msgstr "Creana | 儀表板"
+
+msgid "Views"
+msgstr "瀏覽"
+
+msgid "Recent post metrics"
+msgstr "近期貼文指標"
+
+msgid "Platform"
+msgstr "平台"
+
+msgid "Campaign"
+msgstr "活動"
+
+msgid "No recent posts yet"
+msgstr "尚無近期貼文"
+
+msgid "Create a post to start building your profile activity history."
+msgstr "建立貼文以開始累積個人檔案活動紀錄。"
+
+msgid "Creana | Campaigns"
+msgstr "Creana | 活動"
+
+msgid "Create campaign"
+msgstr "建立活動"
+
+msgid "Campaign options"
+msgstr "活動選項"
+
+msgid "Completed"
+msgstr "已完成"
+
+msgid "Active"
+msgstr "進行中"
+
+msgid "No objective added yet."
+msgstr "尚未新增目標。"
+
+msgid "View full strategy"
+msgstr "查看完整策略"
+
+msgid "No start"
+msgstr "無開始日期"
+
+msgid "No end"
+msgstr "無結束日期"
+
+msgid "%(count)s post"
+msgstr "%(count)s 則貼文"
+
+msgid "%(count)s posts"
+msgstr "%(count)s 則貼文"
+
+msgid "%(count)s scheduled"
+msgstr "%(count)s 則已排程"
+
+msgid "View"
+msgstr "查看"
+
+msgid "No campaigns yet"
+msgstr "尚未有活動"
+
+msgid "Plan your content with campaigns and keep every idea organised."
+msgstr "使用活動規劃內容，讓每個想法都更有條理。"
+
+msgid "Create a campaign to group posts around a strategic objective."
+msgstr "建立活動，將貼文依策略目標分組。"
+
+msgid "No campaign posts yet"
+msgstr "尚未有活動貼文"
+
+msgid "Campaign strategy"
+msgstr "活動策略"
+
+msgid "Close strategy modal"
+msgstr "關閉策略視窗"
+
+msgid "Delete this campaign? This cannot be undone."
+msgstr "要刪除此活動嗎？此操作無法復原。"
+
+msgid "Edit campaign"
+msgstr "編輯活動"
+
+msgid "Select platforms"
+msgstr "選擇平台"
+
+msgid "Select posts"
+msgstr "選擇貼文"
+
+msgid "No posts available"
+msgstr "沒有可用貼文"
+
+msgid "Save campaign"
+msgstr "儲存活動"
+
+msgid "Campaign name"
+msgstr "活動名稱（最多 50 字）"
+
+msgid "Spring product launch"
+msgstr "春季產品發布"
+
+msgid "Strategic objective / goal"
+msgstr "策略目標 / 目的"
+
+msgid "Define the business goal this campaign supports."
+msgstr "定義此活動支持的商業目標。"
+
+msgid "Target platform or platforms"
+msgstr "目標平台"
+
+msgid "Campaign posts"
+msgstr "活動貼文"
+
+msgid "Edit Post"
+msgstr "編輯貼文"
+
+msgid "Cover picture (optional)"
+msgstr "封面圖片（選填）"
+
+msgid "Drag cover picture here or browse files"
+msgstr "將封面圖片拖曳到這裡或瀏覽檔案"
+
+msgid "Optional for articles. Recommended size: 1600 x 900, PNG or JPG"
+msgstr "文章可選填。建議尺寸：1600 x 900，PNG 或 JPG"
+
+msgid "Cover preview"
+msgstr "封面預覽"
+
+msgid "Replace media"
+msgstr "替換媒體"
+
+msgid "Remove media"
+msgstr "移除媒體"
+
+msgid "Last edited %(date)s"
+msgstr "最後編輯於 %(date)s"
+
+msgid "No draft posts yet"
+msgstr "尚未有草稿貼文"
+
+msgid "Draft posts you save in Django will appear here for quick return editing."
+msgstr "你在 Django 儲存的草稿會顯示在這裡，方便快速回來編輯。"
+
+msgid "Draft posts you create will appear here."
+msgstr "你建立的草稿貼文會顯示在這裡。"
+
+msgid "No scheduled posts yet"
+msgstr "尚未有已排程貼文"
+
+msgid "Scheduled posts will appear here when you plan content ahead."
+msgstr "當你提前安排內容時，已排程貼文會顯示在這裡。"
+
+msgid "No private posts yet"
+msgstr "尚未有私人貼文"
+
+msgid "Private posts will appear here when you save content for yourself."
+msgstr "當你將內容儲存為私人貼文時，會顯示在這裡。"
+
+msgid "Upload image"
+msgstr "上傳圖片"
+
+msgid "Drag image here or browse files"
+msgstr "將圖片拖曳到這裡或瀏覽檔案"
+
+msgid "Select up to 10 images. PNG or JPG recommended."
+msgstr "最多選擇 10 張圖片。建議使用 PNG 或 JPG。"
+
+msgid "Selected images"
+msgstr "已選圖片"
+
+msgid "Upload video"
+msgstr "上傳影片"
+
+msgid "Drop a video here or browse files"
+msgstr "將影片拖曳到這裡或瀏覽檔案"
+
+msgid "Supported formats: MP4, WebM, or MOV. Landscape 16:9 recommended."
+msgstr "支援格式：MP4、WebM 或 MOV。建議橫向 16:9。"
+
+msgid "Caption / body"
+msgstr "文案 / 內文"
+
+msgid "AI Feedback"
+msgstr "AI 回饋"
+
+msgid "Visibility"
+msgstr "可見性"
+
+msgid "Create new campaign"
+msgstr "建立新活動"
+
+msgid "Campaign created."
+msgstr "活動已建立。"
+
+msgid "Campaign updated."
+msgstr "活動已更新。"
+
+msgid "Campaign deleted."
+msgstr "活動已刪除。"
+
+msgid "Publish post"
+msgstr "發布貼文"
+
+msgid "Save draft"
+msgstr "儲存草稿"
+
+msgid "Schedule post"
+msgstr "排程貼文"
+
+msgid "Schedule publishing"
+msgstr "排程發布"
+
+msgid "Choose when this post should be published automatically."
+msgstr "選擇此貼文自動發布的時間。"
+
+msgid "Date"
+msgstr "日期"
+
+msgid "Time"
+msgstr "時間"
+
+msgid "Confirm schedule"
+msgstr "確認排程"
+
+msgid "Optional article title"
+msgstr "選填文章標題（最多 50 字）"
+
+msgid "Write a clear, concise caption for your audience."
+msgstr "為你的受眾撰寫清楚、精簡的文案。"
+
+msgid "Write a clear, concise caption for your audience. (up to 250 letters)"
+msgstr "請輸入清楚且精簡的貼文內容（最多 250 字）"
+
+msgid "#product #update #socialmedia (up to 5 hashtags)"
+msgstr "#產品 #更新 #社群媒體（最多 5 個標籤）"
+
+msgid "Caption"
+msgstr "貼文內容"
+
+msgid "Public"
+msgstr "公開"
+
+msgid "Image"
+msgstr "圖片"
+
+msgid "Video"
+msgstr "影片"
+
+msgid "Article"
+msgstr "文章"
+
+msgid "Body"
+msgstr "內文"
+
+msgid "Size"
+msgstr "字體大小"
+
+msgid "Write your article..."
+msgstr "撰寫你的文章..."
+
+msgid "Carousel"
+msgstr "輪播"
+
+msgid "Performance Over Time"
+msgstr "一段時間內的表現"
+
+msgid "Engagement Breakdown"
+msgstr "互動細分"
+
+msgid "Post metrics"
+msgstr "貼文指標"
+
+msgid "Post performance trend chart"
+msgstr "貼文表現趨勢圖"
+
+msgid "Audience Engagement & Retention"
+msgstr "受眾互動與留存"
+
+msgid "Audience engagement and retention chart"
+msgstr "受眾互動與留存圖表"
+
+msgid "Engagement"
+msgstr "互動"
+
+msgid "Viewer retention"
+msgstr "觀眾留存"
+
+msgid "No retention data yet"
+msgstr "尚無留存資料"
+
+msgid "Post options"
+msgstr "貼文選項"
+
+msgid "Edit article"
+msgstr "編輯文章"
+
+msgid "Scheduled for %(date)s"
+msgstr "排程於 %(date)s"
+
+msgid "Published %(date)s"
+msgstr "發布於 %(date)s"
+
+msgid "Updated %(date)s"
+msgstr "更新於 %(date)s"
+
+msgid "Post actions"
+msgstr "貼文操作"
+
+msgid "Like"
+msgstr "按讚"
+
+msgid "Share"
+msgstr "分享"
+
+msgid "View Profile"
+msgstr "查看個人檔案"
+
+msgid "Previous photo"
+msgstr "上一張照片"
+
+msgid "Next photo"
+msgstr "下一張照片"
+
+msgid "Delete current photo"
+msgstr "刪除目前照片"
+
+msgid "View full article"
+msgstr "查看完整文章"
+
+msgid "Tags"
+msgstr "標籤"
+
+msgid "No caption added."
+msgstr "尚未新增文案。"
+
+msgid "No tags added yet"
+msgstr "尚未新增標籤"
+
+msgid "No hashtags added yet"
+msgstr "尚未新增 hashtag"
+
+msgid "Title"
+msgstr "標題"
+
+msgid "Hashtag"
+msgstr "標籤"
+
+msgid "Type hashtag and press Enter"
+msgstr "輸入 hashtag 後按 Enter"
+
+msgid "Add photos"
+msgstr "新增照片"
+
+msgid "At least one image is required."
+msgstr "至少需要一張圖片。"
+
+msgid "Replace video"
+msgstr "替換影片"
+
+msgid "Save"
+msgstr "儲存"
+
+msgid "Comment options"
+msgstr "留言選項"
+
+msgid "Add a comment..."
+msgstr "新增留言..."
+
+msgid "Comment"
+msgstr "留言"
+
+msgid "Reply"
+msgstr "回覆"
+
+msgid "reply to"
+msgstr "回覆"
+
+msgid "edited"
+msgstr "已編輯"
+
+msgid "No comments yet"
+msgstr "目前還沒有留言"
+
+msgid "Start the conversation"
+msgstr "開始第一則留言"
+
+msgid "Start the conversation with a thoughtful reply."
+msgstr "用一則用心的回覆開始對話。"
+
+msgid "Show more"
+msgstr "顯示更多"
+
+msgid "Show less"
+msgstr "顯示較少"
+
+msgid "View all comments"
+msgstr "查看所有留言"
+
+msgid "Delete comment?"
+msgstr "確定要刪除此留言嗎？"
+
+msgid "Write a thoughtful reply to this post."
+msgstr "為這則貼文寫下用心的回覆。"
+
+msgid "Post Comment"
+msgstr "發佈留言"
+
+msgid "More Posts"
+msgstr "更多貼文"
+
+msgid "No summary added yet."
+msgstr "尚未新增摘要。"
+
+msgid "No more posts yet"
+msgstr "尚無更多貼文"
+
+msgid "This creator has not shared more posts yet."
+msgstr "這位創作者尚未分享更多貼文。"
+
+msgid "You have no other posts yet. Share another post when you are ready."
+msgstr "你還沒有其他貼文。準備好後可以再分享一篇。"
+
+msgid "Engagement rate"
+msgstr "互動率"
+
+msgid "Performance trend"
+msgstr "表現趨勢"
+
+msgid "Campaign performance trend chart"
+msgstr "活動表現趨勢圖"
+
+msgid "No performance data yet"
+msgstr "尚無表現資料"
+
+msgid "Performance summary"
+msgstr "表現摘要"
+
+msgid "views"
+msgstr "瀏覽"
+
+msgid "Scheduled posts"
+msgstr "已排程貼文"
+
+msgid "Released posts"
+msgstr "已發布貼文"
+
+msgid "No scheduled posts for this campaign."
+msgstr "此活動尚無已排程貼文。"
+
+msgid "No released posts for this campaign."
+msgstr "此活動尚無已發布貼文。"
+
+msgid "Like post"
+msgstr "按讚貼文"
+
+msgid "Share post"
+msgstr "分享貼文"
+
+msgid "Dashboard analytics"
+msgstr "儀表板分析"
+
+msgid "No engagement data yet"
+msgstr "尚無互動資料"
+
+msgid "Charts will appear once posts receive views, likes, comments, or shares."
+msgstr "貼文收到瀏覽、讚、留言或分享後，圖表就會顯示在這裡。"
+
+msgid "Engagement trend"
+msgstr "互動趨勢"
+
+msgid "renew weekly"
+msgstr "每週更新"
+
+msgid "%(count)s %(unit)s ago"
+msgstr "%(count)s %(unit)s前"
+
+msgid "day"
+msgstr "天"
+
+msgid "days"
+msgstr "天"
+
+msgid "Caption and hashtags generated. Review them before saving."
+msgstr "已產生文案與 hashtags。儲存前請先檢查。"
+
+msgid "Upload a supported video file: MP4, WebM, or MOV."
+msgstr "請上傳支援的影片檔案：MP4、WebM 或 MOV。"
+
+msgid "Select only posts you own."
+msgstr "只能選擇你擁有的貼文。"
+
+msgid "Hashtags"
+msgstr "標籤"
+
+msgid "AI Insight"
+msgstr "AI 洞察"
+
+msgid "Creana | Signup"
+msgstr "Creana | 註冊"
+
+msgid "Use Google to continue"
+msgstr "使用 Google 繼續"
+
+msgid "Username or email"
+msgstr "使用者名稱或電子郵件"
+
+msgid "username or email account"
+msgstr "使用者名稱或電子郵件帳號"
+
+msgid "Enter your password"
+msgstr "輸入你的密碼"
+
+msgid "Choose a username"
+msgstr "選擇使用者名稱"
+
+msgid "Username"
+msgstr "使用者名稱"
+
+msgid "Email"
+msgstr "電子郵件"
+
+msgid "Confirm password"
+msgstr "確認密碼"
+
+msgid "Create a password"
+msgstr "建立密碼"
+
+msgid "Confirm your password"
+msgstr "確認你的密碼"
+
+msgid "Already have an account?"
+msgstr "已經有帳號？"
+
+msgid "This becomes your workspace name."
+msgstr "這會成為你的工作區名稱。"
+
+msgid "Workspace name"
+msgstr "工作區名稱"
+
+msgid "Your password can’t be too similar to your other personal information."
+msgstr "你的密碼不能與其他個人資訊太相似。"
+
+msgid "Your password can't be too similar to your other personal information."
+msgstr "你的密碼不能與其他個人資訊太相似。"
+
+msgid "Your password must contain at least 8 characters."
+msgstr "你的密碼必須至少包含 8 個字元。"
+
+msgid "Your password can’t be a commonly used password."
+msgstr "你的密碼不能是常見密碼。"
+
+msgid "Your password can't be a commonly used password."
+msgstr "你的密碼不能是常見密碼。"
+
+msgid "Your password can’t be entirely numeric."
+msgstr "你的密碼不能完全是數字。"
+
+msgid "Your password can't be entirely numeric."
+msgstr "你的密碼不能完全是數字。"
+
+msgid "Dismiss message"
+msgstr "關閉訊息"
+
+msgid "Add hashtag"
+msgstr "新增標籤"
+
+msgid "Generating insight..."
+msgstr "正在產生洞察..."
+
+msgid "No insight is available yet."
+msgstr "目前尚無可用洞察。"
+
+msgid "Unable to generate AI insight."
+msgstr "無法產生 AI 洞察。"
+
+msgid "Creana | Password reset complete"
+msgstr "Creana | 密碼重設完成"
+
+msgid "Password updated"
+msgstr "密碼已更新"
+
+msgid "Your password has been reset. You can now sign in with your new password."
+msgstr "你的密碼已重設。你現在可以使用新密碼登入。"
+
+msgid "Creana | Reset password"
+msgstr "Creana | 重設密碼"
+
+msgid "Back to sign in"
+msgstr "返回登入"
+
+msgid "Reset password"
+msgstr "重設密碼"
+
+msgid "Enter your account email and we will send a secure reset link if an account exists."
+msgstr "輸入你的帳號電子郵件；如果帳號存在，我們會寄送安全的重設連結。"
+
+msgid "Email address"
+msgstr "電子郵件地址"
+
+msgid "Send reset link"
+msgstr "寄送重設連結"
+
+msgid "Creana | Reset email sent"
+msgstr "Creana | 已寄出重設郵件"
+
+msgid "Check your email"
+msgstr "檢查你的電子郵件"
+
+msgid "If an account exists for that email, a secure password reset link has been sent."
+msgstr "如果該電子郵件有對應帳號，安全的密碼重設連結已寄出。"
+
+msgid "Return to sign in"
+msgstr "返回登入"
+
+msgid "Creana | Set new password"
+msgstr "Creana | 設定新密碼"
+
+msgid "Set new password"
+msgstr "設定新密碼"
+
+msgid "New password"
+msgstr "新密碼"
+
+msgid "Update password"
+msgstr "更新密碼"
+
+msgid "Reset link expired"
+msgstr "重設連結已失效"
+
+msgid "This password reset link is invalid or has already been used."
+msgstr "此密碼重設連結無效或已被使用。"
+
+msgid "Request a new link"
+msgstr "要求新的連結"
+
+msgid "Hello,"
+msgstr "你好，"
+
+msgid "We received a request to reset the password for your Creana account."
+msgstr "我們收到重設你的 Creana 帳號密碼的要求。"
+
+msgid "Use this secure link to choose a new password:"
+msgstr "使用此安全連結選擇新密碼："
+
+msgid "If you did not request this, you can ignore this email."
+msgstr "如果你沒有提出此要求，可以忽略這封電子郵件。"
+
+msgid "Reset your Creana password"
+msgstr "重設你的 Creana 密碼"
+msgid "followed you"
+msgstr "追蹤了你"
+
+msgid "sent you a notification"
+msgstr "傳送了一則通知給你"
+
+msgid "%(actor)s %(action)s %(title)s"
+msgstr "%(actor)s %(action)s %(title)s"
+
+msgid "%(actor)s %(action)s"
+msgstr "%(actor)s %(action)s"
+
+msgid "%(actor1)s and %(actor2)s %(action)s %(title)s"
+msgstr "%(actor1)s 和 %(actor2)s %(action)s %(title)s"
+
+msgid "%(actor1)s and %(actor2)s %(action)s"
+msgstr "%(actor1)s 和 %(actor2)s %(action)s"
+
+msgid "%(actor1)s, %(actor2)s, and %(other_count)s others %(action)s %(title)s"
+msgstr "%(actor1)s、%(actor2)s 和其他 %(other_count)s 人%(action)s %(title)s"
+
+msgid "%(actor1)s, %(actor2)s, and %(other_count)s others %(action)s"
+msgstr "%(actor1)s、%(actor2)s 和其他 %(other_count)s 人%(action)s"
+
+msgid "%(actor)s liked your post %(title)s"
+msgstr "%(actor)s 按讚了你的貼文 %(title)s"
+
+msgid "%(actor1)s and %(actor2)s liked your post %(title)s"
+msgstr "%(actor1)s 和 %(actor2)s 按讚了你的貼文 %(title)s"
+
+msgid "%(actor1)s, %(actor2)s, and %(other_count)s others liked your post %(title)s"
+msgstr "%(actor1)s、%(actor2)s 和其他 %(other_count)s 人按讚了你的貼文 %(title)s"
+
+msgid "%(actor)s shared your post %(title)s"
+msgstr "%(actor)s 分享了你的貼文 %(title)s"
+
+msgid "%(actor1)s and %(actor2)s shared your post %(title)s"
+msgstr "%(actor1)s 和 %(actor2)s 分享了你的貼文 %(title)s"
+
+msgid "%(actor1)s, %(actor2)s, and %(other_count)s others shared your post %(title)s"
+msgstr "%(actor1)s、%(actor2)s 和其他 %(other_count)s 人分享了你的貼文 %(title)s"
+
+msgid "%(actor)s commented on your post %(title)s"
+msgstr "%(actor)s 留言了你的貼文 %(title)s"
+
+msgid "%(actor1)s and %(actor2)s commented on your post %(title)s"
+msgstr "%(actor1)s 和 %(actor2)s 留言了你的貼文 %(title)s"
+
+msgid "%(actor1)s, %(actor2)s, and %(other_count)s others commented on your post %(title)s"
+msgstr "%(actor1)s、%(actor2)s 和其他 %(other_count)s 人留言了你的貼文 %(title)s"
+
+msgid "%(actor)s liked your comment"
+msgstr "%(actor)s 按讚了你的留言"
+
+msgid "%(actor1)s and %(actor2)s liked your comment"
+msgstr "%(actor1)s 和 %(actor2)s 按讚了你的留言"
+
+msgid "%(actor1)s, %(actor2)s, and %(other_count)s others liked your comment"
+msgstr "%(actor1)s、%(actor2)s 和其他 %(other_count)s 人按讚了你的留言"
+
+msgid "%(actor)s replied to your comment"
+msgstr "%(actor)s 回覆了你的留言"
+
+msgid "%(actor1)s and %(actor2)s replied to your comment"
+msgstr "%(actor1)s 和 %(actor2)s 回覆了你的留言"
+
+msgid "%(actor1)s, %(actor2)s, and %(other_count)s others replied to your comment"
+msgstr "%(actor1)s、%(actor2)s 和其他 %(other_count)s 人回覆了你的留言"
+
+msgid "%(actor)s followed you"
+msgstr "%(actor)s 追蹤了你"
+
+msgid "%(actor1)s and %(actor2)s followed you"
+msgstr "%(actor1)s 和 %(actor2)s 追蹤了你"
+
+msgid "%(actor1)s, %(actor2)s, and %(other_count)s others followed you"
+msgstr "%(actor1)s、%(actor2)s 和其他 %(other_count)s 人追蹤了你"
+
+msgid "%(actor)s sent you a notification"
+msgstr "%(actor)s 傳送了一則通知給你"
+
+msgid "%(actor1)s and %(actor2)s sent you a notification"
+msgstr "%(actor1)s 和 %(actor2)s 傳送了一則通知給你"
+
+msgid "%(actor1)s, %(actor2)s, and %(other_count)s others sent you a notification"
+msgstr "%(actor1)s、%(actor2)s 和其他 %(other_count)s 人傳送了一則通知給你"
+
+msgid "%(actor)s liked your post"
+msgstr "%(actor)s 按讚了你的貼文"
+
+msgid "%(actor1)s and %(actor2)s liked your post"
+msgstr "%(actor1)s 和 %(actor2)s 按讚了你的貼文"
+
+msgid "%(actor1)s, %(actor2)s, and %(other_count)s others liked your post"
+msgstr "%(actor1)s、%(actor2)s 和其他 %(other_count)s 人按讚了你的貼文"
+
+msgid "%(actor)s shared your post"
+msgstr "%(actor)s 分享了你的貼文"
+
+msgid "%(actor1)s and %(actor2)s shared your post"
+msgstr "%(actor1)s 和 %(actor2)s 分享了你的貼文"
+
+msgid "%(actor1)s, %(actor2)s, and %(other_count)s others shared your post"
+msgstr "%(actor1)s、%(actor2)s 和其他 %(other_count)s 人分享了你的貼文"
+
+msgid "%(actor)s commented on your post"
+msgstr "%(actor)s 留言了你的貼文"
+
+msgid "%(actor1)s and %(actor2)s commented on your post"
+msgstr "%(actor1)s 和 %(actor2)s 留言了你的貼文"
+
+msgid "%(actor1)s, %(actor2)s, and %(other_count)s others commented on your post"
+msgstr "%(actor1)s、%(actor2)s 和其他 %(other_count)s 人留言了你的貼文"
+
+msgid "%(actor)s: Comment has been deleted"
+msgstr "%(actor)s：留言已被刪除"
+
+msgid "%(actor)s: Reply has been deleted"
+msgstr "%(actor)s：回覆已被刪除"
+
+msgid "Notifications marked as read."
+msgstr "通知已標記為已讀。"
+
+msgid "Post likes"
+msgstr "貼文按讚"
+
+msgid "Post comments"
+msgstr "貼文留言"
+
+msgid "Post shares"
+msgstr "貼文分享"
+
+msgid "Comment likes"
+msgstr "留言按讚"
+
+msgid "Comment replies"
+msgstr "留言回覆"
+
+msgid "%(actor)s liked"
+msgstr "%(actor)s 按讚了"
+
+msgid "%(actor1)s and %(actor2)s liked"
+msgstr "%(actor1)s 和 %(actor2)s 按讚了"
+
+msgid "%(actor1)s, %(actor2)s, and %(other_count)s others liked"
+msgstr "%(actor1)s、%(actor2)s 和其他 %(other_count)s 人按讚了"
+
+msgid "%(actor)s replied to"
+msgstr "%(actor)s 回覆了"
+
+msgid "%(actor1)s and %(actor2)s replied to"
+msgstr "%(actor1)s 和 %(actor2)s 回覆了"
+
+msgid "%(actor1)s, %(actor2)s, and %(other_count)s others replied to"
+msgstr "%(actor1)s、%(actor2)s 和其他 %(other_count)s 人回覆了"
+
+msgid "your comment"
+msgstr "你的留言"
+
+msgid "Stripe membership checkout is not configured."
+msgstr "尚未設定 Stripe 會員結帳。"
+
+msgid "Unable to start Stripe Checkout. Please try again."
+msgstr "無法啟動 Stripe 結帳。請再試一次。"
+
+msgid "Secure checkout is processed by Stripe."
+msgstr "安全結帳由 Stripe 處理。"
+
+msgid "Membership activated"
+msgstr "會員資格已啟用"
+
+msgid "Thank you for joining Creana Membership. AI tools are now unlocked for your account."
+msgstr "感謝你加入 Creana 會員。你的帳號現在已解鎖 AI 工具。"
+
+msgid "Go to dashboard"
+msgstr "前往儀表板"
+
+msgid "Checkout cancelled"
+msgstr "結帳已取消"
+
+msgid "Your membership checkout was cancelled. You can return whenever you are ready."
+msgstr "你的會員結帳已取消。準備好時可隨時回來。"
+
+msgid "Return to membership"
+msgstr "返回會員方案"
+
+msgid "Checkout complete"
+msgstr "結帳完成"
+
+msgid "Your checkout session was not found. If you completed payment, membership access will update after Stripe confirms it."
+msgstr "找不到你的結帳工作階段。如果你已完成付款，Stripe 確認後會更新會員權限。"
+
+msgid "Checkout session details were missing. If you completed payment, membership access will update after Stripe confirms it."
+msgstr "缺少結帳工作階段資訊。如果你已完成付款，Stripe 確認後會更新會員權限。"
+
+msgid "Checkout completed. Membership access will update after Stripe confirms your subscription."
+msgstr "結帳已完成。Stripe 確認你的訂閱後會更新會員權限。"
+
+msgid "Checkout completed. Test fallback activated membership while the Stripe webhook is unavailable."
+msgstr "結帳已完成。Stripe webhook 無法使用時，測試備援已啟用會員資格。"
+
+msgid "This email is already registered. Please sign in or use password reset."
+msgstr "此電子郵件已註冊。請登入或使用密碼重設。"
+
+msgid "This account uses Google Sign-In. Please continue with Google to access your account."
+msgstr "此帳號使用 Google 登入。請繼續使用 Google 存取您的帳號。"
+
+msgid "Multiple accounts use this email. Please contact support before resetting your password."
+msgstr "多個帳號使用此電子郵件。請先聯絡支援再重設密碼。"
+msgid "Announcements"
+msgstr "公告欄"
+
+msgid "New"
+msgstr "新增"
+
+msgid "Announcement"
+msgstr "公告"
+
+msgid "New announcement"
+msgstr "新增公告"
+
+msgid "Edit announcement"
+msgstr "編輯公告"
+
+msgid "Delete announcement"
+msgstr "刪除公告"
+
+msgid "Save announcement"
+msgstr "儲存公告"
+
+msgid "Announcement title"
+msgstr "公告標題"
+
+msgid "Announcement content"
+msgstr "公告內容"
+
+msgid "Write the announcement content."
+msgstr "請輸入公告內容。"
+
+msgid "No announcements yet."
+msgstr "目前尚無公告。"
+
+msgid "Published by"
+msgstr "發布者"
+
+msgid "Published at"
+msgstr "發布時間"
+
+msgid "Creana Official"
+msgstr "Creana 官方"
+
+msgid "Content"
+msgstr "內容"
+
+msgid "Author"
+msgstr "作者"
+
+msgid "Created at"
+msgstr "建立時間"
+
+msgid "Updated at"
+msgstr "更新時間"
+
+msgid "Announcement created."
+msgstr "公告已建立。"
+
+msgid "Announcement updated."
+msgstr "公告已更新。"
+
+msgid "Announcement deleted."
+msgstr "公告已刪除。"
+
+msgid "Delete \"%(title)s\"? This action cannot be undone."
+msgstr "要刪除「%(title)s」嗎？此操作無法復原。"

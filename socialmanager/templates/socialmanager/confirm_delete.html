@@ -1,0 +1,24 @@
+{% extends "socialmanager/base.html" %}
+
+{% block title %}Creana | Confirm Delete{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <h1 class="page-title">Confirm delete</h1>
+                <p>Delete <strong>{{ object }}</strong>? This action removes the record permanently.</p>
+                <form method="post">
+                    {% csrf_token %}
+                    {% if redirect_next_url %}
+                        <input type="hidden" name="next" value="{{ redirect_next_url }}">
+                    {% endif %}
+                    <button class="btn btn-danger-secondary" type="submit">Delete</button>
+                    <a class="btn btn-outline-secondary" href="javascript:history.back()">Cancel</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

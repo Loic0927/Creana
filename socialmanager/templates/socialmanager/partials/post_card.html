@@ -1,0 +1,131 @@
+{% load i18n static %}
+<article class="card post-card{% if badge_context == 'public_profile' or badge_context == 'own_profile' %} feed-post{% endif %} interactive-card{% if badge_context == 'public_profile' %} public-profile-post-card{% elif badge_context == 'own_profile' %} own-profile-post-card{% elif badge_context == 'campaign_detail' %} campaign-detail-post-card{% endif %}" data-view="post" data-status="{{ post.profile_filter_status }}">
+    {% if badge_context == 'own_profile' or badge_context == 'public_profile' %}
+        {% if badge_context == 'own_profile' %}
+            <span class="status-badge {{ post.status_badge_class }} profile-card-media-badge profile-card-type-badge">{{ post.status_badge_label }}</span>
+        {% else %}
+            <span class="type-badge profile-card-media-badge profile-card-type-badge">{{ post.get_content_format_display }}</span>
+        {% endif %}
+        <span class="meta-item meta-item-date profile-card-media-badge profile-card-date-badge">
+            <span class="material-symbols-outlined">{% if post.status == 'scheduled' %}schedule{% else %}calendar_month{% endif %}</span>
+            {% if post.status == 'scheduled' and post.scheduled_for %}
+                {% blocktrans with date=post.scheduled_for|date:"M d, Y" time=post.scheduled_for|time:"g:i A" %}Scheduled for {{ date }} at {{ time }}{% endblocktrans %}
+            {% else %}
+                {{ post.updated_at|date:"M d, Y" }}
+            {% endif %}
+        </span>
+    {% endif %}
+    <div class="post-card-media">
+        {% if post.content_format == 'video' %}
+            <div class="video-card-preview" aria-label="{% blocktrans with title=post.title %}{{ title }} video preview{% endblocktrans %}">
+                <img alt="{% blocktrans with title=post.title %}{{ title }} video thumbnail{% endblocktrans %}" class="post-card-image" src="{% if post.cached_video_thumbnail_url %}{{ post.cached_video_thumbnail_url }}{% else %}{% static 'socialmanager/images/default_video_placeholder.webp' %}{% endif %}" loading="lazy" decoding="async" width="640" height="640">
+                <span class="video-play-overlay" aria-hidden="true">&#9654;</span>
+            </div>
+        {% elif post.cached_primary_image_url %}
+            <img alt="{{ post.title }}" class="post-card-image" src="{{ post.cached_primary_image_url }}" role="button" tabindex="0" data-lightbox-media data-media-type="image" data-media-src="{{ post.cached_primary_original_image_url }}">
+        {% elif post.content_format == 'article' %}
+            <img alt="{{ post.title }} default article cover" class="post-card-image" src="{% static 'socialmanager/images/Article_img.PNG' %}" role="button" tabindex="0" data-lightbox-media data-media-type="image" data-media-src="{% static 'socialmanager/images/Article_img.PNG' %}">
+        {% else %}
+            <div class="post-card-image placeholder-cover"></div>
+        {% endif %}
+    </div>
+    <div class="post-card-body">
+        <div class="post-card-top">
+            <div class="post-card-meta{% if badge_context == 'public_profile' %} public-profile-post-meta-row{% elif badge_context == 'own_profile' %} own-profile-post-meta-row{% elif badge_context == 'campaign_detail' %} campaign-detail-post-meta-row{% endif %}">
+                {% if badge_context == "own_profile" %}
+                    <span class="status-badge {{ post.status_badge_class }} own-profile-inline-status-badge">{{ post.status_badge_label }}</span>
+                    {% for campaign in post.campaign_groups.all %}
+                        <span class="campaign-badge">{{ campaign.name }}</span>
+                    {% endfor %}
+                {% elif badge_context == "public_profile" %}
+                    <span class="type-badge">{{ post.get_content_format_display }}</span>
+                {% elif badge_context == "campaign_detail" %}
+                    <span class="type-badge">{{ post.get_content_format_display }}</span>
+                    <span class="platform-badge">{% if post.get_platform_display %}{{ post.get_platform_display }}{% else %}{% trans "No platform selected" %}{% endif %}</span>
+                {% else %}
+                    <span class="status-badge {{ post.status_badge_class }}">{{ post.status_badge_label }}</span>
+                    <span class="type-badge">{{ post.get_content_format_display }}</span>
+                    <span class="platform-badge">{% if post.get_platform_display %}{{ post.get_platform_display }}{% else %}{% trans "No platform selected" %}{% endif %}</span>
+                    {% for campaign in post.campaign_groups.all %}
+                        <span class="campaign-badge">{{ campaign.name }}</span>
+                    {% endfor %}
+                {% endif %}
+                <span class="meta-item meta-item-date{% if badge_context == 'public_profile' %} public-profile-post-date{% elif badge_context == 'own_profile' %} own-profile-post-date{% elif badge_context == 'campaign_detail' %} campaign-detail-post-date{% endif %}">
+                    <span class="material-symbols-outlined">{% if post.status == 'scheduled' %}schedule{% else %}calendar_month{% endif %}</span>
+                    {% if post.status == 'scheduled' and post.scheduled_for %}
+                        {% blocktrans with date=post.scheduled_for|date:"M d, Y" time=post.scheduled_for|time:"g:i A" %}Scheduled for {{ date }} at {{ time }}{% endblocktrans %}
+                    {% else %}
+                        {{ post.updated_at|date:"M d, Y" }}
+                    {% endif %}
+                </span>
+            </div>
+            <div class="{% if badge_context == 'public_profile' %}public-profile-post-copy{% endif %}">
+                <h3 class="card-title">{{ post.title }}</h3>
+                <p class="post-preview">{% if post.article_caption|default:post.caption %}{{ post.article_caption|default:post.caption|striptags }}{% else %}{% trans "No caption added yet." %}{% endif %}</p>
+                {% if post.status == 'published' and post.article_caption|default:post.caption|length > 120 %}
+                    <a class="text-link" href="{% url 'socialmanager:post_detail' post.pk post.slug %}">{% trans "View full content" %}</a>
+                {% endif %}
+            </div>
+        </div>
+        <div class="post-card-actions{% if badge_context == 'own_profile' or badge_context == 'public_profile' %} post-card-footer{% endif %}{% if badge_context == 'public_profile' %} public-profile-post-actions-row{% endif %}">
+            {% if post.status == 'published' %}
+                {% if badge_context == 'own_profile' or badge_context == 'public_profile' %}
+                    <div class="post-card-stats engagement-row feed-engagement-actions" aria-label="{% trans 'Post engagement actions' %}">
+                        <button class="feed-engagement-button{% if post.user_has_liked %} is-liked{% endif %}" type="button" aria-pressed="{% if post.user_has_liked %}true{% else %}false{% endif %}" data-feed-engagement="like" data-engagement-url="{% url 'socialmanager:post_engagement_toggle' post.pk 'like' %}">
+                            <span class="material-symbols-outlined" aria-hidden="true">favorite</span>
+                            <span class="engagement-count" data-feed-like-count>{{ post.like_count }}</span>
+                        </button>
+                        <a class="feed-engagement-button feed-comment-button" href="{% url 'socialmanager:post_detail' post.pk post.slug %}#comments" aria-label="{% trans 'View comments' %}">
+                            <span class="material-symbols-outlined" aria-hidden="true">chat_bubble</span>
+                            <span class="engagement-count">{{ post.comment_count }}</span>
+                        </a>
+                        <button class="feed-engagement-button{% if post.user_has_shared %} is-shared{% endif %}" type="button" aria-pressed="{% if post.user_has_shared %}true{% else %}false{% endif %}" data-feed-engagement="share" data-engagement-url="{% url 'socialmanager:post_engagement_toggle' post.pk 'share' %}">
+                            <svg class="share-icon" aria-hidden="true" viewBox="0 0 64 56" focusable="false">
+                                <path d="M3 52C5 30 18 17 35 17V3L61 27L35 51V37C21 37 11 42 3 52Z" />
+                            </svg>
+                            <span class="engagement-count" data-feed-share-count>{{ post.share_count }}</span>
+                        </button>
+                    </div>
+                {% else %}
+                    <div class="engagement-row">
+                        <span class="meta-item"><span class="material-symbols-outlined">favorite</span><span class="engagement-count">{{ post.likes_count }}</span> <span class="engagement-label">{% trans "likes" %}</span></span>
+                        <span class="meta-item"><span class="material-symbols-outlined">chat_bubble</span><span class="engagement-count">{{ post.comment_count }}</span> <span class="engagement-label">{% trans "comments" %}</span></span>
+                        <span class="meta-item">
+                            <svg class="share-icon" aria-hidden="true" viewBox="0 0 64 56" focusable="false">
+                                <path d="M3 52C5 30 18 17 35 17V3L61 27L35 51V37C21 37 11 42 3 52Z" />
+                            </svg>
+                            <span class="engagement-count">{{ post.shares_count }}</span> <span class="engagement-label">{% trans "shares" %}</span>
+                        </span>
+                    </div>
+                {% endif %}
+            {% else %}
+                <div class="{% if badge_context == 'own_profile' or badge_context == 'public_profile' %}post-card-stats {% endif %}engagement-row"></div>
+            {% endif %}
+            <div class="{% if badge_context == 'own_profile' or badge_context == 'public_profile' %}post-card-action-buttons {% endif %}button-row">
+                {% if badge_context == 'own_profile' and post.status == 'draft' %}
+                    <a class="btn card-action-btn card-link" href="{% url 'socialmanager:post_update' post.pk %}?next={{ request.get_full_path|urlencode }}">{% trans "Edit" %}</a>
+                    <form method="post" action="{% url 'socialmanager:post_delete' post.pk %}?next={{ request.get_full_path|urlencode }}" onsubmit="return confirm('Delete this post? This cannot be undone.');">
+                        {% csrf_token %}
+                        <button class="btn card-action-btn card-link" type="submit">{% trans "Delete" %}</button>
+                    </form>
+                {% elif badge_context == 'own_profile' and post.status == 'scheduled' %}
+                    <a class="btn card-action-btn card-link" href="{% url 'socialmanager:post_update' post.pk %}?next={{ request.get_full_path|urlencode }}">{% trans "Edit" %}</a>
+                    <form method="post" action="{% url 'socialmanager:post_delete' post.pk %}?next={{ request.get_full_path|urlencode }}" onsubmit="return confirm('Delete this post? This cannot be undone.');">
+                        {% csrf_token %}
+                        <button class="btn card-action-btn card-link" type="submit">{% trans "Delete" %}</button>
+                    </form>
+                {% elif post.status == 'draft' %}
+                    <a class="btn card-action-btn card-link" href="{% url 'socialmanager:post_update' post.pk %}?next={{ request.get_full_path|urlencode }}">{% trans "Edit draft" %}</a>
+                {% elif post.status == 'scheduled' %}
+                    <a class="btn card-action-btn card-link" href="{% url 'socialmanager:post_update' post.pk %}?next={{ request.get_full_path|urlencode }}">{% trans "Edit" %}</a>
+                    <a class="btn card-action-btn card-link" href="{% url 'socialmanager:post_update' post.pk %}?focus=schedule&next={{ request.get_full_path|urlencode }}#schedule-section">{% trans "Reschedule" %}</a>
+                {% else %}
+                {% if post.author_id == request.user.id %}
+                    <a class="btn card-action-btn card-link" href="{% url 'socialmanager:post_analytics' post.pk %}">{% trans "View Analytics" %}</a>
+                {% endif %}
+                <a class="btn card-action-btn card-link" href="{% url 'socialmanager:post_detail' post.pk post.slug %}">{% trans "View Post" %}</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</article>

@@ -1,0 +1,221 @@
+/* Auth pages */
+
+body.auth-page .sidebar,
+body.auth-page .topbar {
+    display: none;
+}
+
+body.auth-page .app-shell,
+body.auth-page .shell-main {
+    display: block;
+    min-height: 100vh;
+}
+
+body.auth-page .page {
+    padding: 0;
+}
+
+body.auth-page .page-inner {
+    max-width: none;
+}
+
+.login-shell {
+    background: var(--gradient-background);
+}
+
+.back-link {
+    display: inline-block;
+    margin: 28px 0 0 32px;
+    color: var(--color-muted);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.login-wrap,
+.login-wrap-top {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    min-height: calc(100vh - 72px);
+    padding: 20px 20px 64px;
+}
+
+.login-card {
+    width: min(100%, 720px);
+    padding: 36px 28px 30px;
+    box-shadow: var(--shadow-soft);
+}
+
+.login-card-compact {
+    width: min(100%, 720px);
+}
+
+.signup-card {
+    width: min(100%, 720px);
+}
+
+.signup-card-mockup {
+    width: min(100%, 720px);
+    padding: 36px 28px 30px;
+}
+
+.auth-page {
+    min-height: 100vh;
+    background: var(--gradient-background);
+}
+
+.auth-page .card {
+    margin-top: 3rem;
+}
+
+.auth-full-logo {
+    display: block;
+    width: 240px;
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
+    margin: 0 auto 18px;
+}
+
+.social-login-form {
+    margin: 0 0 22px;
+    width: 100%;
+}
+
+.google-login-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    min-height: 52px;
+    width: 100%;
+    border: 1px solid #dadce0;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #3c4043;
+    font-family: Arial, sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0;
+    box-shadow: none;
+    transition:
+        background 0.16s ease,
+        border-color 0.16s ease,
+        box-shadow 0.16s ease;
+}
+
+.google-login-button:hover,
+.google-login-button:focus {
+    border-color: #d2e3fc;
+    background: #f8fafd;
+    color: #202124;
+    box-shadow: 0 1px 2px rgba(60, 64, 67, 0.18);
+}
+
+.google-login-mark {
+    display: inline-flex;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+}
+
+.google-login-mark svg {
+    display: block;
+    width: 18px;
+    height: 18px;
+}
+
+.auth-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0 0 22px;
+    color: var(--color-muted);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--color-border);
+}
+
+.auth-page .form-control,
+.auth-page .form-select,
+.auth-page .field-input,
+.auth-page .field-select,
+.auth-page .field-textarea,
+.auth-page input[type="email"],
+.auth-page input[type="password"] {
+    min-height: 52px;
+    border-radius: 14px;
+    border: 1px solid var(--color-border);
+    padding: 0.95rem 1rem;
+    box-shadow: none;
+    background: #eaf2ff;
+    color: var(--color-text);
+}
+
+.auth-page textarea.form-control,
+.auth-page textarea.field-textarea {
+    min-height: 140px;
+}
+
+.signup-card-mockup .form-control,
+.login-card .form-control,
+.auth-page input[type="email"],
+.auth-page input[type="password"] {
+    font-size: 15px;
+    width: 100%;
+}
+
+.signup-card-mockup .form-control::placeholder,
+.auth-page .field-input::placeholder,
+.auth-page .field-textarea::placeholder,
+.auth-page input[type="email"]::placeholder,
+.auth-page input[type="password"]::placeholder {
+    color: #94a3b8;
+}
+
+.auth-page .form-control:focus,
+.auth-page .form-select:focus,
+.auth-page .field-input:focus,
+.auth-page .field-select:focus,
+.auth-page .field-textarea:focus,
+.auth-page input[type="email"]:focus,
+.auth-page input[type="password"]:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 0.25rem rgba(79, 140, 255, 0.14);
+}
+
+.auth-card-copy {
+    margin: 0 0 24px;
+    line-height: 1.6;
+}
+
+@media (max-width: 1024px) {
+    .auth-full-logo {
+        width: 230px;
+    }
+}
+
+@media (max-width: 768px) {
+    .auth-full-logo {
+        width: 195px;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .back-link {
+        margin-left: 16px;
+    }
+
+    .login-wrap,
+    .login-wrap-top {
+        padding-right: 16px;
+        padding-left: 16px;
+    }
+}

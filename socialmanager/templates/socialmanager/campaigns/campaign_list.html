@@ -1,0 +1,123 @@
+{% extends "socialmanager/base.html" %}
+{% load i18n static %}
+
+{% block title %}{% trans "Creana | Campaigns" %}{% endblock %}
+{% block body_class %}campaign-page campaign-list-page{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'socialmanager/css/pages/campaign.css' %}?v=campaign-i18n-source-1" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="stack">
+    {% trans "Delete this campaign? This cannot be undone." as delete_campaign_confirm %}
+    <section class="page-header">
+        <div>
+            <h1 class="page-title">{% trans "Campaigns" %}</h1>
+        </div>
+        <a class="btn btn-primary" href="{% url 'socialmanager:campaign_create' %}">
+            <span class="material-symbols-outlined" aria-hidden="true">add</span>
+            {% trans "Create campaign" %}
+        </a>
+    </section>
+
+    {% if object_list %}
+        <section class="campaign-grid">
+            {% for campaign in object_list %}
+                <article class="card campaign-card">
+                    <div class="campaign-card-menu">
+                        <button class="campaign-menu-button" type="button" aria-label="{% trans 'Campaign options' %}" aria-expanded="false" data-campaign-menu-button>
+                            <span class="material-symbols-outlined" aria-hidden="true">more_horiz</span>
+                        </button>
+                        <div class="campaign-menu-dropdown" hidden data-campaign-menu-dropdown>
+                            <a href="{% url 'socialmanager:campaign_update' campaign.pk %}?next={{ request.get_full_path|urlencode }}">{% trans "Edit" %}</a>
+                            <form method="post" action="{% url 'socialmanager:campaign_delete' campaign.pk %}?next={{ request.get_full_path|urlencode }}" onsubmit="return confirm('{{ delete_campaign_confirm|escapejs }}');">
+                                {% csrf_token %}
+                                <button class="campaign-menu-delete" type="submit">{% trans "Delete" %}</button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="campaign-card-header">
+                        <span class="status-badge {{ campaign.effective_status }}">
+                            {% if campaign.effective_status == "completed" %}{% trans "Completed" %}
+                            {% elif campaign.effective_status == "active" %}{% trans "Active" %}
+                            {% elif campaign.effective_status == "draft" %}{% trans "Draft" %}
+                            {% else %}{{ campaign.effective_status_display }}{% endif %}
+                        </span>
+                    </div>
+                    <div>
+                        <h2 class="card-title">{{ campaign.name }}</h2>
+                        <p class="campaign-card-objective is-clamped" data-campaign-strategy-copy>{% if campaign.objective %}{{ campaign.objective }}{% else %}{% trans "No objective added yet." %}{% endif %}</p>
+                        {% if campaign.objective %}
+                            <button
+                                class="text-link campaign-strategy-more"
+                                type="button"
+                                hidden
+                                data-strategy-trigger
+                                data-strategy-title="{{ campaign.name }}"
+                                data-strategy-copy="{{ campaign.objective }}"
+                            >
+                                {% trans "View full strategy" %}
+                            </button>
+                        {% endif %}
+                    </div>
+                    <div class="campaign-card-meta">
+                        <span class="meta-item">
+                            <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
+                            {% if campaign.start_date %}{{ campaign.start_date }}{% else %}{% trans "No start" %}{% endif %} - {% if campaign.end_date %}{{ campaign.end_date }}{% else %}{% trans "No end" %}{% endif %}
+                        </span>
+                        <span class="meta-item">
+                            <span class="material-symbols-outlined" aria-hidden="true">dynamic_feed</span>
+                            {% blocktrans count count=campaign.post_count %}{{ count }} post{% plural %}{{ count }} posts{% endblocktrans %}
+                        </span>
+                        {% if campaign.campaign_posts.all %}
+                            <span class="meta-item">
+                                <span class="material-symbols-outlined" aria-hidden="true">article</span>
+                                {% for post in campaign.campaign_posts.all|slice:":2" %}{{ post.title }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if campaign.post_count > 2 %} +{{ campaign.post_count|add:"-2" }} more{% endif %}
+                            </span>
+                        {% endif %}
+                        <span class="meta-item">
+                            <span class="material-symbols-outlined" aria-hidden="true">schedule</span>
+                            {% blocktrans count count=campaign.scheduled_count %}{{ count }} scheduled{% plural %}{{ count }} scheduled{% endblocktrans %}
+                        </span>
+                    </div>
+                    <div class="button-row campaign-card-actions">
+                        <a class="btn btn-primary" href="{% url 'socialmanager:campaign_detail' campaign.pk %}">{% trans "View" %}</a>
+                    </div>
+                </article>
+            {% endfor %}
+        </section>
+        {% include "socialmanager/partials/pagination.html" %}
+    {% else %}
+        <article class="card empty-state creana-empty-state">
+            <img
+                alt=""
+                aria-hidden="true"
+                class="creana-empty-illustration"
+                src="{% static 'socialmanager/images/Noitem.png' %}"
+            >
+            <h2 class="creana-empty-title">{% trans "No campaigns yet" %}</h2>
+            <p class="creana-empty-text">{% trans "Plan your content with campaigns and keep every idea organised." %}</p>
+            <div class="creana-empty-actions">
+                <a class="btn btn-primary" href="{% url 'socialmanager:campaign_create' %}">{% trans "Create campaign" %}</a>
+            </div>
+        </article>
+    {% endif %}
+</div>
+
+<div class="media-lightbox strategy-modal" role="dialog" aria-modal="true" aria-label="{% trans 'Campaign strategy' %}" data-strategy-title-label="{% trans 'Campaign strategy' %}" data-empty-objective-label="{% trans 'No objective added yet.' %}" hidden data-strategy-modal>
+    <button class="media-lightbox-close" type="button" aria-label="{% trans 'Close strategy modal' %}" data-strategy-modal-close>
+        <span class="material-symbols-outlined" aria-hidden="true">close</span>
+    </button>
+    <div class="media-lightbox-frame strategy-modal-frame" data-strategy-modal-frame>
+        <article class="strategy-modal-card">
+            <h2 class="card-title" data-strategy-modal-title></h2>
+            <p data-strategy-modal-copy></p>
+        </article>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'socialmanager/js/campaign.js' %}?v=campaign-i18n-source-1"></script>
+{% endblock %}

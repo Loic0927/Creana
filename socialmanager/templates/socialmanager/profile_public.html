@@ -1,0 +1,135 @@
+{% extends "socialmanager/base.html" %}
+{% load i18n static %}
+{% load socialmanager_content %}
+
+{% block title %}Creana | {{ profile_user.username|default:profile_user.email }}{% endblock %}
+{% block body_class %}profile-page public-profile-page{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'socialmanager/css/pages/profile.css' %}?v=profile-card-footer-fix-1" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="stack">
+    <section class="card stack profile-profile-card">
+        <div class="profile-hero profile-hero-inline">
+            <div class="profile-hero-main profile-hero-main-inline">
+                <div class="profile-avatar-photo">
+                    <img alt="{{ profile_user.username|default:profile_user.email }}" class="avatar-lg profile-avatar-image" src="{{ profile_user|avatar_url }}">
+                </div>
+                <div class="creator-meta profile-identity-copy">
+                    <h1 class="card-title profile-name">{{ profile_user.username|default:profile_user.email }}</h1>
+                </div>
+            </div>
+            {% if is_own_profile %}
+                <a class="btn btn-primary edit-profile-btn" href="{% url 'socialmanager:profile' %}">Edit profile</a>
+            {% else %}
+                <div class="profile-action-row">
+                    <form class="profile-follow-form" method="post" action="{% url 'socialmanager:profile_follow_toggle' profile_user.pk %}">
+                        {% csrf_token %}
+                        <button class="profile-follow-btn{% if is_following %} is-following{% endif %}" type="submit">
+                            {% if is_following %}Following{% else %}Follow{% endif %}
+                        </button>
+                    </form>
+                    <details class="profile-action-menu">
+                        <summary class="profile-action-menu-toggle" aria-label="{% trans 'Profile actions' %}">
+                            <span class="material-symbols-outlined" aria-hidden="true">more_horiz</span>
+                        </summary>
+                        <div class="profile-action-menu-panel">
+                            <form method="post" action="{% url 'socialmanager:profile_hidden_user_toggle' profile_user.pk %}">
+                                {% csrf_token %}
+                                <button class="profile-action-menu-item" type="submit">
+                                    {% if is_hidden_by_current_user %}
+                                        {% trans "Unhide this user" %}
+                                    {% else %}
+                                        {% trans "Hide this user from my feed" %}
+                                    {% endif %}
+                                </button>
+                            </form>
+                        </div>
+                    </details>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="profile-profile-grid">
+            <article class="profile-meta-card profile-links-card">
+                <h2 class="meta-section-title">Bio</h2>
+                <p class="meta-section-copy profile-bio-copy">{{ profile_bio }}</p>
+            </article>
+            <article class="profile-meta-card profile-contact-card">
+                <h2 class="meta-section-title">{% trans "Links" %}</h2>
+                <div class="link-chip-grid profile-link-chip-grid">
+                    {% for link in profile_link_items %}
+                        {% if link.url %}
+                            <a class="link-chip profile-link-chip" href="{{ link.url }}"{% if link.opens_new_tab %} rel="noopener noreferrer" target="_blank"{% endif %}>{{ link.label }}</a>
+                        {% else %}
+                            <span class="link-chip profile-link-chip">{{ link.label }}</span>
+                        {% endif %}
+                    {% empty %}
+                        <p class="profile-links-placeholder">No public links yet</p>
+                    {% endfor %}
+                </div>
+            </article>
+        </div>
+
+        <div class="profile-stats profile-stats-mockup">
+            <article class="profile-stat">
+                <p class="metric-label">Posts</p>
+                <p class="metric-value">{{ profile_stats.posts }}</p>
+            </article>
+            <article class="profile-stat">
+                <p class="metric-label">Followers</p>
+                <p class="metric-value">{{ profile_stats.followers }}</p>
+            </article>
+            <article class="profile-stat">
+                <p class="metric-label">Following</p>
+                <p class="metric-value">{{ profile_stats.following }}</p>
+            </article>
+        </div>
+    </section>
+
+    <section class="stack posts-section">
+        <div class="section-head posts-section-head">
+            <div>
+                <h2 class="posts-section-title">{% trans "Posts" %}</h2>
+            </div>
+            <div class="filter-tabs profile-view-tabs" data-filter-group="view">
+                <button aria-selected="true" class="filter-tab active" data-post-tab="all" data-view="post" data-filter="all" type="button">{% trans "Post" %}</button>
+                <button aria-selected="false" class="filter-tab" data-post-tab="shared" data-view="shared" data-filter="all" type="button">{% trans "Shared post" %}</button>
+            </div>
+        </div>
+
+        <div class="post-stack">
+            {% url 'socialmanager:post_create' as post_create_url %}
+            {% url 'socialmanager:post_list' as feed_url %}
+            {% trans "No posts yet" as no_posts_title %}
+            {% trans "Your creative space is waiting. Start by sharing your first post." as no_posts_text %}
+            {% trans "Create post" as create_post_text %}
+            {% trans "No shared posts yet" as no_shared_title %}
+            {% trans "Posts you share will appear here." as no_shared_text %}
+            {% trans "Browse feed" as browse_feed_text %}
+
+            <div class="profile-tab-panel is-active" data-post-panel="all">
+                {% for post in public_posts %}
+                    {% include "socialmanager/partials/post_card.html" with badge_context="public_profile" %}
+                {% empty %}
+                    {% include "socialmanager/partials/empty_state.html" with extra_class="profile-post-empty-state" title=no_posts_title text=no_posts_text button_text=create_post_text button_url=post_create_url %}
+                {% endfor %}
+            </div>
+
+            <div class="profile-tab-panel" data-post-panel="shared" hidden>
+                {% for shared_post in shared_posts %}
+                    {% include "socialmanager/partials/shared_post_card.html" %}
+                {% empty %}
+                    {% include "socialmanager/partials/empty_state.html" with extra_class="profile-post-empty-state" title=no_shared_title text=no_shared_text button_text=browse_feed_text button_url=feed_url %}
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'socialmanager/js/profile.js' %}?v=empty-panels-source-1"></script>
+{% endblock %}

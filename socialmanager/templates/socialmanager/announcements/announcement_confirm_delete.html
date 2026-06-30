@@ -1,0 +1,28 @@
+{% extends "socialmanager/base.html" %}
+{% load i18n static %}
+
+{% block title %}Creana | {% trans "Delete announcement" %}{% endblock %}
+{% block body_class %}announcement-form-page{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'socialmanager/css/pages/feed.css' %}?v=announcements-1" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="announcement-form-shell stack">
+    <section class="page-header">
+        <div>
+            <h1 class="page-title">{% trans "Delete announcement" %}</h1>
+        </div>
+    </section>
+
+    <form class="card stack announcement-form-card" method="post">
+        {% csrf_token %}
+        <p>{% blocktrans with title=object.title %}Delete "{{ title }}"? This action cannot be undone.{% endblocktrans %}</p>
+        <div class="button-row">
+            <button class="btn btn-danger-secondary" type="submit">{% trans "Delete" %}</button>
+            <a class="btn btn-secondary" href="{% url 'socialmanager:post_list' %}">{% trans "Cancel" %}</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,148 @@
+{% extends "socialmanager/base.html" %}
+{% load i18n static %}
+{% block title %}{% trans "Creana | Feed" %}{% endblock %}
+{% block body_class %}feed-page{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'socialmanager/css/pages/feed.css' %}?v=announcement-link-modal-1" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="feed-page-layout">
+    <div class="feed-posts-column">
+        {% if object_list %}
+        <div class="post-stack" data-feed-posts>
+            {% include "socialmanager/partials/feed_posts.html" %}
+        </div>
+
+        <article class="card feed-empty-state" hidden>
+            <h3 class="card-title">{% trans "No posts match this filter" %}</h3>
+            <p class="card-subtitle">
+                {% blocktrans trimmed %}
+                    Try a different hashtag or broaden the keyword search to bring
+                    more posts back into view.
+                {% endblocktrans %}
+            </p>
+        </article>
+
+        <div
+            class="feed-loading"
+            data-feed-loader
+            data-next-page="{% if page_obj.has_next %}{{ page_obj.next_page_number }}{% endif %}"
+            hidden
+        >
+            <span class="feed-loading-spinner" aria-hidden="true"></span>
+            <span>{% trans "Loading more posts..." %}</span>
+        </div>
+        <p class="feed-end-message" data-feed-end {% if page_obj.has_next %}hidden{% endif %}>{% trans "No more posts" %}</p>
+        <div class="feed-scroll-sentinel" data-feed-sentinel aria-hidden="true"></div>
+        {% else %}
+        <article class="card feed-empty-state creana-empty-state">
+            <img
+                alt=""
+                aria-hidden="true"
+                class="creana-empty-illustration"
+                src="{% static 'socialmanager/images/Noitem.png' %}"
+                loading="lazy"
+                decoding="async"
+                width="320"
+                height="320"
+            >
+            <h3 class="creana-empty-title">{% trans "No posts yet" %}</h3>
+            <p class="creana-empty-text">{% trans "Your creative space is waiting. Start by sharing your first post." %}</p>
+            <div class="creana-empty-actions">
+            <a
+                class="btn btn-primary"
+                href="{% url 'socialmanager:post_create' %}"
+                >{% trans "Create post" %}</a
+            >
+            </div>
+        </article>
+        {% endif %}
+    </div>
+
+    <aside class="feed-filter-column" aria-label="{% trans 'Feed filters' %}">
+        <div class="card filter-card">
+            <h2 class="card-title">{% trans "Filter the feed" %}</h2>
+            <input
+                class="input"
+                id="feed-search-input"
+                type="text"
+                placeholder="{% trans 'Search by hashtag or keyword' %}"
+            />
+        </div>
+
+        <div class="card announcement-card">
+            <div class="announcement-card__header">
+                <h2 class="announcement-card__title">{% trans "Announcements" %}</h2>
+                {% if request.user.is_superuser %}
+                    <a class="announcement-card__new" href="{% url 'socialmanager:announcement_create' %}" aria-label="{% trans 'New announcement' %}">
+                        <span aria-hidden="true">+</span>
+                        <span>{% trans "New" %}</span>
+                    </a>
+                {% endif %}
+            </div>
+
+            {% if announcements %}
+                <ul class="announcement-list">
+                    {% for announcement in announcements %}
+                        <li class="announcement-item">
+                            <a
+                                class="announcement-item__link"
+                                href="#announcement-modal"
+                                data-announcement-title="{{ announcement.title|escape }}"
+                                data-announcement-content="{{ announcement.content|escape }}"
+                                {% if request.user.is_superuser %}
+                                    data-announcement-edit-url="{% url 'socialmanager:announcement_update' announcement.pk %}"
+                                    data-announcement-delete-url="{% url 'socialmanager:announcement_delete' announcement.pk %}"
+                                {% endif %}
+                            >
+                                <span class="material-symbols-outlined announcement-item__pin" aria-hidden="true">push_pin</span>
+                                <span class="announcement-item__text">{{ announcement.title }}</span>
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="announcement-card__empty">{% trans "No announcements yet." %}</p>
+            {% endif %}
+        </div>
+    </aside>
+</div>
+
+<div class="announcement-modal" id="announcement-modal" data-announcement-modal hidden>
+    <div class="announcement-modal-backdrop" data-announcement-close></div>
+    <section
+        class="announcement-modal-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="announcement-modal-title"
+    >
+        <div class="announcement-modal__header">
+            <h2 id="announcement-modal-title" data-announcement-modal-title></h2>
+            <button class="announcement-modal-icon-close" type="button" aria-label="{% trans 'Close' %}" data-announcement-close>
+                <span class="material-symbols-outlined" aria-hidden="true">close</span>
+            </button>
+        </div>
+        <p class="announcement-modal-content" data-announcement-modal-content></p>
+        {% if request.user.is_superuser %}
+            <div class="announcement-modal-actions">
+                <div class="announcement-modal-admin-actions">
+                    <a class="announcement-modal__action" href="#" data-announcement-modal-edit>
+                        <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+                        <span>{% trans "Edit" %}</span>
+                    </a>
+                    <a class="announcement-modal__action announcement-modal__action--danger" href="#" data-announcement-modal-delete>
+                        <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                        <span>{% trans "Delete" %}</span>
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script defer src="{% static 'socialmanager/js/feed.js' %}?v=announcement-link-modal-1"></script>
+{% endblock %}

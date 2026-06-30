@@ -1,0 +1,28 @@
+{% extends "socialmanager/base.html" %}
+
+{% block title %}Creana | Subscription Form{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-xl-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <h1 class="page-title">{% if object %}Edit subscription{% else %}Create subscription{% endif %}</h1>
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    {% for field in form %}
+                        <div class="mb-3">
+                            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.errors %}
+                                <div class="field-error">{{ field.errors|join:", " }}</div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                    <button class="btn btn-primary" type="submit">Save subscription</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

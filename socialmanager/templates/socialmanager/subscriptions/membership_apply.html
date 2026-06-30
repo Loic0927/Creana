@@ -1,0 +1,40 @@
+{% extends "socialmanager/base.html" %}
+{% load i18n static %}
+
+{% block title %}Creana | {% trans "Creana Membership" %}{% endblock %}
+
+{% block content %}
+<section class="membership-page-shell">
+    <article class="membership-pricing-card">
+        <div class="membership-card-header">
+            <img alt="" aria-hidden="true" class="membership-illustration" src="{% static 'socialmanager/images/VIP.png' %}">
+            <h1>{% trans "Creana Membership" %}</h1>
+            <p>{% trans "Unlock AI tools for smarter content creation." %}</p>
+        </div>
+
+        <div class="membership-price">
+            <span>{% trans "US$5" %}</span>
+            <small>{% trans "/ month" %}</small>
+        </div>
+
+        <ul class="membership-benefits">
+            <li>{% trans "AI caption suggestions" %}</li>
+            <li>{% trans "AI hashtag suggestions" %}</li>
+            <li>{% trans "AI feedback for title, caption, and hashtags" %}</li>
+            <li>{% trans "AI analytics and retention insights" %}</li>
+        </ul>
+
+        {% if is_already_member %}
+            <p class="membership-status">{% trans "You are already a Creana member." %}</p>
+        {% else %}
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ membership_next_url }}">
+                <button class="btn btn-primary membership-apply-button" type="submit">{% trans "Apply membership" %}</button>
+            </form>
+        {% endif %}
+
+        <p class="membership-demo-note">{% trans "Secure checkout is processed by Stripe." %}</p>
+    </article>
+</section>
+{% endblock %}

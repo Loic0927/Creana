@@ -1,0 +1,482 @@
+/* Post analytics */
+
+.post-analytics-page .page-inner {
+    max-width: 1220px;
+}
+
+.post-analytics-page .post-analytics-shell {
+    display: grid;
+    gap: 24px;
+}
+
+.post-analytics-page .analytics-post-card,
+.post-analytics-page .analytics-panel,
+.post-analytics-page .analytics-kpi-card {
+    background: var(--gradient-card);
+    border-color: #e1e7f5;
+    border-radius: 14px;
+    box-shadow:
+        0 12px 28px rgba(79, 140, 255, 0.08),
+        0 4px 12px rgba(139, 92, 246, 0.05);
+}
+
+.post-analytics-page .analytics-post-card {
+    padding: 24px;
+}
+
+.post-analytics-page .analytics-preview {
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr);
+    gap: 28px;
+    align-items: center;
+}
+
+.post-analytics-page .analytics-preview-media {
+    width: 260px;
+    height: 160px;
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--bg-primary);
+    justify-self: start;
+}
+
+.post-analytics-page .analytics-preview-media img,
+.post-analytics-page .analytics-preview-media video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.post-analytics-page .analytics-preview-empty {
+    border: 1px dashed var(--color-border-strong);
+}
+
+.post-analytics-page .analytics-preview-copy {
+    min-width: 0;
+}
+
+.post-analytics-page .analytics-post-meta {
+    margin-bottom: 14px;
+}
+
+.post-analytics-page .analytics-post-title {
+    margin-bottom: 10px;
+    font-size: 30px;
+    line-height: 1.15;
+    letter-spacing: -0.03em;
+}
+
+.post-analytics-page .analytics-post-copy {
+    max-width: 760px;
+    margin-bottom: 0;
+    color: var(--color-muted);
+    font-size: 16px;
+    line-height: 1.65;
+}
+
+.post-analytics-page .post-analytics-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.post-analytics-page .analytics-kpi-card {
+    position: relative;
+    min-height: 132px;
+    padding: 22px 24px;
+    overflow: hidden;
+}
+
+.post-analytics-page .analytics-kpi-card .metric-label {
+    margin-bottom: 14px;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.post-analytics-page .analytics-kpi-card .metric-value {
+    margin-bottom: 0;
+    font-size: 34px;
+}
+
+.post-analytics-page .analytics-main-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.65fr) minmax(320px, 0.95fr);
+    gap: 24px;
+    align-items: start;
+}
+
+.post-analytics-page .analytics-panel {
+    display: grid;
+    gap: 20px;
+    padding: 24px;
+}
+
+.post-analytics-page .analytics-panel .card-title {
+    margin-bottom: 0;
+    font-size: 18px;
+}
+
+.post-analytics-page .post-analytics-chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 18px;
+}
+
+.post-analytics-page .post-analytics-chart-legend {
+    justify-content: flex-end;
+    gap: 14px;
+    color: var(--color-muted);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.post-analytics-page .post-performance-chart {
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--card-blue);
+    border-radius: 12px;
+    background: linear-gradient(180deg, var(--card-blue) 0%, var(--surface) 100%);
+}
+
+.post-analytics-page .post-performance-chart svg {
+    width: 100%;
+    height: auto;
+    min-height: 300px;
+}
+
+.post-analytics-page .post-performance-grid line {
+    stroke: var(--border);
+    stroke-width: 1;
+}
+
+.post-analytics-page .post-performance-axis line {
+    stroke: #d6ddea;
+    stroke-width: 1.2;
+}
+
+.post-analytics-page .post-performance-lines path {
+    stroke-width: 4;
+}
+
+.post-analytics-page .post-performance-lines circle {
+    stroke: #ffffff;
+    stroke-width: 2;
+}
+
+.post-analytics-page .video-insights-area path {
+    fill: url("#engagement-area-gradient");
+}
+
+.post-analytics-page .video-insights-lines .engagement-line {
+    stroke: var(--primary);
+}
+
+.post-analytics-page .video-insights-lines .retention-line {
+    stroke: var(--secondary);
+}
+
+.post-analytics-page .video-insights-lines .engagement-point {
+    fill: var(--primary);
+}
+
+.post-analytics-page .video-insights-lines .retention-point {
+    fill: var(--secondary);
+}
+
+.post-analytics-page .video-insights-hover-point {
+    fill: transparent;
+    stroke: transparent;
+    pointer-events: all;
+}
+
+.post-analytics-page .video-insights-legend {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    color: var(--color-muted);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.post-analytics-page .video-insights-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.post-analytics-page .video-insights-legend .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+}
+
+.post-analytics-page .video-insights-legend .engagement-dot {
+    background: var(--primary);
+}
+
+.post-analytics-page .video-insights-legend .retention-dot {
+    background: var(--secondary);
+}
+
+.post-analytics-page .post-performance-x-labels text,
+.post-analytics-page .post-performance-y-labels text {
+    fill: var(--color-muted);
+    font-family: var(--font-sans);
+    font-size: 12px;
+}
+
+.post-analytics-page .post-performance-x-labels text {
+    text-anchor: middle;
+}
+
+.post-analytics-page .post-performance-y-labels text {
+    text-anchor: end;
+    dominant-baseline: middle;
+}
+
+.post-analytics-page .bar-track {
+    height: 10px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--border);
+}
+
+.post-analytics-page .bar-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: var(--color-primary);
+}
+
+.post-analytics-page .bar-fill-secondary {
+    background: var(--card-cyan);
+}
+
+.post-analytics-page .bar-fill-comments {
+    background: var(--card-purple);
+}
+
+.post-analytics-page .bar-fill-shares {
+    background: var(--card-indigo);
+}
+
+.post-analytics-page .analytics-breakdown-bars {
+    display: grid;
+    gap: 18px;
+}
+
+.post-analytics-page .analytics-breakdown-row {
+    display: grid;
+    gap: 10px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.post-analytics-page .analytics-breakdown-row:last-child {
+    padding-bottom: 0;
+    border-bottom: 0;
+}
+
+.post-analytics-page .analytics-breakdown-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    color: var(--color-muted);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.post-analytics-page .analytics-breakdown-meta strong {
+    color: var(--color-text);
+    font-size: 16px;
+}
+
+@media (max-width: 991.98px) {
+    .post-analytics-page .analytics-preview,
+    .post-analytics-page .analytics-main-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .post-analytics-page .analytics-preview-media {
+        width: 100%;
+        max-width: 420px;
+        height: auto;
+        aspect-ratio: 16 / 10;
+    }
+
+    .post-analytics-page .post-analytics-kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .post-analytics-page .post-analytics-chart-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .post-analytics-page .post-analytics-chart-legend {
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .post-analytics-page .analytics-post-card,
+    .post-analytics-page .analytics-panel {
+        padding: 20px;
+    }
+
+    .post-analytics-page .post-analytics-kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .post-analytics-page .analytics-kpi-card {
+        display: grid;
+        grid-template-rows: minmax(44px, auto) auto;
+        align-content: start;
+        min-height: 0;
+        padding: 14px 12px 12px;
+        border-radius: 14px;
+    }
+
+    .post-analytics-page .analytics-kpi-card .metric-label {
+        min-height: 44px;
+        margin-bottom: 6px;
+        padding-right: 0;
+        font-size: 12px;
+        line-height: 1.25;
+    }
+
+    .post-analytics-page .analytics-kpi-card .metric-value {
+        align-self: start;
+        margin-bottom: 0;
+        font-size: 22px;
+        line-height: 1;
+    }
+
+    .post-analytics-page .analytics-post-title {
+        font-size: 24px;
+    }
+
+    .post-analytics-page .post-performance-chart svg {
+        min-height: 250px;
+    }
+
+    .post-analytics-page .post-performance-x-labels text,
+    .post-analytics-page .post-performance-y-labels text {
+        font-size: 10px;
+    }
+}
+
+@media (max-width: 767.98px) {.post-analytics-page .analytics-post-copy {
+        display: -webkit-box;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 3;
+    }
+
+    .post-analytics-page .post-analytics-kpis {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 6px;
+    }
+
+    .post-analytics-page .analytics-kpi-card {
+        display: grid;
+        grid-template-rows: minmax(30px, auto) auto;
+        align-content: start;
+        min-width: 0;
+        min-height: 0;
+        padding: 8px 5px;
+        border-radius: 10px;
+    }
+
+    .post-analytics-page .analytics-kpi-card .metric-label {
+        min-height: 30px;
+        margin-bottom: 2px;
+        padding-right: 0;
+        font-size: 10px;
+        line-height: 1.12;
+        overflow-wrap: anywhere;
+    }
+
+    .post-analytics-page .analytics-kpi-card .metric-value {
+        margin-bottom: 0;
+        font-size: 16px;
+        line-height: 1;
+        overflow-wrap: anywhere;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 1024px) {
+    .post-analytics-page .page-inner {
+        max-width: 900px;
+    }
+
+    .post-analytics-page .post-analytics-shell {
+        gap: 20px;
+    }
+
+    .post-analytics-page .analytics-post-card {
+        padding: 22px;
+    }
+
+    .post-analytics-page .analytics-preview {
+        grid-template-columns: 240px minmax(0, 1fr);
+        gap: 22px;
+        align-items: center;
+    }
+
+    .post-analytics-page .analytics-preview-media {
+        width: 240px;
+        max-width: 240px;
+        height: 150px;
+        aspect-ratio: auto;
+    }
+
+    .post-analytics-page .analytics-preview-media img,
+    .post-analytics-page .analytics-preview-media video {
+        object-fit: contain;
+        background: var(--bg-primary);
+    }
+
+    .post-analytics-page .analytics-post-title {
+        font-size: 26px;
+        line-height: 1.18;
+    }
+
+    .post-analytics-page .analytics-post-copy {
+        max-width: 100%;
+        font-size: 15px;
+        line-height: 1.6;
+    }
+
+    .post-analytics-page .post-analytics-kpis {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .post-analytics-page .analytics-kpi-card {
+        min-height: 108px;
+        padding: 18px 14px;
+    }
+
+    .post-analytics-page .analytics-kpi-card .metric-label {
+        margin-bottom: 10px;
+        padding-right: 0;
+        font-size: 13px;
+        line-height: 1.25;
+    }
+
+    .post-analytics-page .analytics-kpi-card .metric-value {
+        margin-bottom: 0;
+        font-size: 28px;
+        line-height: 1;
+    }
+
+    .post-analytics-page .analytics-main-grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 18px;
+    }
+}

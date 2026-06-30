@@ -1,0 +1,15 @@
+{
+  "name": "Creana",
+  "short_name": "Creana",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#7C8CFF",
+  "icons": [
+    {
+      "src": "/static/socialmanager/images/icon.webp",
+      "type": "image/webp",
+      "sizes": "128x128"
+    }
+  ]
+}

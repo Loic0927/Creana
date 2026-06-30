@@ -1,0 +1,55 @@
+{% extends "socialmanager/base.html" %}
+{% load i18n static %}
+{% load socialmanager_content %}
+{% block title %}{% trans "Creana | Notifications" %}{% endblock %}
+{% block body_class %}notifications-page{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'socialmanager/css/pages/notifications.css' %}?v=notifications-title-1" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="stack notifications-stack">
+    <div class="page-header notifications-header">
+        <div>
+            <h1 class="page-title">{% trans "Notifications" %}</h1>
+        </div>
+        {% if unread_count %}
+            <form method="post" action="{% url 'socialmanager:notifications_mark_all_read' %}">
+                {% csrf_token %}
+                <button class="btn btn-primary" type="submit">{% trans "Mark all as read" %}</button>
+            </form>
+        {% endif %}
+    </div>
+
+    <section class="card content-card notifications-card">
+        {% for group in grouped_notifications %}
+            <article class="notification-item{% if group.is_unread %} unread{% endif %}">
+                <img alt="{{ group.actor.username|default:group.actor.email }}" class="avatar-sm notification-avatar" src="{{ group.actor|avatar_url }}">
+
+                <div class="notification-copy">
+                    <p class="notification-text">
+                        <span class="notification-message">{{ group.display_prefix }}</span>
+                        {% if group.target_title %}
+                            <a class="notification-target" href="{{ group.target_url }}">{{ group.target_title }}</a>
+                        {% elif group.target_link_text %}
+                            <a class="notification-target" href="{{ group.target_url }}">{{ group.target_link_text }}</a>
+                        {% endif %}
+                    </p>
+                    <p class="notification-time">{% blocktrans with age=group.latest_created_at|timesince %}{{ age }} ago{% endblocktrans %}</p>
+                </div>
+
+                {% if group.is_unread %}
+                    <span class="notification-unread-dot" aria-label="{% trans 'Unread' %}"></span>
+                {% endif %}
+            </article>
+        {% empty %}
+            <div class="notifications-empty">
+                <span class="material-symbols-outlined" aria-hidden="true">notifications</span>
+                <h2 class="card-title">{% trans "No notifications yet" %}</h2>
+                <p class="metric-meta">{% trans "Likes, shares, comments, and follows will appear here." %}</p>
+            </div>
+        {% endfor %}
+    </section>
+</div>
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends "socialmanager/base.html" %}
+{% load i18n static %}
+
+{% block title %}{% trans "Creana | Signup" %}{% endblock %}
+{% block body_class %}auth-page login-shell{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'socialmanager/css/pages/auth.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block public_content %}
+<a class="back-link" href="{% url 'socialmanager:landing' %}">{% trans "Back to homepage" %}</a>
+<main class="login-wrap login-wrap-top">
+    <section class="card login-card login-card-compact">
+        <img
+            src="{% static 'socialmanager/images/logo.PNG' %}"
+            alt="Creana"
+            class="auth-full-logo"
+        />
+        <h1 class="page-title login-title">{% trans "Create account" %}</h1>
+        <form method="post" class="login-form signup-form signup-form-single" novalidate>
+            {% csrf_token %}
+            {% for field in form %}
+                {% if field.name == 'subscription_name' %}
+                    {{ field.as_hidden }}
+                {% else %}
+                    <div class="field signup-field">
+                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.help_text %}
+                            <div class="helper-text subtle-help">{{ field.help_text }}</div>
+                        {% endif %}
+                        {% if field.errors %}
+                            <div class="field-error">{{ field.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            {% endfor %}
+            <button class="btn btn-primary signup-submit auth-submit-full" type="submit">{% trans "Create account" %}</button>
+            <p class="helper-text login-footer signup-footer centered-copy">{% trans "Already have an account?" %} <a class="login-link" href="{% url 'socialmanager:login' %}">{% trans "Sign in" %}</a></p>
+        </form>
+    </section>
+</main>
+{% endblock %}

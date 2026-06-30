@@ -1,0 +1,101 @@
+from django.contrib.auth import views as auth_views
+from django.urls import path
+
+from .forms import CreanaPasswordResetForm
+from . import views
+
+
+app_name = "socialmanager"
+
+urlpatterns = [
+    path("", views.LandingPageView.as_view(), name="landing"),
+    path("login/", views.PasswordLoginView.as_view(), name="login"),
+    path("logout/", views.FullLogoutView.as_view(), name="logout"),
+    path(
+        "password-reset/",
+        views.CurrentHostPasswordResetView.as_view(
+            template_name="socialmanager/auth/password_reset_form.html",
+            form_class=CreanaPasswordResetForm,
+            email_template_name="socialmanager/auth/password_reset_email.txt",
+            html_email_template_name="socialmanager/auth/password_reset_email.html",
+            subject_template_name="socialmanager/auth/password_reset_subject.txt",
+            success_url="/password-reset/sent/",
+        ),
+        name="password_reset",
+    ),
+    path(
+        "password-reset/sent/",
+        auth_views.PasswordResetDoneView.as_view(
+            template_name="socialmanager/auth/password_reset_done.html",
+        ),
+        name="password_reset_done",
+    ),
+    path(
+        "password-reset/<uidb64>/<token>/",
+        auth_views.PasswordResetConfirmView.as_view(
+            template_name="socialmanager/auth/password_reset_confirm.html",
+            success_url="/password-reset/complete/",
+        ),
+        name="password_reset_confirm",
+    ),
+    path(
+        "password-reset/complete/",
+        auth_views.PasswordResetCompleteView.as_view(
+            template_name="socialmanager/auth/password_reset_complete.html",
+        ),
+        name="password_reset_complete",
+    ),
+    path("signup/", views.SignUpView.as_view(), name="signup"),
+    path("dashboard/", views.DashboardView.as_view(), name="dashboard"),
+    path("dashboard/ai-insight/", views.DashboardAIInsightView.as_view(), name="dashboard_ai_insight"),
+    path("notifications/", views.NotificationListView.as_view(), name="notifications"),
+    path("notifications/<int:pk>/open/", views.NotificationOpenView.as_view(), name="notification_open"),
+    path("notifications/mark-all-read/", views.NotificationMarkAllReadView.as_view(), name="notifications_mark_all_read"),
+    path("settings/", views.SettingsView.as_view(), name="settings"),
+    path("settings/update/", views.SettingsUpdateView.as_view(), name="settings_update"),
+    path("profile/", views.ProfileSettingsView.as_view(), name="profile"),
+    path("profiles/search/", views.profile_username_search, name="profile_username_search"),
+    path("profiles/<int:user_id>/", views.PublicProfileView.as_view(), name="public_profile"),
+    path("users/<str:username>/", views.PublicProfileView.as_view(), name="public_profile_username"),
+    path("profiles/<int:user_id>/follow/", views.UserFollowToggleView.as_view(), name="profile_follow_toggle"),
+    path("profiles/<int:user_id>/hide/", views.HiddenUserToggleView.as_view(), name="profile_hidden_user_toggle"),
+    path("users/<str:username>/hide/", views.HiddenUserToggleView.as_view(), name="profile_hidden_user_toggle_username"),
+    path("subscriptions/apply/", views.MembershipApplyView.as_view(), name="membership_apply"),
+    path("subscriptions/success/", views.MembershipSuccessView.as_view(), name="membership_success"),
+    path("subscriptions/cancel/", views.MembershipCancelView.as_view(), name="membership_cancel"),
+    path("stripe/webhook/", views.StripeWebhookView.as_view(), name="stripe_webhook"),
+    path("subscriptions/", views.SubscriptionListView.as_view(), name="subscription_list"),
+    path("subscriptions/new/", views.SubscriptionCreateView.as_view(), name="subscription_create"),
+    path("subscriptions/<int:pk>/edit/", views.SubscriptionUpdateView.as_view(), name="subscription_update"),
+    path("subscriptions/<int:pk>/archive/", views.SubscriptionArchiveView.as_view(), name="subscription_archive"),
+    path("campaigns/", views.CampaignListView.as_view(), name="campaign_list"),
+    path("campaigns/new/", views.CampaignCreateView.as_view(), name="campaign_create"),
+    path("campaigns/<int:pk>/", views.CampaignDetailView.as_view(), name="campaign_detail"),
+    path("campaigns/<int:pk>/ai-insight/", views.CampaignAIInsightView.as_view(), name="campaign_ai_insight"),
+    path("campaigns/<int:pk>/edit/", views.CampaignUpdateView.as_view(), name="campaign_update"),
+    path("campaigns/<int:pk>/delete/", views.CampaignDeleteView.as_view(), name="campaign_delete"),
+    path("announcements/create/", views.AnnouncementCreateView.as_view(), name="announcement_create"),
+    path("announcements/<int:pk>/edit/", views.AnnouncementUpdateView.as_view(), name="announcement_update"),
+    path("announcements/<int:pk>/delete/", views.AnnouncementDeleteView.as_view(), name="announcement_delete"),
+    path("posts/", views.PostListView.as_view(), name="post_list"),
+    path("posts/ai-feedback/", views.PostAIFeedbackView.as_view(), name="post_ai_feedback"),
+    path("posts/video-upload/start/", views.VideoUploadStartView.as_view(), name="video_upload_start"),
+    path("posts/new/", views.PostCreateView.as_view(), name="post_create"),
+    path("posts/<int:pk>/analytics/", views.PostAnalyticsView.as_view(), name="post_analytics"),
+    path("posts/<int:pk>/ai-insight/", views.PostAIInsightView.as_view(), name="post_ai_insight"),
+    path("posts/<int:pk>/analyze-video/", views.PostVideoAnalysisView.as_view(), name="post_video_analysis"),
+    path("posts/<int:pk>/retention-ai-insight/", views.PostRetentionAIInsightView.as_view(), name="post_retention_ai_insight"),
+    path("posts/<int:post_id>/track-watch/", views.VideoWatchTrackView.as_view(), name="track_video_watch"),
+    path("posts/<int:pk>/track-watch/", views.VideoWatchTrackView.as_view(), name="post_track_watch"),
+    path("posts/<int:pk>/detail-update/<str:section>/", views.PostDetailSectionUpdateView.as_view(), name="post_detail_section_update"),
+    path("posts/<int:pk>/engagement/<str:kind>/", views.PostEngagementToggleView.as_view(), name="post_engagement_toggle"),
+    path("posts/<int:pk>/edit/", views.PostUpdateView.as_view(), name="post_update"),
+    path("posts/<int:pk>/delete/", views.PostDeleteView.as_view(), name="post_delete"),
+    path("posts/<int:pk>/<slug:slug>/", views.PostDetailView.as_view(), name="post_detail"),
+    path("posts/<int:pk>/", views.PostDetailView.as_view(), name="post_detail_legacy"),
+    path("comments/<int:comment_id>/like/", views.CommentLikeToggleView.as_view(), name="toggle_comment_like"),
+    path("comments/<int:pk>/like/", views.CommentLikeToggleView.as_view(), name="comment_like_toggle"),
+    path("comments/<int:pk>/edit/", views.PostCommentUpdateView.as_view(), name="comment_update"),
+    path("comments/<int:pk>/delete/", views.PostCommentDeleteView.as_view(), name="comment_delete"),
+    path("analytics/", views.AnalyticsDashboardView.as_view(), name="analytics"),
+]

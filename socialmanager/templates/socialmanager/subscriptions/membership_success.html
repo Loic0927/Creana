@@ -1,0 +1,16 @@
+{% extends "socialmanager/base.html" %}
+{% load i18n %}
+
+{% block title %}Creana | {% trans "Checkout complete" %}{% endblock %}
+
+{% block content %}
+<section class="membership-page-shell">
+    <article class="membership-pricing-card">
+        <div class="membership-card-header">
+            <h1>{% trans "Checkout complete" %}</h1>
+            <p>{{ checkout_message }}</p>
+        </div>
+        <a class="btn btn-primary membership-apply-button" href="{% url 'socialmanager:dashboard' %}">{% trans "Go to dashboard" %}</a>
+    </article>
+</section>
+{% endblock %}

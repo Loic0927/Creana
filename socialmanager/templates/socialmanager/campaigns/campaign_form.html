@@ -1,0 +1,85 @@
+{% extends "socialmanager/base.html" %}
+{% load i18n static %}
+
+{% block title %}Creana | {% if object %}{% trans "Edit campaign" %}{% else %}{% trans "Create campaign" %}{% endif %}{% endblock %}
+{% block body_class %}campaign-page campaign-form-page{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'socialmanager/css/pages/campaign.css' %}?v=campaign-i18n-source-1" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="campaign-form-shell stack">
+    <section class="page-header">
+        <div>
+            <h1 class="page-title">{% if object %}{% trans "Edit campaign" %}{% else %}{% trans "Create campaign" %}{% endif %}</h1>
+        </div>
+    </section>
+
+    <form class="card stack campaign-form-card" method="post" novalidate>
+        {% csrf_token %}
+        {% if redirect_next_url %}
+            <input type="hidden" name="next" value="{{ redirect_next_url }}">
+        {% endif %}
+        <div class="campaign-form-grid">
+            {% for field in form %}
+                <div class="field {% if field.name == 'name' or field.name == 'objective' %}campaign-field-full{% endif %}">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {% if field.name == "platform_focus" %}
+                        {{ field }}
+                        <div class="platform-multiselect" data-platform-multiselect>
+                            <button class="platform-multiselect-toggle" type="button" aria-expanded="false" data-platform-toggle>
+                                <span class="platform-selected-inline" data-platform-selected-inline>
+                                    <span class="platform-placeholder" data-platform-placeholder>{% trans "Select platforms" %}</span>
+                                </span>
+                                <span class="material-symbols-outlined" aria-hidden="true">expand_more</span>
+                            </button>
+                            <div class="platform-multiselect-menu" hidden data-platform-menu>
+                                <button type="button" data-platform-option="TikTok">TikTok</button>
+                                <button type="button" data-platform-option="Instagram">Instagram</button>
+                                <button type="button" data-platform-option="YouTube">YouTube</button>
+                                <button type="button" data-platform-option="Facebook">Facebook</button>
+                                <button type="button" data-platform-option="X / Twitter">X / Twitter</button>
+                                <button type="button" data-platform-option="Reddit">Reddit</button>
+                            </div>
+                        </div>
+                    {% elif field.name == "campaign_posts" %}
+                        {{ field }}
+                        <div class="post-multiselect" data-campaign-posts-multiselect>
+                            <button class="post-multiselect-toggle" type="button" aria-expanded="false" data-campaign-posts-toggle>
+                                <span class="post-selected-inline" data-campaign-posts-selected-inline>
+                                    <span class="post-placeholder" data-campaign-posts-placeholder>{% trans "Select posts" %}</span>
+                                </span>
+                                <span class="material-symbols-outlined" aria-hidden="true">expand_more</span>
+                            </button>
+                            <div class="post-multiselect-menu" hidden data-campaign-posts-menu>
+                                {% for post in form.post_options %}
+                                    <button type="button" data-campaign-posts-option="{{ post.pk }}" data-campaign-posts-title="{{ post.title }}">{{ post.title }}</button>
+                                {% empty %}
+                                    <button type="button" disabled>{% trans "No posts available" %}</button>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% else %}
+                        {{ field }}
+                    {% endif %}
+                    {% if field.help_text %}
+                        <p class="helper-text">{{ field.help_text }}</p>
+                    {% endif %}
+                    {% if field.errors %}
+                        <div class="field-error">{{ field.errors|join:", " }}</div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+        <div class="button-row">
+            <button class="btn btn-primary" type="submit">{% trans "Save campaign" %}</button>
+            <a class="btn btn-secondary" href="{% url 'socialmanager:campaign_list' %}">{% trans "Cancel" %}</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'socialmanager/js/campaign.js' %}?v=campaign-i18n-source-1"></script>
+{% endblock %}
