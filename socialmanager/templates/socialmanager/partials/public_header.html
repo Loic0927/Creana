@@ -1,0 +1,36 @@
+{% load static %}
+<header class="landing-header public-site-header" data-public-header>
+    <div class="marketing-wrap landing-nav">
+        <div class="landing-nav-inner">
+            <a class="brand landing-brand" href="{% url 'socialmanager:landing' %}" aria-label="Creana home">
+                <img alt="" class="landing-brand-icon" src="{% static 'socialmanager/images/icon.webp' %}" width="44" height="44">
+                <img alt="Creana" class="landing-brand-text" src="{% static 'socialmanager/images/word.webp' %}" width="150" height="34">
+            </a>
+
+            <nav class="landing-links public-mega-nav" aria-label="Public navigation">
+                <button class="public-mega-trigger{% if page.route_name == 'introduction' or page.route_name == 'about' or page.route_name == 'community' or page.route_name == 'features' or page.route_name == 'ai_features' or page.route_name == 'how_it_works' or page.route_name == 'supported_platforms' or page.route_name == 'contact' %} is-active{% endif %}" type="button" data-mega-trigger="product" aria-expanded="false" aria-controls="public-mega-panel">Product</button>
+                <button class="public-mega-trigger{% if page.route_name == 'privacy' or page.route_name == 'terms' or page.route_name == 'ai_policy' %} is-active{% endif %}" type="button" data-mega-trigger="legal" aria-expanded="false" aria-controls="public-mega-panel">Legal</button>
+                <a class="landing-policy-link{% if page.route_name == 'pricing' %} is-active{% endif %}"{% if page.route_name == 'pricing' %} aria-current="page"{% endif %} href="{% url 'socialmanager:pricing' %}">Pricing</a>
+                <a class="landing-policy-link{% if page.route_name == 'faq' %} is-active{% endif %}"{% if page.route_name == 'faq' %} aria-current="page"{% endif %} href="{% url 'socialmanager:faq' %}">FAQ</a>
+                <a class="btn btn-primary" href="{% url 'socialmanager:login' %}">Login</a>
+            </nav>
+
+            <div class="public-mobile-actions">
+                <a class="btn btn-primary public-mobile-login" href="{% url 'socialmanager:login' %}">Login</a>
+                <details class="public-mobile-nav">
+                    <summary aria-label="Open public navigation"><span class="material-symbols-outlined public-mobile-menu-icon public-mobile-menu-icon--open" aria-hidden="true">menu</span><span class="material-symbols-outlined public-mobile-menu-icon public-mobile-menu-icon--close" aria-hidden="true">close</span><span class="public-mobile-menu-label">Menu</span></summary>
+                    <nav class="public-mobile-nav-panel" aria-label="Mobile public navigation">
+                        <div class="public-mobile-nav-group"><button type="button" data-mobile-group-trigger="product" aria-expanded="false">Product</button><div class="public-mobile-nav-links" data-mobile-group-panel="product" hidden><a href="{% url 'socialmanager:introduction' %}">Introduction</a><a href="{% url 'socialmanager:about' %}">About</a><a href="{% url 'socialmanager:community' %}">Community</a><a href="{% url 'socialmanager:features' %}">Features</a><a href="{% url 'socialmanager:ai_features' %}">AI Features</a><a href="{% url 'socialmanager:supported_platforms' %}">Supported Platforms</a><a href="{% url 'socialmanager:how_it_works' %}">How It Works</a><a href="{% url 'socialmanager:contact' %}">Contact</a></div></div>
+                        <div class="public-mobile-nav-group"><button type="button" data-mobile-group-trigger="legal" aria-expanded="false">Legal</button><div class="public-mobile-nav-links" data-mobile-group-panel="legal" hidden><a href="{% url 'socialmanager:privacy' %}">Privacy</a><a href="{% url 'socialmanager:terms' %}">Terms</a><a href="{% url 'socialmanager:ai_policy' %}">AI Policy</a></div></div>
+                        <div class="public-mobile-direct-links"><a href="{% url 'socialmanager:pricing' %}">Pricing</a><a href="{% url 'socialmanager:faq' %}">FAQ</a></div>
+                    </nav>
+                </details>
+            </div>
+        </div>
+
+        <div class="public-mega-panel" id="public-mega-panel" data-mega-panel hidden>
+            <div class="public-mega-section" data-mega-section="product" hidden><div class="public-mega-links"><a href="{% url 'socialmanager:introduction' %}">Introduction</a><a href="{% url 'socialmanager:about' %}">About</a><a href="{% url 'socialmanager:community' %}">Community</a><a href="{% url 'socialmanager:features' %}">Features</a><a href="{% url 'socialmanager:ai_features' %}">AI Features</a><a href="{% url 'socialmanager:supported_platforms' %}">Supported Platforms</a><a href="{% url 'socialmanager:how_it_works' %}">How It Works</a><a href="{% url 'socialmanager:contact' %}">Contact</a></div></div>
+            <div class="public-mega-section" data-mega-section="legal" hidden><div class="public-mega-links"><a href="{% url 'socialmanager:privacy' %}">Privacy</a><a href="{% url 'socialmanager:terms' %}">Terms</a><a href="{% url 'socialmanager:ai_policy' %}">AI Policy</a></div></div>
+        </div>
+    </div>
+</header>

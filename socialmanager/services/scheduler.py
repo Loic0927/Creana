@@ -29,7 +29,31 @@ def publish_due_scheduled_posts(now=None):
         status=SocialMediaPost.Status.SCHEDULED,
         scheduled_for__lte=now,
     )
-    return due_posts.update(status=SocialMediaPost.Status.PUBLISHED, published_at=now)
+    from socialmanager.services.web_push import send_push_notification
+
+    published = 0
+    for post in due_posts.select_related("author"):
+        try:
+            post.status = SocialMediaPost.Status.PUBLISHED
+            post.published_at = now
+            post.save(update_fields=["status", "published_at", "updated_at"])
+            send_push_notification(
+                post.author,
+                "Scheduled post published",
+                f'“{post.title}” is now published.',
+                f"/posts/{post.pk}/",
+                "scheduled_post_published",
+            )
+            published += 1
+        except Exception:
+            send_push_notification(
+                post.author,
+                "Scheduled post failed",
+                f'“{post.title}” could not be published.',
+                f"/posts/{post.pk}/",
+                "scheduled_post_failed",
+            )
+    return published
 
 
 def build_dispatch_payload(post):

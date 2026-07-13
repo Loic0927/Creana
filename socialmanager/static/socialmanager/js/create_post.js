@@ -36,10 +36,13 @@ function setupCreatePostPage() {
     const scheduleMessage = document.getElementById("schedule-message");
     const imageInput = document.getElementById("id_image");
     const videoInput = document.getElementById("id_video_file");
+    const videoThumbnailInput = document.getElementById("id_video_thumbnail");
     const uploadedVideoObjectNameInput = document.getElementById("uploaded-video-object-name");
+    const uploadedVideoDurationInput = document.getElementById("uploaded-video-duration-seconds");
     const directVideoUploadEnabled = postForm?.dataset.directVideoUploadEnabled === "true";
     const geminiVideoMaxBytes = Number(postForm?.dataset.geminiVideoMaxBytes || 50 * 1024 * 1024);
     const geminiVideoMaxSeconds = Number(postForm?.dataset.geminiVideoMaxSeconds || 60);
+    const videoMaxDurationSeconds = Number(postForm?.dataset.videoMaxDurationSeconds || 60);
     const illustrationImagesInput = document.getElementById("id_illustration_images");
     const mediaUploadCard = document.getElementById("media-upload-card");
     const articleMediaPanel = document.getElementById("article-media-panel");
@@ -105,6 +108,13 @@ function setupCreatePostPage() {
     let articleObjectUrl = null;
     let videoObjectUrl = null;
     let videoUploadInProgress = false;
+    let activeVideoUploadController = null;
+    let videoThumbnailObjectUrl = null;
+    let videoThumbnailGenerationPromise = null;
+    let videoThumbnailGenerationId = 0;
+    let selectedVideoDurationSeconds = null;
+    let selectedVideoDurationReady = false;
+    let selectedVideoDurationError = "";
     let selectedIllustrationFiles = [];
     let illustrationObjectUrls = [];
     let currentPostType = "article";
@@ -117,6 +127,13 @@ function setupCreatePostPage() {
     const titleMaxLength = Number(titleInput?.dataset.characterCounterMax || titleInput?.maxLength || 50);
     const captionMaxLength = Number(captionInput?.dataset.characterCounterMax || captionInput?.maxLength || 250);
     const maxHashtags = Number(hashtagsInput?.dataset.maxTags || 5);
+    const videoUploadChunkSize = 8 * 1024 * 1024;
+    const videoUploadMaxRetries = 4;
+    const videoUploadRetryStatuses = new Set([408, 429, 500, 502, 503, 504]);
+    const videoDurationToleranceSeconds = 0.05;
+    const videoTooLongMessage = "Please provide a video that is 60 seconds or shorter.";
+    const videoDurationUnreadableMessage = "The video duration could not be read. Please choose a supported video file.";
+    const videoTextFallbackMessage = "Video analysis is unavailable. Please add a title, caption, or hashtags so AI can generate a suggestion from your text.";
 
     const createDraftInput = (id, sourceInput) => {
         const input = document.createElement("input");
@@ -935,6 +952,17 @@ function setupCreatePostPage() {
         );
     };
 
+    const hasTextAiSourceContent = () => {
+        const fields = getActiveDraftFields();
+        return Boolean(
+            normalizeAiValue(fields.title?.value) ||
+            normalizeAiValue(fields.caption?.value) ||
+            normalizeAiValue(fields.article_caption?.value) ||
+            normalizeAiValue(fields.hashtags?.value) ||
+            normalizeAiValue(getArticleText())
+        );
+    };
+
     const getAiValidationMessage = () => {
         return "Please add a short description, title, or caption before using AI feedback.";
     };
@@ -1087,6 +1115,8 @@ function setupCreatePostPage() {
     const buildAiPayload = (fieldShell, feedbackType) => {
         const input = getAiFieldInput(fieldShell, feedbackType);
         const fields = getActiveDraftFields();
+        const selectedVideo = currentPostType === "video" ? videoInput?.files?.[0] : null;
+        const useTextOnlyVideoFallback = Boolean(selectedVideo && selectedVideo.size > geminiVideoMaxBytes);
         const aiPostType =
             currentPostType === "illustration"
                 ? "photo_post"
@@ -1108,8 +1138,13 @@ function setupCreatePostPage() {
             article_caption: normalizeAiValue(fields.article_caption?.value),
             hashtags: normalizeAiValue(fields.hashtags?.value),
             uploaded_video_object_name: normalizeAiValue(uploadedVideoObjectNameInput?.value),
-            video_duration_seconds: Number.isFinite(previewVideo?.duration)
-                ? Math.round(previewVideo.duration * 10) / 10
+            video_analysis_requested: currentPostType === "video" && !useTextOnlyVideoFallback,
+            video_fallback_reason: useTextOnlyVideoFallback ? "video_too_large" : "",
+            use_text_only_fallback: useTextOnlyVideoFallback,
+            video_duration_seconds: Number.isFinite(selectedVideoDurationSeconds)
+                ? selectedVideoDurationSeconds
+                : Number.isFinite(previewVideo?.duration)
+                    ? previewVideo.duration
                 : null,
         };
     };
@@ -1145,6 +1180,26 @@ function setupCreatePostPage() {
         }
     };
 
+    const isSupportedAiImageFile = (file) =>
+        ["image/jpeg", "image/png", "image/webp"].includes(file?.type || "");
+
+    const aiImageErrorMessages = {
+            image_input_unavailable: "AI did not receive a valid image. Please reselect the image and try again.",
+            unsupported_image: "This image format is not supported. Please use JPG, PNG, or WebP.",
+            invalid_image: "The image file is invalid or corrupted.",
+            empty_image: "The image file is empty. Please choose another image.",
+            image_too_large: "The image file is too large. Please choose a smaller image.",
+            image_analysis_failed: "AI could not analyze the image, so no suggestion was generated.",
+    };
+
+    const getAiImageUnavailableMessage = (code) => {
+        return aiImageErrorMessages[code] || "The image could not be provided to AI. Please reselect the image and try again.";
+    };
+
+    const getAiImageErrorMessage = (code) => {
+        return aiImageErrorMessages[code] || "";
+    };
+
     const buildAiRequestBody = async (fieldShell, feedbackType) => {
         const payload = buildAiPayload(fieldShell, feedbackType);
         const imageFile = getFirstAiImageFile();
@@ -1159,9 +1214,26 @@ function setupCreatePostPage() {
                     headers: {},
                 };
             }
+            if (!isSupportedAiImageFile(imageFile)) {
+                throw new Error(getAiImageUnavailableMessage("unsupported_image"));
+            }
+            if (!imageFile.size) {
+                throw new Error(getAiImageUnavailableMessage("empty_image"));
+            }
+            if (imageFile.size > 2 * 1024 * 1024) {
+                throw new Error(getAiImageUnavailableMessage("image_too_large"));
+            }
+            const body = new FormData();
+            body.append("payload", JSON.stringify(payload));
+            body.append("image", imageFile, imageFile.name || "ai-feedback-image");
+            return {
+                body,
+                headers: {},
+            };
         }
         const selectedVideo = currentPostType === "video" ? videoInput?.files?.[0] : null;
-        if (selectedVideo && !directVideoUploadEnabled) {
+        const useTextOnlyVideoFallback = Boolean(selectedVideo && selectedVideo.size > geminiVideoMaxBytes);
+        if (selectedVideo && !directVideoUploadEnabled && !useTextOnlyVideoFallback) {
             const body = new FormData();
             body.append("payload", JSON.stringify(payload));
             body.append("video", selectedVideo, selectedVideo.name);
@@ -1192,15 +1264,17 @@ function setupCreatePostPage() {
                 renderAiFieldError(fieldShell, "Please finish uploading a video before using AI feedback.");
                 return;
             }
-            if (selectedVideo && selectedVideo.size > geminiVideoMaxBytes) {
-                renderAiFieldError(fieldShell, `Video AI supports files up to ${Math.floor(geminiVideoMaxBytes / 1024 / 1024)} MB.`);
+            const durationError = getSelectedVideoDurationError();
+            if (durationError) {
+                renderAiFieldError(fieldShell, durationError);
                 return;
             }
-            if (Number.isFinite(previewVideo?.duration) && previewVideo.duration > geminiVideoMaxSeconds) {
-                renderAiFieldError(fieldShell, `Video AI supports clips up to ${geminiVideoMaxSeconds} seconds.`);
+            const useTextOnlyVideoFallback = Boolean(selectedVideo && selectedVideo.size > geminiVideoMaxBytes);
+            if (useTextOnlyVideoFallback && !hasTextAiSourceContent()) {
+                renderAiFieldError(fieldShell, videoTextFallbackMessage);
                 return;
             }
-            if (selectedVideo && directVideoUploadEnabled && !uploadedVideoObjectNameInput?.value) {
+            if (selectedVideo && directVideoUploadEnabled && !uploadedVideoObjectNameInput?.value && !useTextOnlyVideoFallback) {
                 if (videoUploadInProgress) {
                     renderAiFieldError(fieldShell, "Please wait for the video upload to finish.");
                     return;
@@ -1219,12 +1293,14 @@ function setupCreatePostPage() {
                         videoPreviewNote.textContent = "Video uploaded securely. Starting AI analysis...";
                     }
                 } catch (error) {
-                    renderAiFieldError(fieldShell, error.message || "Video upload failed. Please try again.");
+                    renderAiFieldError(fieldShell, getVideoUploadErrorMessage(error));
                     setAiButtonLoading(triggerButton, false);
                     videoUploadInProgress = false;
+                    activeVideoUploadController = null;
                     return;
                 }
                 videoUploadInProgress = false;
+                activeVideoUploadController = null;
             }
         }
 
@@ -1266,7 +1342,11 @@ function setupCreatePostPage() {
             }
 
             if (!response.ok) {
-                throw new Error(data.error || "AI feedback could not be generated.");
+                throw new Error(data.message || getAiImageErrorMessage(data.error) || data.error || "AI feedback could not be generated.");
+            }
+
+            if (currentPostType === "illustration" && data.used_image_input !== true) {
+                throw new Error(getAiImageUnavailableMessage(data.error || "image_input_unavailable"));
             }
 
             renderAiResult(fieldShell, feedbackType, {
@@ -1374,6 +1454,230 @@ function setupCreatePostPage() {
         uploadError.textContent = message;
     };
 
+    const setSubmitButtonsDisabled = (isDisabled) => {
+        postForm?.querySelectorAll('button[type="submit"]').forEach((button) => {
+            button.disabled = isDisabled;
+        });
+    };
+
+    const resetSelectedVideoDuration = () => {
+        selectedVideoDurationSeconds = null;
+        selectedVideoDurationReady = false;
+        selectedVideoDurationError = "";
+        if (uploadedVideoDurationInput) {
+            uploadedVideoDurationInput.value = "";
+        }
+    };
+
+    const clearVideoThumbnailInput = () => {
+        videoThumbnailGenerationId += 1;
+        if (videoThumbnailObjectUrl) {
+            URL.revokeObjectURL(videoThumbnailObjectUrl);
+            videoThumbnailObjectUrl = null;
+        }
+        videoThumbnailGenerationPromise = null;
+        if (videoThumbnailInput) {
+            videoThumbnailInput.value = "";
+        }
+    };
+
+    const waitForVideoEvent = (video, eventName, timeoutMs = 5000) =>
+        new Promise((resolve, reject) => {
+            const timeout = window.setTimeout(() => {
+                cleanup();
+                reject(new Error(`${eventName} timed out`));
+            }, timeoutMs);
+            const cleanup = () => {
+                window.clearTimeout(timeout);
+                video.removeEventListener(eventName, handleEvent);
+                video.removeEventListener("error", handleError);
+            };
+            const handleEvent = () => {
+                cleanup();
+                resolve();
+            };
+            const handleError = () => {
+                cleanup();
+                reject(new Error("Video thumbnail source could not be read."));
+            };
+            video.addEventListener(eventName, handleEvent, { once: true });
+            video.addEventListener("error", handleError, { once: true });
+        });
+
+    const canvasToBlob = (canvas, type, quality) =>
+        new Promise((resolve) => canvas.toBlob(resolve, type, quality));
+
+    const setVideoThumbnailFile = (blob, extension) => {
+        if (!videoThumbnailInput || !blob) {
+            return false;
+        }
+        const transfer = new DataTransfer();
+        const file = new File([blob], `video-thumbnail.${extension}`, {
+            type: blob.type || (extension === "webp" ? "image/webp" : "image/jpeg"),
+            lastModified: Date.now(),
+        });
+        transfer.items.add(file);
+        videoThumbnailInput.files = transfer.files;
+        return true;
+    };
+
+    const generateVideoThumbnail = async (file, generationId) => {
+        if (!file?.type?.startsWith("video/") || !videoThumbnailInput) {
+            return false;
+        }
+
+        const video = document.createElement("video");
+        video.muted = true;
+        video.playsInline = true;
+        video.preload = "metadata";
+        video.crossOrigin = "anonymous";
+        const objectUrl = URL.createObjectURL(file);
+        videoThumbnailObjectUrl = objectUrl;
+        video.src = objectUrl;
+
+        try {
+            await waitForVideoEvent(video, "loadedmetadata", 7000);
+            const duration = Number(video.duration);
+            const seekTime = Number.isFinite(duration) && duration > 2
+                ? 1
+                : Math.max(0, duration * 0.25 || 0);
+            if (seekTime > 0) {
+                video.currentTime = Math.min(seekTime, Math.max(duration - 0.05, 0));
+                await waitForVideoEvent(video, "seeked", 7000);
+            } else if (video.readyState < 2) {
+                await waitForVideoEvent(video, "loadeddata", 7000);
+            }
+
+            const sourceWidth = video.videoWidth;
+            const sourceHeight = video.videoHeight;
+            if (!sourceWidth || !sourceHeight) {
+                throw new Error("Video dimensions are unavailable.");
+            }
+
+            const maxDimension = 720;
+            const scale = Math.min(1, maxDimension / Math.max(sourceWidth, sourceHeight));
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.max(1, Math.round(sourceWidth * scale));
+            canvas.height = Math.max(1, Math.round(sourceHeight * scale));
+            canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            if (generationId !== videoThumbnailGenerationId) {
+                return false;
+            }
+
+            const webpBlob = await canvasToBlob(canvas, "image/webp", 0.8);
+            if (generationId === videoThumbnailGenerationId && webpBlob && setVideoThumbnailFile(webpBlob, "webp")) {
+                return true;
+            }
+            const jpegBlob = await canvasToBlob(canvas, "image/jpeg", 0.82);
+            if (generationId === videoThumbnailGenerationId && jpegBlob && setVideoThumbnailFile(jpegBlob, "jpg")) {
+                return true;
+            }
+            throw new Error("Canvas thumbnail export failed.");
+        } catch (error) {
+            if (generationId === videoThumbnailGenerationId && videoThumbnailInput) {
+                videoThumbnailInput.value = "";
+            }
+            console.warn("Video thumbnail could not be created; placeholder will be used.", error);
+            if (videoPreviewNote) {
+                videoPreviewNote.hidden = false;
+                videoPreviewNote.textContent = "Thumbnail could not be created; placeholder will be used.";
+            }
+            return false;
+        } finally {
+            video.removeAttribute("src");
+            video.load();
+            if (videoThumbnailObjectUrl === objectUrl) {
+                URL.revokeObjectURL(objectUrl);
+                videoThumbnailObjectUrl = null;
+            }
+        }
+    };
+
+    const beginVideoThumbnailGeneration = (file) => {
+        if (!file) {
+            clearVideoThumbnailInput();
+            return null;
+        }
+        clearVideoThumbnailInput();
+        const generationId = videoThumbnailGenerationId;
+        const thumbnailPromise = generateVideoThumbnail(file, generationId).finally(() => {
+            if (videoThumbnailGenerationPromise === thumbnailPromise) {
+                videoThumbnailGenerationPromise = null;
+            }
+        });
+        videoThumbnailGenerationPromise = thumbnailPromise;
+        return videoThumbnailGenerationPromise;
+    };
+
+    const validateDurationNumber = (duration) => {
+        if (!Number.isFinite(duration) || duration <= 0) {
+            return videoDurationUnreadableMessage;
+        }
+        if (duration > videoMaxDurationSeconds + videoDurationToleranceSeconds) {
+            return videoTooLongMessage;
+        }
+        return "";
+    };
+
+    const rejectSelectedVideo = (message) => {
+        if (videoObjectUrl) {
+            URL.revokeObjectURL(videoObjectUrl);
+            videoObjectUrl = null;
+        }
+        clearVideoPreview();
+        setUploadError(message);
+        showValidationToast(message);
+        setSubmitButtonsDisabled(false);
+    };
+
+    const readSelectedVideoDuration = (file) => {
+        resetSelectedVideoDuration();
+        selectedVideoDurationError = videoDurationUnreadableMessage;
+        setSubmitButtonsDisabled(true);
+        if (videoPreviewNote) {
+            videoPreviewNote.hidden = false;
+            videoPreviewNote.textContent = "Reading video duration...";
+        }
+
+        const complete = () => {
+            const duration = Number(previewVideo?.duration);
+            const errorMessage = validateDurationNumber(duration);
+            if (errorMessage) {
+                selectedVideoDurationError = errorMessage;
+                rejectSelectedVideo(errorMessage);
+                return;
+            }
+            selectedVideoDurationSeconds = duration;
+            selectedVideoDurationReady = true;
+            selectedVideoDurationError = "";
+            if (uploadedVideoDurationInput) {
+                uploadedVideoDurationInput.value = String(duration);
+            }
+            if (videoPreviewNote) {
+                videoPreviewNote.hidden = false;
+                videoPreviewNote.textContent = "1 video selected";
+            }
+            setSubmitButtonsDisabled(false);
+        };
+
+        const fail = () => {
+            selectedVideoDurationError = videoDurationUnreadableMessage;
+            rejectSelectedVideo(videoDurationUnreadableMessage);
+        };
+
+        if (!file || !previewVideo) {
+            fail();
+            return;
+        }
+        if (previewVideo.readyState >= 1) {
+            complete();
+            return;
+        }
+        previewVideo.addEventListener("loadedmetadata", complete, { once: true });
+        previewVideo.addEventListener("error", fail, { once: true });
+    };
+
     const revokeIllustrationObjectUrls = () => {
         illustrationObjectUrls.forEach((url) => URL.revokeObjectURL(url));
         illustrationObjectUrls = [];
@@ -1473,6 +1777,10 @@ function setupCreatePostPage() {
     };
 
     const clearVideoPreview = () => {
+        if (videoUploadInProgress && activeVideoUploadController) {
+            activeVideoUploadController.abort();
+        }
+
         if (videoPreviewWrap) {
             videoPreviewWrap.hidden = true;
         }
@@ -1496,6 +1804,8 @@ function setupCreatePostPage() {
         if (uploadedVideoObjectNameInput) {
             uploadedVideoObjectNameInput.value = "";
         }
+        resetSelectedVideoDuration();
+        clearVideoThumbnailInput();
     };
 
     const clearIllustrationPreview = () => {
@@ -1876,6 +2186,10 @@ function setupCreatePostPage() {
             file.type.startsWith("video/") &&
             validVideoExtensions.some((extension) => fileName.endsWith(extension));
 
+        if (videoUploadInProgress && activeVideoUploadController) {
+            activeVideoUploadController.abort();
+        }
+
         if (videoObjectUrl) {
             URL.revokeObjectURL(videoObjectUrl);
             videoObjectUrl = null;
@@ -1889,9 +2203,11 @@ function setupCreatePostPage() {
         if (uploadedVideoObjectNameInput) {
             uploadedVideoObjectNameInput.value = "";
         }
+        resetSelectedVideoDuration();
 
         if (!isValidVideo) {
             videoInput.value = "";
+            clearVideoThumbnailInput();
             setUploadError("Upload a supported video file: MP4, WebM, or MOV.");
             return;
         }
@@ -1911,6 +2227,7 @@ function setupCreatePostPage() {
             : fallbackMaxBytes;
         if (file.size > maxBytes) {
             videoInput.value = "";
+            clearVideoThumbnailInput();
             setUploadError(`This video is too large. Choose a video smaller than ${Math.floor(maxBytes / 1024 / 1024)} MB.`);
             return;
         }
@@ -1918,6 +2235,8 @@ function setupCreatePostPage() {
         videoObjectUrl = URL.createObjectURL(file);
         setVideoPreview(videoObjectUrl, "1 video selected");
         setUploadError("");
+        beginVideoThumbnailGeneration(file);
+        readSelectedVideoDuration(file);
     });
 
     const setVideoUploadSubmittingState = (isUploading) => {
@@ -1932,11 +2251,147 @@ function setupCreatePostPage() {
         }
     };
 
+    const setVideoUploadProgress = (uploadedBytes, totalBytes, message = "") => {
+        if (!videoPreviewNote) {
+            return;
+        }
+        const total = Math.max(Number(totalBytes) || 0, 1);
+        const percent = Math.min(100, Math.max(0, Math.floor((uploadedBytes / total) * 100)));
+        videoPreviewNote.hidden = false;
+        videoPreviewNote.textContent = message || `Uploading video: ${percent}%`;
+    };
+
+    const sleep = (milliseconds) =>
+        new Promise((resolve) => {
+            window.setTimeout(resolve, milliseconds);
+        });
+
+    const getRetryDelay = (attempt) => {
+        const baseDelay = Math.min(16000, 1000 * (2 ** Math.max(attempt - 1, 0)));
+        return baseDelay + Math.floor(Math.random() * 500);
+    };
+
+    const parseUploadedBytesFromRange = (rangeHeader) => {
+        const match = String(rangeHeader || "").match(/bytes=0-(\d+)$/i);
+        return match ? Number(match[1]) + 1 : 0;
+    };
+
+    const isRetryableUploadError = (error) =>
+        error?.name !== "AbortError" &&
+        (error?.retryable === true || error instanceof TypeError);
+
+    const getVideoUploadErrorMessage = (error) => {
+        if (error?.name === "AbortError") {
+            return "Video upload was cancelled.";
+        }
+        return error?.message || "Video upload failed. Please try again.";
+    };
+
+    const getSelectedVideoDurationError = () => {
+        if (!videoInput?.files?.[0]) {
+            return "";
+        }
+        if (selectedVideoDurationError) {
+            return selectedVideoDurationError;
+        }
+        if (!selectedVideoDurationReady) {
+            return videoDurationUnreadableMessage;
+        }
+        return validateDurationNumber(selectedVideoDurationSeconds);
+    };
+
+    const createUploadError = (message, { retryable = false } = {}) => {
+        const error = new Error(message);
+        error.retryable = retryable;
+        return error;
+    };
+
+    const queryUploadStatus = async (uploadUrl, totalBytes, signal) => {
+        const response = await fetch(uploadUrl, {
+            method: "PUT",
+            headers: {
+                "Content-Range": `bytes */${totalBytes}`,
+            },
+            signal,
+        });
+        if (response.status === 308) {
+            return parseUploadedBytesFromRange(response.headers.get("Range"));
+        }
+        if (response.status === 200 || response.status === 201) {
+            return totalBytes;
+        }
+        if ([404, 410].includes(response.status)) {
+            throw createUploadError("Video upload session expired. Please select the video and try again.");
+        }
+        throw createUploadError("Video upload failed. Check your connection and try again.", {
+            retryable: videoUploadRetryStatuses.has(response.status),
+        });
+    };
+
+    const uploadVideoChunk = async (uploadUrl, file, startByte, signal) => {
+        const endByte = Math.min(startByte + videoUploadChunkSize, file.size) - 1;
+        const response = await fetch(uploadUrl, {
+            method: "PUT",
+            headers: {
+                "Content-Type": file.type,
+                "Content-Range": `bytes ${startByte}-${endByte}/${file.size}`,
+            },
+            body: file.slice(startByte, endByte + 1),
+            signal,
+        });
+        if (response.status === 308) {
+            const uploadedBytes = parseUploadedBytesFromRange(response.headers.get("Range"));
+            return Math.max(uploadedBytes, endByte + 1);
+        }
+        if (response.status === 200 || response.status === 201) {
+            return file.size;
+        }
+        if ([404, 410].includes(response.status)) {
+            throw createUploadError("Video upload session expired. Please select the video and try again.");
+        }
+        throw createUploadError("Video upload failed. Check your connection and try again.", {
+            retryable: videoUploadRetryStatuses.has(response.status),
+        });
+    };
+
+    const uploadVideoChunkWithRetry = async (uploadUrl, file, startByte, signal) => {
+        let confirmedBytes = startByte;
+        for (let attempt = 0; attempt <= videoUploadMaxRetries; attempt += 1) {
+            try {
+                return await uploadVideoChunk(uploadUrl, file, confirmedBytes, signal);
+            } catch (error) {
+                if (error?.name === "AbortError") {
+                    throw createUploadError("Video upload was cancelled.");
+                }
+                if (!isRetryableUploadError(error) || attempt === videoUploadMaxRetries) {
+                    throw error;
+                }
+                setVideoUploadProgress(
+                    confirmedBytes,
+                    file.size,
+                    `Connection interrupted. Retrying upload (${attempt + 1}/${videoUploadMaxRetries})...`,
+                );
+                await sleep(getRetryDelay(attempt + 1));
+                confirmedBytes = Math.max(
+                    confirmedBytes,
+                    await queryUploadStatus(uploadUrl, file.size, signal),
+                );
+                if (confirmedBytes >= file.size) {
+                    return file.size;
+                }
+            }
+        }
+        return confirmedBytes;
+    };
+
     const uploadVideoDirectly = async (file) => {
         const endpoint = postForm?.dataset.videoUploadStartUrl;
         if (!endpoint) {
             throw new Error("Direct video upload is unavailable on this page.");
         }
+
+        activeVideoUploadController = new AbortController();
+        const { signal } = activeVideoUploadController;
 
         const startResponse = await fetch(endpoint, {
             method: "POST",
@@ -1948,24 +2403,26 @@ function setupCreatePostPage() {
                 filename: file.name,
                 content_type: file.type,
                 size: file.size,
+                duration_seconds: selectedVideoDurationSeconds,
             }),
+            signal,
         });
         const startData = await startResponse.json().catch(() => ({}));
         if (!startResponse.ok || !startData.upload_url || !startData.object_name) {
             throw new Error(startData.error || "Video upload could not be started.");
         }
 
-        const uploadResponse = await fetch(startData.upload_url, {
-            method: "PUT",
-            headers: {
-                "Content-Type": file.type,
-                "Content-Range": `bytes 0-${file.size - 1}/${file.size}`,
-            },
-            body: file,
-        });
-        if (!uploadResponse.ok) {
-            throw new Error("Video upload failed. Check your connection and try again.");
+        let confirmedBytes = await queryUploadStatus(startData.upload_url, file.size, signal);
+        while (confirmedBytes < file.size) {
+            confirmedBytes = await uploadVideoChunkWithRetry(
+                startData.upload_url,
+                file,
+                confirmedBytes,
+                signal,
+            );
+            setVideoUploadProgress(confirmedBytes, file.size);
         }
+        setVideoUploadProgress(file.size, file.size, "Video upload complete");
         return startData.object_name;
     };
 
@@ -2057,6 +2514,31 @@ function setupCreatePostPage() {
         syncActiveDraftToMaster();
 
         const selectedVideo = videoInput?.files?.[0];
+        if (currentPostType === "video" && selectedVideo) {
+            const durationError = getSelectedVideoDurationError();
+            if (durationError) {
+                event.preventDefault();
+                setUploadError(durationError);
+                showValidationToast(durationError);
+                mediaUploadCard?.scrollIntoView({ behavior: "smooth", block: "center" });
+                return;
+            }
+            if (videoThumbnailGenerationPromise) {
+                event.preventDefault();
+                setSubmitButtonsDisabled(true);
+                if (videoPreviewNote) {
+                    videoPreviewNote.hidden = false;
+                    videoPreviewNote.textContent = "Preparing video thumbnail...";
+                }
+                videoThumbnailGenerationPromise
+                    .catch(() => false)
+                    .finally(() => {
+                        setSubmitButtonsDisabled(false);
+                        postForm.requestSubmit();
+                    });
+                return;
+            }
+        }
         if (
             currentPostType === "video" &&
             directVideoUploadEnabled &&
@@ -2079,12 +2561,14 @@ function setupCreatePostPage() {
                 })
                 .catch((error) => {
                     setVideoUploadSubmittingState(false);
-                    setUploadError(error.message || "Video upload failed. Please try again.");
-                    showValidationToast(error.message || "Video upload failed. Please try again.");
+                    const message = getVideoUploadErrorMessage(error);
+                    setUploadError(message);
+                    showValidationToast(message);
                     mediaUploadCard?.scrollIntoView({ behavior: "smooth", block: "center" });
                 })
                 .finally(() => {
                     videoUploadInProgress = false;
+                    activeVideoUploadController = null;
                 });
             return;
         }

@@ -1,8 +1,7 @@
-import re
-
 from django.contrib.auth import get_user_model
 from django.db.models import Count
 from django.db.models.functions import Lower
+from django.utils.text import slugify
 
 from .models import USERNAME_MAX_LENGTH
 
@@ -32,6 +31,15 @@ def get_active_users_for_email(email):
     ]
 
 
+def get_users_for_email(email):
+    email = normalize_email(email)
+    if not email:
+        return []
+    return list(
+        get_user_model().objects.filter(email__iexact=email).order_by("id")
+    )
+
+
 def get_duplicate_email_groups():
     return (
         get_user_model()
@@ -46,8 +54,10 @@ def get_duplicate_email_groups():
 
 def username_base_from_email(email):
     local_part = normalize_email(email).split("@", 1)[0].strip()
-    local_part = re.sub(r"\s+", "", local_part)
-    return (local_part or "user")[:USERNAME_MAX_LENGTH]
+    # ASCII slug output is accepted by Django's username validator and avoids
+    # database/provider differences for punctuation and non-Latin characters.
+    base = slugify(local_part).lower() or "user"
+    return base[:USERNAME_MAX_LENGTH]
 
 
 def generate_unique_username_from_email(email, exclude_user=None):

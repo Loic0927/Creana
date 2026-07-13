@@ -14,6 +14,7 @@ from django.utils.translation import gettext_lazy as _
 from .account_identity import (
     generate_unique_username_from_email,
     get_active_users_for_email,
+    get_users_for_email,
     normalize_email,
     user_email_exists,
 )
@@ -26,6 +27,7 @@ AUTHENTICATED_GOOGLE_LOGIN_MESSAGE = "Please log out before signing in with anot
 ADMIN_GOOGLE_LINK_MESSAGE = "Admin accounts cannot link Google from this flow."
 EMAIL_LINKED_ELSEWHERE_MESSAGE = "This Google email is already linked to another account."
 EMAIL_ALREADY_REGISTERED_MESSAGE = _("This email is already registered. Please sign in or use password reset.")
+GOOGLE_EMAIL_REQUIRED_MESSAGE = _("Google did not provide an email address. Please choose an account that shares its email.")
 
 logger = logging.getLogger(__name__)
 
@@ -136,7 +138,10 @@ class SocialManagerSocialAccountAdapter(DefaultSocialAccountAdapter):
             "Entering is_auto_signup_allowed(); allauth is evaluating social auto-signup",
             **self._sociallogin_context(request, sociallogin),
         )
-        result = super().is_auto_signup_allowed(request, sociallogin)
+        # Make our contract explicit: email is the only identity input needed
+        # for auto-signup; username is generated in populate_user()/save_user().
+        email = self._get_social_email(sociallogin)
+        result = bool(email)
         _oauth_debug(
             "Leaving is_auto_signup_allowed() before return",
             **self._sociallogin_context(request, sociallogin),
@@ -159,7 +164,7 @@ class SocialManagerSocialAccountAdapter(DefaultSocialAccountAdapter):
         provider = sociallogin.account.provider
         uid = sociallogin.account.uid
         email = self._get_social_email(sociallogin)
-        email_users = get_active_users_for_email(email)[:2] if email else []
+        email_users = get_users_for_email(email)[:2] if email else []
         existing_social_account = SocialAccount.objects.filter(provider=provider, uid=uid).select_related("user").first()
         _oauth_debug(
             "pre_social_login lookup results",
@@ -180,6 +185,10 @@ class SocialManagerSocialAccountAdapter(DefaultSocialAccountAdapter):
                 **self._sociallogin_context(request, sociallogin),
             )
             return
+
+        if len(email_users) > 1:
+            _oauth_debug("Branch: duplicate local users found for Google email", **self._sociallogin_context(request, sociallogin))
+            self._block(request, EMAIL_LINKED_ELSEWHERE_MESSAGE, "socialmanager:login")
 
         if sociallogin.is_existing:
             if sociallogin.account._state.adding:
@@ -219,6 +228,18 @@ class SocialManagerSocialAccountAdapter(DefaultSocialAccountAdapter):
                 **self._sociallogin_context(request, sociallogin),
             )
             return
+
+        if not email:
+            _oauth_debug("Branch: new user blocked because Google supplied no email", **self._sociallogin_context(request, sociallogin))
+            self._block(request, GOOGLE_EMAIL_REQUIRED_MESSAGE, "socialmanager:login")
+
+        # A local account exists but allauth did not authenticate it by email.
+        # This means the provider email was not verified (or the account is
+        # inactive), so auto-connecting would be unsafe and creating another
+        # user would violate the one-email/one-account rule.
+        if email_users:
+            _oauth_debug("Branch: unresolved existing local email blocked", **self._sociallogin_context(request, sociallogin))
+            self._block(request, EMAIL_LINKED_ELSEWHERE_MESSAGE, "socialmanager:login")
 
         _oauth_debug("Branch: new user", **self._sociallogin_context(request, sociallogin))
         _oauth_debug(

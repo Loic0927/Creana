@@ -293,75 +293,6 @@ function setupAIInsightToggles() {
     });
 }
 
-function setupVideoAnalysis() {
-    const buttons = document.querySelectorAll("[data-video-analysis-url][data-video-analysis-target]");
-    const renderList = (title, items) => {
-        if (!Array.isArray(items) || !items.length) {
-            return "";
-        }
-        return `<section><h3>${escapeHTML(title)}</h3><ul>${items.map((item) => `<li>${escapeHTML(String(item))}</li>`).join("")}</ul></section>`;
-    };
-
-    buttons.forEach((button) => {
-        if (button.dataset.videoAnalysisBound === "true") {
-            return;
-        }
-        const panel = document.getElementById(button.dataset.videoAnalysisTarget);
-        if (!panel) {
-            return;
-        }
-        button.dataset.videoAnalysisBound = "true";
-        const originalText = button.textContent.trim();
-        button.addEventListener("click", async (event) => {
-            if (!requireAiMembershipBeforeAction(null, event)) {
-                return;
-            }
-            if (button.dataset.videoAnalysisLoaded === "true") {
-                panel.hidden = !panel.hidden;
-                return;
-            }
-            button.disabled = true;
-            button.textContent = "Analyzing video...";
-            panel.hidden = false;
-            panel.innerHTML = '<p class="muted">Analysis can take a few minutes for longer videos.</p>';
-            try {
-                const response = await fetch(button.dataset.videoAnalysisUrl, {
-                    method: "POST",
-                    headers: {
-                        "X-CSRFToken": getCookieValue("csrftoken"),
-                        "X-Requested-With": "XMLHttpRequest",
-                    },
-                });
-                const data = await response.json();
-                if (response.status === 403) {
-                    openAiMembershipModal();
-                    panel.hidden = true;
-                    return;
-                }
-                if (!response.ok || !data.success) {
-                    throw new Error(data.error || "Video analysis is temporarily unavailable.");
-                }
-                const guidance = data.guidance || {};
-                const analysis = data.analysis || {};
-                const labels = (analysis.labels || []).slice(0, 8).map((item) => item.description);
-                panel.innerHTML = `
-                    <section><h3>Creator summary</h3><p>${escapeHTML(guidance.summary || "Analysis complete.")}</p></section>
-                    ${renderList("Caption ideas", guidance.caption_ideas)}
-                    ${renderList("Hashtag suggestions", guidance.hashtags)}
-                    ${renderList("Improvements", guidance.improvements)}
-                    <section class="video-analysis-signals"><h3>Detected signals</h3><p>${escapeHTML(`${analysis.shot_count || 0} shots · Explicit-content signal: ${(analysis.explicit_content || {}).max_likelihood || "unspecified"}`)}</p>${labels.length ? `<p>${escapeHTML(labels.join(", "))}</p>` : ""}</section>
-                `;
-                button.dataset.videoAnalysisLoaded = "true";
-            } catch (error) {
-                panel.innerHTML = `<p class="ai-insight-error">${escapeHTML(error.message || "Video analysis is temporarily unavailable. Your post was not affected.")}</p>`;
-            } finally {
-                button.disabled = false;
-                button.textContent = originalText;
-            }
-        });
-    });
-}
-
 function setupAiMembershipFormGuards() {
     document.addEventListener("click", (event) => {
         const trigger = event.target.closest(
@@ -1033,6 +964,9 @@ function setupSettingsPage() {
     const autosaveFields = document.querySelectorAll("[data-settings-field]");
 
     autosaveFields.forEach((field) => {
+        if (field.dataset.settingsField === "enable_push_notifications") {
+            return;
+        }
         field.addEventListener("change", async () => {
             if (!settingsShell) {
                 return;
@@ -1066,6 +1000,88 @@ function setupSettingsPage() {
             }
         });
     });
+
+    const pushToggle = document.querySelector('[data-settings-field="enable_push_notifications"]');
+    const pushSupported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+    const updatePushPreference = async (enabled) => {
+        const body = new URLSearchParams({ field: "enable_push_notifications", value: String(enabled) });
+        const response = await fetch(settingsShell.dataset.settingsUpdateUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "X-CSRFToken": getCookieValue("csrftoken"),
+                "X-Requested-With": "XMLHttpRequest",
+            },
+            credentials: "same-origin",
+            body,
+        });
+        if (!response.ok) throw new Error("Could not update push preference.");
+    };
+    const base64ToUint8Array = (value) => {
+        const padding = "=".repeat((4 - value.length % 4) % 4);
+        const decoded = atob((value + padding).replace(/-/g, "+").replace(/_/g, "/"));
+        return Uint8Array.from(decoded, (character) => character.charCodeAt(0));
+    };
+
+    if (pushToggle && settingsShell) {
+        if (!pushSupported) {
+            pushToggle.checked = false;
+            pushToggle.disabled = true;
+        } else {
+            navigator.serviceWorker.register("/service-worker.js", { scope: "/" })
+                .catch(() => {
+                    pushToggle.checked = false;
+                    pushToggle.disabled = true;
+                });
+
+            pushToggle.addEventListener("change", async () => {
+                pushToggle.disabled = true;
+                try {
+                    const registration = await navigator.serviceWorker.ready;
+                    if (pushToggle.checked) {
+                        const permission = await Notification.requestPermission();
+                        if (permission !== "granted") throw new Error("Notification permission was not granted.");
+                        const keyResponse = await fetch(settingsShell.dataset.pushKeyUrl, { credentials: "same-origin" });
+                        const keyData = await keyResponse.json();
+                        if (!keyResponse.ok) throw new Error(keyData.error || "Push is not configured.");
+                        let subscription = await registration.pushManager.getSubscription();
+                        if (!subscription) {
+                            subscription = await registration.pushManager.subscribe({
+                                userVisibleOnly: true,
+                                applicationServerKey: base64ToUint8Array(keyData.public_key),
+                            });
+                        }
+                        const response = await fetch(settingsShell.dataset.pushSubscriptionUrl, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json", "X-CSRFToken": getCookieValue("csrftoken") },
+                            credentials: "same-origin",
+                            body: JSON.stringify(subscription.toJSON()),
+                        });
+                        if (!response.ok) throw new Error("Could not save this device.");
+                        await updatePushPreference(true);
+                    } else {
+                        const subscription = await registration.pushManager.getSubscription();
+                        if (subscription) {
+                            await fetch(settingsShell.dataset.pushSubscriptionUrl, {
+                                method: "DELETE",
+                                headers: { "Content-Type": "application/json", "X-CSRFToken": getCookieValue("csrftoken") },
+                                credentials: "same-origin",
+                                body: JSON.stringify({ endpoint: subscription.endpoint }),
+                            });
+                            await subscription.unsubscribe();
+                        }
+                        await updatePushPreference(false);
+                    }
+                } catch (error) {
+                    pushToggle.checked = false;
+                    updatePushPreference(false).catch(() => {});
+                    console.warn(error.message);
+                } finally {
+                    pushToggle.disabled = false;
+                }
+            });
+        }
+    }
 
     const modal = document.querySelector("[data-delete-account-modal]");
     const openButton = document.querySelector("[data-delete-account-open]");
@@ -1108,7 +1124,6 @@ function initializeCreana() {
     setupAiMembersOnlyModal();
     setupAiMembershipFormGuards();
     setupAIInsightToggles();
-    setupVideoAnalysis();
     setupResponsiveSidebar();
     setupScrollTargets();
     setupFlashNotifications();

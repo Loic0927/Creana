@@ -29,7 +29,8 @@ from .models import (
     UserSettings,
     split_hashtags,
 )
-from .account_identity import get_active_users_for_email, normalize_email, user_email_exists
+from .account_identity import generate_unique_username_from_email, get_active_users_for_email, normalize_email, user_email_exists
+from .services.video_metadata import VideoDurationError, validate_video_duration_file
 from .utils.html_sanitizer import sanitize_article_html
 
 
@@ -70,6 +71,15 @@ def validate_video_upload(file):
             % {"max_mb": max_mb}
         )
 
+    try:
+        validate_video_duration_file(
+            file,
+            max_seconds=getattr(settings, "VIDEO_MAX_DURATION_SECONDS", 60),
+            tolerance_seconds=getattr(settings, "VIDEO_DURATION_TOLERANCE_SECONDS", 0.05),
+        )
+    except VideoDurationError as exc:
+        raise ValidationError(str(exc)) from exc
+
 
 class DesignSystemFormMixin:
     def _apply_design_system(self):
@@ -100,7 +110,6 @@ class SignUpForm(DesignSystemFormMixin, UserCreationForm):
     class Meta:
         model = User
         fields = (
-            "username",
             "email",
             "subscription_name",
             "password1",
@@ -111,17 +120,8 @@ class SignUpForm(DesignSystemFormMixin, UserCreationForm):
         super().__init__(*args, **kwargs)
         self._apply_design_system()
         self.fields["subscription_name"].initial = self.fields["subscription_name"].initial or "My Workspace"
-        self.fields["username"].label = _("Username")
-        apply_character_counter(self.fields["username"], USERNAME_MAX_LENGTH)
-        self.fields["username"].help_text = _(f"Use {USERNAME_MAX_LENGTH} characters or fewer.")
         self.fields["password1"].label = _("Password")
         self.fields["password2"].label = _("Confirm password")
-        self.fields["username"].widget.attrs.update(
-            {
-                "placeholder": _("Choose a username"),
-                "autocomplete": "username",
-            }
-        )
         self.fields["email"].widget.attrs.update(
             {
                 "placeholder": "name@company.com",
@@ -148,24 +148,19 @@ class SignUpForm(DesignSystemFormMixin, UserCreationForm):
             }
         )
 
-    def clean_username(self):
-        username = (self.cleaned_data.get("username") or "").strip()
-        if not username:
-            raise forms.ValidationError(_("This field is required."))
-        if len(username) > USERNAME_MAX_LENGTH:
-            raise forms.ValidationError(_(f"Username must be {USERNAME_MAX_LENGTH} characters or fewer."))
-        username_queryset = User.objects.filter(username__iexact=username)
-        if self.instance and self.instance.pk:
-            username_queryset = username_queryset.exclude(pk=self.instance.pk)
-        if username_queryset.exists():
-            raise forms.ValidationError(_("A user with that username already exists."))
-        return username
-
     def clean_email(self):
         email = normalize_email(self.cleaned_data.get("email"))
         if user_email_exists(email) or EmailAddress.objects.filter(email__iexact=email).exists():
             raise forms.ValidationError(self.duplicate_email_message)
         return email
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.email = normalize_email(self.cleaned_data["email"])
+        user.username = generate_unique_username_from_email(user.email, exclude_user=user)
+        if commit:
+            user.save()
+        return user
 
 
 class LoginForm(AuthenticationForm):
@@ -429,6 +424,7 @@ class SocialMediaPostForm(DesignSystemFormMixin, forms.ModelForm):
             "hashtags",
             "image",
             "video_file",
+            "video_thumbnail",
             "scheduled_for",
         ]
         widgets = {
@@ -496,6 +492,7 @@ class SocialMediaPostForm(DesignSystemFormMixin, forms.ModelForm):
         self.fields["video_file"].widget.attrs["data-fallback-max-bytes"] = str(
             getattr(settings, "VIDEO_FORM_UPLOAD_MAX_BYTES", 20 * 1024 * 1024)
         )
+        self.fields["video_thumbnail"].widget.attrs.setdefault("accept", "image/webp,image/jpeg,image/png,image/*")
         if not self.is_bound and not self.initial.get("platform") and not getattr(self.instance, "platform", None):
             self.initial["platform"] = SocialMediaPost.Platform.INSTAGRAM
         if not self.is_bound and user_settings:
@@ -530,12 +527,24 @@ class SocialMediaPostForm(DesignSystemFormMixin, forms.ModelForm):
         validate_video_upload(video_file)
         return video_file
 
+    def clean_video_thumbnail(self):
+        thumbnail = self.cleaned_data.get("video_thumbnail")
+        if not thumbnail:
+            return thumbnail
+        content_type = (getattr(thumbnail, "content_type", "") or "").lower()
+        if not content_type.startswith("image/"):
+            raise forms.ValidationError(_("Upload a supported image thumbnail."))
+        if getattr(thumbnail, "size", 0) > 2 * 1024 * 1024:
+            raise forms.ValidationError(_("The video thumbnail is too large. Choose an image smaller than 2 MB."))
+        return thumbnail
+
     def clean(self):
         cleaned_data = super().clean()
         content_format = cleaned_data.get("content_format")
 
         if content_format != SocialMediaPost.Format.VIDEO:
             cleaned_data["video_file"] = None
+            cleaned_data["video_thumbnail"] = None
 
         if content_format == SocialMediaPost.Format.ARTICLE:
             cleaned_data["caption"] = sanitize_article_html(cleaned_data.get("caption"))
@@ -574,6 +583,15 @@ class UserSettingsForm(DesignSystemFormMixin, forms.ModelForm):
             "notify_comment_like",
             "notify_comment_reply",
             "notify_follow",
+            "enable_push_notifications",
+            "push_likes",
+            "push_comments",
+            "push_replies",
+            "push_shares",
+            "push_follows",
+            "push_announcements",
+            "push_scheduled_post_published",
+            "push_scheduled_post_failed",
             "ai_tone",
             "ai_language",
             "ai_hashtag_count",
@@ -591,6 +609,15 @@ class UserSettingsForm(DesignSystemFormMixin, forms.ModelForm):
             "notify_comment_like",
             "notify_comment_reply",
             "notify_follow",
+            "enable_push_notifications",
+            "push_likes",
+            "push_comments",
+            "push_replies",
+            "push_shares",
+            "push_follows",
+            "push_announcements",
+            "push_scheduled_post_published",
+            "push_scheduled_post_failed",
         )
         for field_name in notification_fields:
             self.fields[field_name].widget.attrs["data-settings-field"] = field_name

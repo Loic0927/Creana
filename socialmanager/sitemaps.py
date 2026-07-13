@@ -2,6 +2,7 @@ from django.contrib.sitemaps import Sitemap
 from django.urls import reverse
 
 from .models import SocialMediaPost
+from .geo_content import PUBLIC_PAGE_ORDER, PUBLIC_PAGES
 
 
 class StaticPublicSitemap(Sitemap):
@@ -9,7 +10,10 @@ class StaticPublicSitemap(Sitemap):
     priority = 1.0
 
     def items(self):
-        return ["socialmanager:landing"]
+        return ["socialmanager:landing"] + [
+            f"socialmanager:{PUBLIC_PAGES[key]['route_name']}"
+            for key in PUBLIC_PAGE_ORDER
+        ]
 
     def location(self, item):
         return reverse(item)

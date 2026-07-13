@@ -29,20 +29,144 @@ from django.utils import timezone
 from django.utils.http import urlsafe_base64_encode
 from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import ValidationError
+from PIL import Image
 
 from .admin import SaaSSubscriptionAdmin
 from .adapters import (
     ADMIN_GOOGLE_LINK_MESSAGE,
     AUTHENTICATED_GOOGLE_LOGIN_MESSAGE,
+    GOOGLE_EMAIL_REQUIRED_MESSAGE,
     GOOGLE_LINKED_ELSEWHERE_MESSAGE,
     USER_GOOGLE_EXISTS_MESSAGE,
     SocialManagerSocialAccountAdapter,
 )
 from .forms import CreanaPasswordResetForm, SignUpForm, SocialMediaCampaignForm, SocialMediaPostForm
 from .services import ai_assistant
-from .models import Announcement, HiddenUser, Notification, POST_CAPTION_MAX_LENGTH, POST_TITLE_MAX_LENGTH, PostComment, PostImage, SaaSSubscription, SocialMediaCampaign, SocialMediaPost, SubscriptionMembership, UserProfile, UserSettings, VideoAnalysis, VideoEngagementEvent, VideoWatchSession
+from .services.video_metadata import VideoDurationError
+from .models import AISuggestionHistory, Announcement, HiddenUser, Notification, POST_CAPTION_MAX_LENGTH, POST_TITLE_MAX_LENGTH, PostComment, PostImage, SaaSSubscription, SocialMediaCampaign, SocialMediaPost, SubscriptionMembership, UserProfile, UserSettings, VideoAnalysis, VideoEngagementEvent, VideoWatchSession
 from .subscriptions import user_has_active_subscription
-from .views import PostAnalyticsView
+from .views import cache_ai_insight, dashboard_analysis_to_report, PostAnalyticsView, parse_ai_insight_sections, render_ai_insight_html
+
+
+class AIInsightRenderingTests(TestCase):
+    def test_structured_parser_handles_json_fences_escaped_json_and_python_dicts(self):
+        expected = [{"heading": "Overall performance", "points": ["Reach is growing."]}]
+        payload = {"sections": expected}
+        values = [
+            payload,
+            json.dumps(payload),
+            "```json\n" + json.dumps(payload) + "\n```",
+            json.dumps(json.dumps(payload)),
+            "{'Overall performance': ['Reach is growing.']}",
+        ]
+
+        for value in values:
+            with self.subTest(value=value):
+                self.assertEqual(parse_ai_insight_sections(value), expected)
+
+    def test_renderer_never_exposes_unparsed_model_output(self):
+        raw_response = '{"sections": broken model output}'
+
+        html = render_ai_insight_html(raw_response)
+
+        self.assertIn("Unable to format this insight", html)
+        self.assertNotIn(raw_response, html)
+        self.assertNotIn('{"sections"', html)
+
+    def test_unparseable_ai_response_is_not_cached(self):
+        user = User.objects.create_user(username="uncached-ai-response")
+        subscription = SaaSSubscription.objects.create(
+            name="Uncached AI Workspace",
+            owner=user,
+        )
+
+        cached = cache_ai_insight(
+            subscription,
+            user,
+            "ai-insight:test:invalid",
+            '{"sections": broken model output}',
+            "Retention insight",
+        )
+
+        self.assertIsNone(cached)
+        self.assertFalse(AISuggestionHistory.objects.exists())
+
+    def test_intentional_no_data_reports_are_structured(self):
+        dashboard_report = dashboard_analysis_to_report(
+            {"has_enough_data": False, "message": "No dashboard data yet."}
+        )
+        campaign_report = ai_assistant.generate_campaign_rule_based_analysis(
+            {"released_count": 0}
+        )
+
+        self.assertEqual(
+            parse_ai_insight_sections(dashboard_report),
+            [
+                {
+                    "heading": "Dashboard insight",
+                    "points": ["No dashboard data yet."],
+                }
+            ],
+        )
+        self.assertEqual(
+            parse_ai_insight_sections(campaign_report)[0]["heading"],
+            "Campaign insight",
+        )
+
+    def test_traditional_chinese_retention_timed_events_are_localized(self):
+        report = ai_assistant.generate_video_retention_rule_based_analysis(
+            {
+                "completion_rate": 50.0,
+                "points": [
+                    {"seconds": 0, "retention": 100.0, "engagement_count": 0},
+                    {
+                        "seconds": 10,
+                        "retention": 50.0,
+                        "engagement_count": 2,
+                        "timed_likes": 1,
+                        "timed_comments": 1,
+                        "timed_shares": 0,
+                    },
+                ],
+            },
+            language="Traditional Chinese",
+        )
+
+        self.assertIn("記錄到的定時互動包括", report)
+        self.assertIn("1 次按讚", report)
+        self.assertIn("1 則留言", report)
+        self.assertNotIn("Recorded activity includes", report)
+
+    def test_rule_based_retention_report_is_structured_and_uses_completion_and_timed_events(self):
+        report = ai_assistant.generate_video_retention_rule_based_analysis(
+            {
+                "completion_rate": 50.0,
+                "points": [
+                    {
+                        "seconds": 0,
+                        "retention": 100.0,
+                        "engagement_count": 0,
+                    },
+                    {
+                        "seconds": 10,
+                        "retention": 50.0,
+                        "engagement_count": 2,
+                        "timed_likes": 1,
+                        "timed_comments": 1,
+                        "timed_shares": 0,
+                    },
+                ],
+            }
+        )
+
+        sections = parse_ai_insight_sections(report)
+        rendered_text = " ".join(
+            point for section in sections for point in section["points"]
+        )
+        self.assertTrue(sections)
+        self.assertIn("completion rate is 50.0%", rendered_text)
+        self.assertIn("1 timed like", rendered_text)
+        self.assertIn("1 timed comment", rendered_text)
 
 
 class VideoContentAnalysisTests(TestCase):
@@ -65,9 +189,210 @@ class VideoContentAnalysisTests(TestCase):
         )
         return user, post
 
+    def test_video_chart_uses_bucket_intensity_and_preserves_retention_formula(self):
+        user, post = self.create_user_and_post()
+        second_viewer = User.objects.create_user(username="video-chart-second-viewer")
+        VideoWatchSession.objects.create(
+            post=post,
+            viewer=user,
+            watched_seconds=5,
+            video_duration=10,
+            watched_percentage=50,
+        )
+        VideoWatchSession.objects.create(
+            post=post,
+            viewer=second_viewer,
+            watched_seconds=10,
+            video_duration=10,
+            watched_percentage=100,
+        )
+        for kind, second in (
+            (VideoEngagementEvent.Kind.LIKE, 0),
+            (VideoEngagementEvent.Kind.COMMENT, 2),
+            (VideoEngagementEvent.Kind.SHARE, 7),
+            (VideoEngagementEvent.Kind.SHARE, 8),
+        ):
+            VideoEngagementEvent.objects.create(
+                post=post,
+                viewer=user,
+                kind=kind,
+                video_second=second,
+            )
+
+        analytics_view = PostAnalyticsView()
+        analytics_view.object = post
+        chart = analytics_view.get_video_insights_chart_data()
+
+        self.assertEqual(
+            [point["retention"] for point in chart["points"]],
+            [100.0, 100.0, 50.0],
+        )
+        self.assertEqual(
+            [point["engagement_bucket_count"] for point in chart["points"]],
+            [0, 1, 2],
+        )
+        self.assertEqual(
+            [point["engagement_intensity"] for point in chart["points"]],
+            [0, 50.0, 100.0],
+        )
+        self.assertEqual(chart["points"][0]["timed_likes"], 1)
+        self.assertEqual(chart["points"][-1]["timed_comments"], 1)
+        self.assertEqual(chart["points"][-1]["timed_shares"], 2)
+
+    def test_single_timed_event_affects_only_its_engagement_bucket(self):
+        user, post = self.create_user_and_post()
+        VideoWatchSession.objects.create(
+            post=post,
+            viewer=user,
+            watched_seconds=10,
+            video_duration=10,
+            watched_percentage=100,
+        )
+        VideoEngagementEvent.objects.create(
+            post=post,
+            viewer=user,
+            kind=VideoEngagementEvent.Kind.LIKE,
+            video_second=2,
+        )
+
+        analytics_view = PostAnalyticsView()
+        analytics_view.object = post
+        chart = analytics_view.get_video_insights_chart_data()
+
+        self.assertEqual(
+            [point["engagement_intensity"] for point in chart["points"]],
+            [0, 100.0, 0.0],
+        )
+
+    @patch("socialmanager.views.generate_post_analysis")
+    def test_post_analysis_uses_video_annotations_but_not_retention_data(self, generate_analysis):
+        user, post = self.create_user_and_post()
+        VideoAnalysis.objects.create(
+            post=post,
+            source_object_name=post.video_file.name,
+            status=VideoAnalysis.Status.SUCCEEDED,
+            result={
+                "labels": [{"description": "coffee", "confidence": 0.91}],
+                "shots": [{"start_seconds": 0, "end_seconds": 3}],
+                "shot_count": 1,
+                "explicit_content": {"max_likelihood": "VERY_UNLIKELY"},
+            },
+        )
+        generate_analysis.return_value = {
+            "sections": [
+                {
+                    "heading": "Overall performance",
+                    "points": ["The annotated coffee subject matches the post."],
+                }
+            ]
+        }
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("socialmanager:post_ai_insight", args=[post.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        payload = generate_analysis.call_args.args[0]
+        self.assertTrue(payload["video_analysis"]["available"])
+        self.assertEqual(payload["video_analysis"]["labels"][0]["description"], "coffee")
+        self.assertNotIn("video_retention", payload)
+        html = response.json()["insight_html"]
+        self.assertIn("Overall performance", html)
+        self.assertIn("<ul", html)
+        self.assertNotIn('{"sections"', html)
+
+    def test_post_pages_do_not_render_standalone_video_analysis(self):
+        user, post = self.create_user_and_post()
+        VideoWatchSession.objects.create(
+            post=post,
+            viewer=user,
+            watched_seconds=8,
+            video_duration=10,
+            watched_percentage=80,
+        )
+        self.client.force_login(user)
+
+        detail = self.client.get(
+            reverse("socialmanager:post_detail_legacy", args=[post.pk]),
+            follow=True,
+        )
+        analytics = self.client.get(reverse("socialmanager:post_analytics", args=[post.pk]))
+
+        self.assertNotContains(detail, "Video content analysis")
+        self.assertNotContains(detail, "Creator summary")
+        self.assertNotContains(analytics, "Video content analysis")
+        self.assertContains(analytics, "Audience Engagement & Retention")
+        self.assertContains(analytics, "post-retention-ai-insight-panel")
+        self.assertContains(analytics, "Retention AI Insight")
+
+    def test_retention_ai_block_is_hidden_without_video_retention_data(self):
+        user, video_post = self.create_user_and_post()
+        _, image_post = self.create_user_and_post(
+            content_format=SocialMediaPost.Format.IMAGE,
+        )
+        image_post.subscription = video_post.subscription
+        image_post.author = user
+        image_post.save(update_fields=["subscription", "author"])
+        self.client.force_login(user)
+
+        video_analytics = self.client.get(
+            reverse("socialmanager:post_analytics", args=[video_post.pk])
+        )
+        image_analytics = self.client.get(
+            reverse("socialmanager:post_analytics", args=[image_post.pk])
+        )
+
+        self.assertNotContains(video_analytics, "post-retention-ai-insight-panel")
+        self.assertNotContains(image_analytics, "Audience Engagement & Retention")
+
+    @patch("socialmanager.views.generate_video_retention_analysis")
+    def test_retention_ai_endpoint_uses_timed_event_types_and_structured_renderer(self, generate):
+        user, post = self.create_user_and_post()
+        VideoWatchSession.objects.create(
+            post=post,
+            viewer=user,
+            watched_seconds=10,
+            video_duration=10,
+            watched_percentage=100,
+        )
+        for kind, second in (
+            (VideoEngagementEvent.Kind.LIKE, 2),
+            (VideoEngagementEvent.Kind.COMMENT, 5),
+            (VideoEngagementEvent.Kind.SHARE, 8),
+        ):
+            VideoEngagementEvent.objects.create(
+                post=post,
+                viewer=user,
+                kind=kind,
+                video_second=second,
+            )
+        generate.return_value = (
+            "```json\n"
+            '{"sections":[{"heading":"Retention diagnosis","points":["The main drop-off is after 5 seconds."]}]}'
+            "\n```"
+        )
+        self.client.force_login(user)
+
+        response = self.client.get(
+            reverse("socialmanager:post_retention_ai_insight", args=[post.pk])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        retention_payload = generate.call_args.args[0]
+        self.assertEqual(retention_payload["completion_rate"], 100.0)
+        final_point = retention_payload["points"][-1]
+        self.assertEqual(final_point["timed_likes"], 1)
+        self.assertEqual(final_point["timed_comments"], 1)
+        self.assertEqual(final_point["timed_shares"], 1)
+        html = response.json()["insight_html"]
+        self.assertIn("Retention diagnosis", html)
+        self.assertIn("<ul", html)
+        self.assertNotIn('```', html)
+        self.assertNotIn('{"sections"', html)
+
+    @patch("socialmanager.views._validate_video_duration_file", return_value=12)
     @patch("socialmanager.views.generate_video_content_guidance")
     @patch("socialmanager.views.analyze_gcs_video")
-    def test_member_analysis_is_persisted_and_reused(self, analyze, generate_guidance):
+    def test_member_analysis_is_persisted_and_reused(self, analyze, generate_guidance, _duration):
         user, post = self.create_user_and_post()
         analyze.return_value = {
             "labels": [{"description": "coffee", "confidence": 0.91, "categories": []}],
@@ -96,8 +421,9 @@ class VideoContentAnalysisTests(TestCase):
         self.assertEqual(record.status, VideoAnalysis.Status.SUCCEEDED)
         self.assertEqual(record.creator_guidance["hashtags"], ["#coffee"])
 
+    @patch("socialmanager.views._validate_video_duration_file", return_value=12)
     @patch("socialmanager.views.analyze_gcs_video")
-    def test_cloud_failure_is_non_blocking_and_recorded(self, analyze):
+    def test_cloud_failure_is_non_blocking_and_recorded(self, analyze, _duration):
         user, post = self.create_user_and_post()
         analyze.side_effect = RuntimeError("cloud unavailable")
         self.client.force_login(user)
@@ -108,6 +434,19 @@ class VideoContentAnalysisTests(TestCase):
         self.assertFalse(response.json()["success"])
         self.assertIn("not affected", response.json()["error"])
         self.assertEqual(VideoAnalysis.objects.get(post=post).status, VideoAnalysis.Status.FAILED)
+
+    @patch("socialmanager.views._validate_video_duration_file", side_effect=VideoDurationError("Please provide a video that is 60 seconds or shorter."))
+    @patch("socialmanager.views.analyze_gcs_video")
+    def test_overlong_video_analysis_rejects_before_provider(self, analyze, _duration):
+        user, post = self.create_user_and_post()
+        self.client.force_login(user)
+
+        response = self.client.post(reverse("socialmanager:post_video_analysis", args=[post.pk]))
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.json()["success"])
+        self.assertEqual(response.json()["error"], "Please provide a video that is 60 seconds or shorter.")
+        analyze.assert_not_called()
 
     @patch("socialmanager.views.analyze_gcs_video")
     def test_non_member_cannot_start_video_analysis(self, analyze):
@@ -408,6 +747,20 @@ class AIImagePipelineTests(TestCase):
     def remote_image(self):
         return self.RemoteStorageImage(b"stored-gcs-image-bytes")
 
+    def image_facts_response(self):
+        return json.dumps(
+            {
+                "main_subjects": ["two fox characters"],
+                "actions": [],
+                "objects": ["glowing light bulb", "open box"],
+                "setting": "simple indoor illustration scene",
+                "visual_style": "playful digital illustration",
+                "visible_text": [],
+                "mood": ["curious", "playful"],
+                "uncertain_details": [],
+            }
+        )
+
     def test_shared_image_loader_reads_storage_backed_file_without_local_path(self):
         image_input = ai_assistant._first_supported_image_input(self.remote_image())
 
@@ -460,12 +813,13 @@ class AIImagePipelineTests(TestCase):
     @override_settings(GEMINI_API_KEY="test-key")
     @patch("socialmanager.services.ai_assistant._gemini_generate_text")
     def test_caption_generation_passes_preferences_and_storage_image_to_gemini(self, generate):
-        generate.return_value = json.dumps(
-            {
+        generate.side_effect = [
+            self.image_facts_response(),
+            json.dumps({
                 "caption": "A focused caption with a clear question.",
                 "hashtags": ["#one", "#two", "#three"],
-            }
-        )
+            }),
+        ]
 
         ai_assistant.generate_caption_and_hashtags(
             "Stored image topic",
@@ -476,23 +830,27 @@ class AIImagePipelineTests(TestCase):
             image_file=self.remote_image(),
         )
 
-        user_prompt = generate.call_args.args[1]
-        image_input = generate.call_args.kwargs["image_input"]
+        user_prompt = generate.call_args_list[1].args[1]
+        image_input = generate.call_args_list[0].kwargs["image_input"]
         self.assertIn('"language": "Traditional Chinese"', user_prompt)
         self.assertIn('"tone": "Friendly"', user_prompt)
         self.assertIn('"hashtag_count": 3', user_prompt)
         self.assertEqual(image_input.data, b"stored-gcs-image-bytes")
+        self.assertIsNone(generate.call_args_list[1].kwargs["image_input"])
 
     @override_settings(GEMINI_API_KEY="test-key")
     @patch("socialmanager.services.ai_assistant._gemini_generate_text")
     def test_field_feedback_uses_the_same_storage_image_loader(self, generate):
-        generate.return_value = json.dumps(
-            {
-                "title": {"text": "Stored Image Story", "feedback": "This title is easy to scan."},
-                "caption": {"text": "Caption", "feedback": "Feedback"},
-                "hashtags": {"text": "#one #two", "feedback": "Feedback"},
-            }
-        )
+        generate.side_effect = [
+            self.image_facts_response(),
+            json.dumps(
+                {
+                    "title": {"text": "Stored Image Story", "feedback": "This title is easy to scan."},
+                    "caption": {"text": "Caption", "feedback": "Feedback"},
+                    "hashtags": {"text": "#one #two", "feedback": "Feedback"},
+                }
+            ),
+        ]
 
         ai_assistant.generate_post_field_feedback(
             {
@@ -507,12 +865,287 @@ class AIImagePipelineTests(TestCase):
             }
         )
 
-        image_input = generate.call_args.kwargs["image_input"]
+        self.assertEqual(generate.call_count, 2)
+        image_input = generate.call_args_list[0].kwargs["image_input"]
         user_prompt = generate.call_args.args[1]
         self.assertEqual(image_input.data, b"stored-gcs-image-bytes")
         self.assertIn('"ai_language": "English"', user_prompt)
         self.assertIn('"ai_tone": "Casual"', user_prompt)
         self.assertIn('"ai_hashtag_count": 2', user_prompt)
+        self.assertIn('"image_facts"', user_prompt)
+        self.assertIn('"bio_tone_only"', user_prompt)
+
+    @override_settings(GEMINI_API_KEY="test-key")
+    @patch("socialmanager.services.ai_assistant._gemini_generate_text")
+    def test_image_grounding_blocks_bio_only_magic_tutorial_claims(self, generate):
+        generate.side_effect = [
+            self.image_facts_response(),
+            json.dumps(
+                {
+                    "title": {"text": "Magic Idea Sparks", "feedback": "This title promotes upcoming magic content."},
+                    "caption": {"text": "An exciting new concept is taking shape for our upcoming magic tutorial!", "feedback": "This caption highlights an upcoming tutorial."},
+                    "hashtags": {"text": "#MagicTutorial #LearnMagic", "feedback": "These tags match magic lessons."},
+                }
+            ),
+        ]
+
+        result = ai_assistant.generate_post_field_feedback(
+            {
+                "feedback_type": "caption",
+                "post_type": "photo_post",
+                "platform": "Instagram",
+                "ai_language": "english",
+                "ai_language_display": "English",
+                "ai_tone": "Casual",
+                "ai_hashtag_count": 3,
+                "image_file": self.remote_image(),
+                "image_source": "uploaded",
+                "creator_context": {"bio": "Magician creating tutorials and teaching illusions."},
+            }
+        )
+
+        self.assertTrue(result.used_image_input)
+        self.assertEqual(result.grounding_mode, "image_primary")
+        self.assertNotIn("magic", result.suggestion.lower())
+        self.assertNotIn("tutorial", result.suggestion.lower())
+        self.assertIn("fox", result.suggestion.lower())
+
+    @override_settings(GEMINI_API_KEY="test-key")
+    @patch("socialmanager.services.ai_assistant._gemini_generate_text")
+    def test_current_input_can_explicitly_override_image_grounding(self, generate):
+        generate.side_effect = [
+            self.image_facts_response(),
+            json.dumps(
+                {
+                    "title": {"text": "Magic Idea Sparks", "feedback": "This title uses the explicit tutorial context."},
+                    "caption": {"text": "A preview of the next magic tutorial.", "feedback": "This caption uses the current input."},
+                    "hashtags": {"text": "#MagicTutorial #FoxArt", "feedback": "These tags combine the current input and image."},
+                }
+            ),
+        ]
+
+        result = ai_assistant.generate_post_field_feedback(
+            {
+                "feedback_type": "caption",
+                "post_type": "photo_post",
+                "current_value": "This is a preview of my next magic tutorial.",
+                "platform": "Instagram",
+                "ai_language": "english",
+                "ai_language_display": "English",
+                "ai_tone": "Casual",
+                "ai_hashtag_count": 2,
+                "image_file": self.remote_image(),
+                "image_source": "uploaded",
+                "creator_context": {"bio": "Magician creating tutorials and teaching illusions."},
+            }
+        )
+
+        self.assertIn("magic tutorial", result.suggestion.lower())
+
+    @override_settings(GEMINI_API_KEY="test-key")
+    @patch("socialmanager.services.ai_assistant._gemini_generate_text")
+    def test_image_analysis_failure_stops_final_synthesis(self, generate):
+        generate.return_value = json.dumps({"main_subjects": [], "objects": [], "mood": []})
+
+        with self.assertRaises(ai_assistant.ImageInputError) as context:
+            ai_assistant.generate_post_field_feedback(
+                {
+                    "feedback_type": "title",
+                    "post_type": "photo_post",
+                    "platform": "Instagram",
+                    "ai_language": "english",
+                    "ai_language_display": "English",
+                    "ai_tone": "Casual",
+                    "ai_hashtag_count": 2,
+                    "image_file": self.remote_image(),
+                    "image_source": "uploaded",
+                }
+            )
+
+        self.assertEqual(context.exception.code, "image_analysis_failed")
+        self.assertEqual(generate.call_count, 1)
+
+    def assert_valid_hashtag_fallback(self, image_facts, hashtag_count=3):
+        result = ai_assistant._image_grounded_fallback(
+            "hashtags",
+            {
+                "feedback_type": "hashtags",
+                "ai_language": "english",
+                "ai_language_display": "English",
+            },
+            image_facts,
+            hashtag_count,
+        )
+        tags = ai_assistant.split_hashtags(result.suggestion)
+        self.assertEqual(len(tags), hashtag_count)
+        self.assertEqual(len({tag.lower() for tag in tags}), len(tags))
+        self.assertTrue(all(tag and tag != "#" for tag in tags))
+        self.assertTrue(all(tag.startswith("#") for tag in tags))
+        return tags
+
+    def test_image_grounded_hashtag_fallback_handles_mood_with_value(self):
+        tags = self.assert_valid_hashtag_fallback(
+            {
+                "main_subjects": ["fox character"],
+                "objects": ["light bulb"],
+                "setting": "",
+                "visual_style": "digital illustration",
+                "mood": ["playful"],
+            },
+            hashtag_count=4,
+        )
+
+        self.assertIn("#Playful", tags)
+
+    def test_image_grounded_hashtag_fallback_handles_empty_mood(self):
+        tags = self.assert_valid_hashtag_fallback(
+            {
+                "main_subjects": ["fox character"],
+                "objects": ["light bulb"],
+                "setting": "",
+                "visual_style": "digital illustration",
+                "mood": [],
+            },
+            hashtag_count=4,
+        )
+
+        self.assertNotIn("#", tags)
+
+    def test_image_grounded_hashtag_fallback_handles_objects_without_subjects(self):
+        tags = self.assert_valid_hashtag_fallback(
+            {
+                "main_subjects": [],
+                "objects": ["open box", "glowing bulb"],
+                "setting": "",
+                "visual_style": "",
+                "mood": [],
+            },
+            hashtag_count=3,
+        )
+
+        self.assertIn("#OpenBox", tags)
+
+    def test_image_grounded_hashtag_fallback_handles_only_setting(self):
+        self.assert_valid_hashtag_fallback(
+            {
+                "main_subjects": [],
+                "objects": [],
+                "setting": "studio desk",
+                "visual_style": "",
+                "mood": [],
+            },
+            hashtag_count=3,
+        )
+
+    def test_image_grounded_hashtag_fallback_handles_only_visual_style(self):
+        tags = self.assert_valid_hashtag_fallback(
+            {
+                "main_subjects": [],
+                "objects": [],
+                "setting": "",
+                "visual_style": "watercolor sketch",
+                "mood": [],
+            },
+            hashtag_count=3,
+        )
+
+        self.assertIn("#WatercolorSketch", tags)
+
+    def garden_facts(self):
+        return {
+            "main_subjects": ["garden", "flowers"],
+            "actions": ["walking along a path"],
+            "objects": ["flowers", "landscaped path"],
+            "setting": "garden",
+            "visual_style": "outdoor photography",
+            "visible_text": [],
+            "mood": ["calm"],
+            "uncertain_details": [],
+        }
+
+    def contaminated_image_payload(self, language="english", current_value=""):
+        return {
+            "feedback_type": "caption",
+            "post_type": "photo_post",
+            "platform": "Instagram",
+            "current_value": current_value,
+            "ai_language": language,
+            "ai_language_display": "Traditional Chinese" if language == "traditional_chinese" else "English",
+            "creator_context": {
+                "bio": "Creana Official Test magic tutorial product launch",
+                "display_name": "Creana Official Test",
+                "username": "creana_test",
+                "recent_post_titles": ["Professional audience product launch"],
+            },
+            "previous_post_titles": ["Magic tutorial launch"],
+            "previous_post_captions": ["Creana Official Test for a professional audience"],
+            "previous_post_hashtags": ["#MagicTutorial #ProductLaunch"],
+        }
+
+    def test_image_aware_sanitizer_uses_garden_fallback_not_profile_context(self):
+        payload = self.contaminated_image_payload()
+        for feedback_type, suggestion in (
+            ("title", "Creana Official Test"),
+            ("caption", "Creana Official Test with a clearer hook."),
+            ("hashtags", "#CreanaOfficialTest"),
+        ):
+            payload["feedback_type"] = feedback_type
+            result = ai_assistant._sanitize_field_feedback(
+                feedback_type,
+                suggestion,
+                "",
+                payload,
+                3,
+                image_facts=self.garden_facts(),
+            )
+            combined = f"{result.suggestion} {result.explanation}".lower()
+            self.assertTrue(any(term in combined for term in ("garden", "flower", "path")))
+            for forbidden in ("creana official test", "magic tutorial", "launch", "professional audience"):
+                self.assertNotIn(forbidden, combined)
+            for internal in ("unsupported profile context", "grounding mode", "internal weighting"):
+                self.assertNotIn(internal, combined)
+
+    def test_text_only_sanitizer_can_still_use_text_fallback(self):
+        payload = self.contaminated_image_payload()
+        result = ai_assistant._sanitize_field_feedback("caption", "", "", payload, 3)
+        self.assertIn("Creana", result.suggestion)
+
+    @override_settings(GEMINI_API_KEY="test-key")
+    @patch("socialmanager.services.ai_assistant._gemini_generate_text")
+    def test_stage_two_uses_normalized_facts_without_raw_image(self, generate):
+        generate.side_effect = [
+            json.dumps(self.garden_facts()),
+            json.dumps({
+                "title": {"text": "Garden in Bloom", "feedback": "This title highlights the visible garden."},
+                "caption": {"text": "Flowers line the garden path.\nWhich detail stands out most?", "feedback": "This caption highlights the flowers and path."},
+                "hashtags": {"text": "#Garden #Flowers #GardenPath", "feedback": "These tags reflect the visible scene."},
+            }),
+        ]
+        payload = self.contaminated_image_payload()
+        payload.update({"image_file": self.remote_image(), "image_source": "uploaded"})
+
+        result = ai_assistant.generate_post_field_feedback(payload)
+
+        self.assertTrue(result.used_image_input)
+        self.assertIsNotNone(generate.call_args_list[0].kwargs["image_input"])
+        self.assertIsNone(generate.call_args_list[1].kwargs["image_input"])
+        self.assertIn('"image_facts"', generate.call_args_list[1].args[1])
+
+    def test_traditional_chinese_image_fallback_uses_visible_facts(self):
+        payload = self.contaminated_image_payload(language="traditional_chinese")
+        result = ai_assistant._sanitize_field_feedback(
+            "caption", "Creana Official Test", "", payload, 3, image_facts=self.garden_facts()
+        )
+        self.assertTrue(any(term in result.suggestion.lower() for term in ("garden", "flower", "path")))
+        self.assertNotIn("Creana Official Test", result.suggestion)
+
+    def test_explicit_current_input_can_support_launch_topic(self):
+        payload = self.contaminated_image_payload(current_value="Garden product launch")
+        result = ai_assistant._sanitize_field_feedback(
+            "title", "Garden Product Launch", "This title reflects the garden launch.", payload, 3,
+            image_facts=self.garden_facts(),
+        )
+        self.assertEqual(result.suggestion, "Garden Product Launch")
 
     @override_settings(
         GEMINI_API_KEY="test-key",
@@ -639,6 +1272,11 @@ class SubscriptionPostCreationTests(TestCase):
             is_active_member=active_member,
         )
         return user, subscription
+
+    def uploaded_jpeg(self, name="foxes.jpg"):
+        buffer = BytesIO()
+        Image.new("RGB", (1, 1), color=(80, 140, 220)).save(buffer, format="JPEG")
+        return SimpleUploadedFile(name, buffer.getvalue(), content_type="image/jpeg")
 
     def test_primary_image_url_uses_matching_single_image_thumbnail(self):
         user, subscription = self.create_workspace_user("single-image")
@@ -1041,7 +1679,7 @@ class SubscriptionPostCreationTests(TestCase):
     def test_video_upload_start_rejects_unauthenticated_user(self):
         response = self.client.post(
             reverse("socialmanager:video_upload_start"),
-            data=json.dumps({"filename": "clip.mp4", "content_type": "video/mp4", "size": 100}),
+            data=json.dumps({"filename": "clip.mp4", "content_type": "video/mp4", "size": 100, "duration_seconds": 12}),
             content_type="application/json",
         )
 
@@ -1055,7 +1693,7 @@ class SubscriptionPostCreationTests(TestCase):
 
         response = self.client.post(
             reverse("socialmanager:video_upload_start"),
-            data=json.dumps({"filename": "clip.avi", "content_type": "video/x-msvideo", "size": 100}),
+            data=json.dumps({"filename": "clip.avi", "content_type": "video/x-msvideo", "size": 100, "duration_seconds": 12}),
             content_type="application/json",
         )
 
@@ -1069,12 +1707,26 @@ class SubscriptionPostCreationTests(TestCase):
 
         response = self.client.post(
             reverse("socialmanager:video_upload_start"),
-            data=json.dumps({"filename": "clip.mp4", "content_type": "video/mp4", "size": 101}),
+            data=json.dumps({"filename": "clip.mp4", "content_type": "video/mp4", "size": 101, "duration_seconds": 12}),
             content_type="application/json",
         )
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("too large", response.json()["error"])
+
+    @override_settings(USE_GCS=True, VIDEO_UPLOAD_MAX_BYTES=1000)
+    def test_video_upload_start_rejects_overlong_duration(self):
+        user, _ = self.create_workspace_user("video-duration")
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse("socialmanager:video_upload_start"),
+            data=json.dumps({"filename": "clip.mp4", "content_type": "video/mp4", "size": 100, "duration_seconds": 61}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["error"], "Please provide a video that is 60 seconds or shorter.")
 
     @override_settings(USE_GCS=True, VIDEO_UPLOAD_MAX_BYTES=1000)
     @patch("socialmanager.views.default_storage")
@@ -1087,7 +1739,7 @@ class SubscriptionPostCreationTests(TestCase):
 
         response = self.client.post(
             reverse("socialmanager:video_upload_start"),
-            data=json.dumps({"filename": "clip.mp4", "content_type": "video/mp4", "size": 100}),
+            data=json.dumps({"filename": "clip.mp4", "content_type": "video/mp4", "size": 100, "duration_seconds": 12}),
             content_type="application/json",
             HTTP_ORIGIN="https://creana-914298722301.australia-southeast1.run.app",
         )
@@ -1110,11 +1762,27 @@ class SubscriptionPostCreationTests(TestCase):
         data = self.post_data(title="Direct video")
         data["content_format"] = SocialMediaPost.Format.VIDEO
         data["uploaded_video_object_name"] = object_name
+        data["uploaded_video_duration_seconds"] = "12"
 
         response = self.client.post(reverse("socialmanager:post_create"), data)
 
         self.assertRedirects(response, reverse("socialmanager:post_list"))
         self.assertEqual(SocialMediaPost.objects.get(title="Direct video").video_file.name, object_name)
+
+    def test_post_create_rejects_direct_uploaded_video_over_duration_limit(self):
+        user, _ = self.create_workspace_user("video-post-duration")
+        self.client.force_login(user)
+        object_name = f"social_videos/user_{user.pk}/123e4567-e89b-42d3-a456-426614174000.mp4"
+        data = self.post_data(title="Direct video too long")
+        data["content_format"] = SocialMediaPost.Format.VIDEO
+        data["uploaded_video_object_name"] = object_name
+        data["uploaded_video_duration_seconds"] = "61"
+
+        response = self.client.post(reverse("socialmanager:post_create"), data)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Please provide a video that is 60 seconds or shorter.")
+        self.assertFalse(SocialMediaPost.objects.filter(title="Direct video too long").exists())
 
     def test_post_create_requires_video_asset_for_video_post(self):
         user, _ = self.create_workspace_user("missing-video")
@@ -1170,6 +1838,7 @@ class SubscriptionPostCreationTests(TestCase):
         self.assertContains(response, 'data-direct-upload-max-bytes="524288000"')
         self.assertContains(response, 'data-fallback-max-bytes="20971520"')
         self.assertContains(response, 'data-max-bytes="20971520"')
+        self.assertContains(response, 'data-video-max-duration-seconds="60"')
 
     def test_post_create_assigns_current_users_subscription(self):
         user = User.objects.create_user(username="desktop", password="password12345")
@@ -1314,7 +1983,16 @@ class SubscriptionPostCreationTests(TestCase):
             content_format=SocialMediaPost.Format.IMAGE,
             image="social_posts/stored-image.jpg",
         )
-        generate.return_value = SimpleNamespace(suggestion="建議文案", explanation="建議說明。")
+        generate.return_value = ai_assistant.FieldFeedbackResult(
+            suggestion="Grounded stored image caption.",
+            explanation="This suggestion is grounded in the stored image.",
+            used_image_input=True,
+            image_source="stored",
+            analyzed_image_count=1,
+            grounding_mode="image_primary",
+            context_priority=("image", "current_input", "bio", "previous_posts"),
+            context_sources={"image": True, "bio": True, "previous_posts": False},
+        )
         self.client.force_login(user)
 
         response = self.client.post(
@@ -1333,9 +2011,87 @@ class SubscriptionPostCreationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         feedback_payload = generate.call_args.args[0]
         self.assertEqual(feedback_payload["image_file"].name, "social_posts/stored-image.jpg")
+        self.assertEqual(feedback_payload["image_source"], "stored")
         self.assertEqual(feedback_payload["ai_language"], user_settings.ai_language)
         self.assertEqual(feedback_payload["ai_tone"], user_settings.get_ai_tone_display())
         self.assertEqual(feedback_payload["ai_hashtag_count"], 3)
+        self.assertTrue(response.json()["used_image_input"])
+        self.assertEqual(response.json()["image_source"], "stored")
+        self.assertEqual(response.json()["grounding_mode"], "image_primary")
+
+    @patch("socialmanager.views.generate_post_field_feedback")
+    def test_new_image_ai_feedback_requires_uploaded_image(self, generate):
+        user, _subscription = self.create_workspace_user("missing-image-ai", active_member=True)
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse("socialmanager:post_ai_feedback"),
+            data=json.dumps({
+                "feedback_type": "caption",
+                "post_type": "photo_post",
+                "title": "Fox image",
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["error"], "image_input_unavailable")
+        self.assertFalse(response.json()["used_image_input"])
+        generate.assert_not_called()
+
+    @patch("socialmanager.views.generate_post_field_feedback")
+    def test_new_image_ai_feedback_accepts_uploaded_jpeg(self, generate):
+        user, _subscription = self.create_workspace_user("uploaded-image-ai", active_member=True)
+        self.client.force_login(user)
+        generate.return_value = ai_assistant.FieldFeedbackResult(
+            suggestion="A Spark of Ideas",
+            explanation="This title stays grounded in the visible fox illustration.",
+            used_image_input=True,
+            image_source="uploaded",
+            analyzed_image_count=1,
+            grounding_mode="image_primary",
+            context_priority=("image", "current_input", "bio", "previous_posts"),
+            context_sources={"image": True, "bio": False, "previous_posts": False},
+        )
+
+        response = self.client.post(
+            reverse("socialmanager:post_ai_feedback"),
+            data={
+                "payload": json.dumps({
+                    "feedback_type": "title",
+                    "post_type": "photo_post",
+                }),
+                "image": self.uploaded_jpeg(),
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = generate.call_args.args[0]
+        self.assertEqual(payload["image_source"], "uploaded")
+        self.assertEqual(payload["image_file"].content_type, "image/jpeg")
+        self.assertTrue(response.json()["used_image_input"])
+        self.assertEqual(response.json()["image_source"], "uploaded")
+        self.assertEqual(response.json()["analyzed_image_count"], 1)
+
+    @patch("socialmanager.views.generate_post_field_feedback")
+    def test_image_ai_feedback_rejects_invalid_image_bytes(self, generate):
+        user, _subscription = self.create_workspace_user("invalid-image-ai", active_member=True)
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse("socialmanager:post_ai_feedback"),
+            data={
+                "payload": json.dumps({
+                    "feedback_type": "caption",
+                    "post_type": "photo_post",
+                }),
+                "image": SimpleUploadedFile("foxes.jpg", b"not-an-image", content_type="image/jpeg"),
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["error"], "invalid_image")
+        generate.assert_not_called()
 
     @patch("socialmanager.views.generate_post_field_feedback")
     def test_edit_video_ai_feedback_uses_stored_video(self, generate):
@@ -1428,19 +2184,94 @@ class SubscriptionPostCreationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(generate.call_args.args[0]["video_file"].name, "clip.mp4")
 
-    def test_article_and_image_ai_feedback_still_require_text_or_media(self):
+    @patch("socialmanager.views.generate_post_field_feedback")
+    def test_video_ai_feedback_rejects_overlong_duration_before_provider(self, generate):
+        user, _subscription = self.create_workspace_user("overlong-video-ai", active_member=True)
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse("socialmanager:post_ai_feedback"),
+            data=json.dumps({
+                "feedback_type": "caption",
+                "post_type": "video",
+                "title": "Launch notes",
+                "video_duration_seconds": 61,
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["error"], "Please provide a video that is 60 seconds or shorter.")
+        generate.assert_not_called()
+
+    @override_settings(GEMINI_VIDEO_MAX_BYTES=4)
+    @patch("socialmanager.views.generate_post_field_feedback")
+    def test_video_ai_feedback_requires_text_when_size_exceeds_ai_limit(self, generate):
+        user, _subscription = self.create_workspace_user("video-ai-size", active_member=True)
+        self.client.force_login(user)
+        video = SimpleUploadedFile("clip.mp4", b"video", content_type="video/mp4")
+
+        response = self.client.post(
+            reverse("socialmanager:post_ai_feedback"),
+            data={
+                "payload": json.dumps({
+                    "feedback_type": "caption",
+                    "post_type": "video",
+                    "video_duration_seconds": 12,
+                }),
+                "video": video,
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Video analysis is unavailable", response.json()["error"])
+        generate.assert_not_called()
+
+    @override_settings(GEMINI_VIDEO_MAX_BYTES=4)
+    @patch("socialmanager.views.generate_post_field_feedback")
+    def test_video_ai_feedback_uses_text_fallback_when_size_exceeds_ai_limit(self, generate):
+        generate.return_value = ai_assistant.FieldFeedbackResult(
+            suggestion="Launch day, made clearer.",
+            explanation="This caption gives the audience a clearer reason to respond.",
+            used_video_input=False,
+            fallback_reason="video_too_large",
+        )
+        user, _subscription = self.create_workspace_user("video-ai-size-fallback", active_member=True)
+        self.client.force_login(user)
+        video = SimpleUploadedFile("clip.mp4", b"video", content_type="video/mp4")
+
+        response = self.client.post(
+            reverse("socialmanager:post_ai_feedback"),
+            data={
+                "payload": json.dumps({
+                    "feedback_type": "caption",
+                    "post_type": "video",
+                    "title": "Launch notes",
+                    "video_duration_seconds": 12,
+                }),
+                "video": video,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["fallback_reason"], "video_too_large")
+        self.assertIn("generated from your text", response.json()["media_notice"])
+        payload = generate.call_args.args[0]
+        self.assertIsNone(payload["video_file"])
+        self.assertTrue(payload["use_text_only_fallback"])
+
+    def test_article_ai_feedback_still_requires_text_or_media(self):
         user, _subscription = self.create_workspace_user("empty-nonvideo-ai", active_member=True)
         self.client.force_login(user)
 
-        for post_type in ("article", "photo_post"):
-            with self.subTest(post_type=post_type):
-                response = self.client.post(
-                    reverse("socialmanager:post_ai_feedback"),
-                    data=json.dumps({"feedback_type": "caption", "post_type": post_type}),
-                    content_type="application/json",
-                )
-                self.assertEqual(response.status_code, 400)
-                self.assertIn("Please add a short description", response.json()["error"])
+        response = self.client.post(
+            reverse("socialmanager:post_ai_feedback"),
+            data=json.dumps({"feedback_type": "caption", "post_type": "article"}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Please add a short description", response.json()["error"])
 
     @override_settings(GEMINI_VIDEO_MAX_BYTES=52_428_800, GEMINI_VIDEO_MAX_SECONDS=60)
     def test_video_ai_limits_are_exposed_to_frontend(self):
@@ -1555,7 +2386,7 @@ class SubscriptionPostCreationTests(TestCase):
         self.assertFalse(membership.is_active_member)
 
     @override_settings(STORAGES=TEST_STATIC_STORAGES)
-    def test_signup_missing_username_returns_form_error_without_creating_user(self):
+    def test_signup_without_username_uses_email_prefix(self):
         response = self.client.post(
             reverse("socialmanager:signup"),
             {
@@ -1566,12 +2397,21 @@ class SubscriptionPostCreationTests(TestCase):
             },
         )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertFormError(response.context["form"], "username", "This field is required.")
-        self.assertFalse(User.objects.filter(email="missingusername@example.com").exists())
+        self.assertEqual(response.status_code, 302)
+        user = User.objects.get(email="missingusername@example.com")
+        self.assertEqual(user.username, "missingusername")
+
+    def test_allauth_account_signup_redirects_to_custom_password_signup(self):
+        response = self.client.get("/accounts/signup/")
+
+        self.assertRedirects(
+            response,
+            reverse("socialmanager:signup"),
+            fetch_redirect_response=False,
+        )
 
     @override_settings(STORAGES=TEST_STATIC_STORAGES)
-    def test_signup_duplicate_username_returns_form_error_without_creating_user(self):
+    def test_signup_username_collision_uses_numeric_suffix(self):
         User.objects.create_user(
             username="takenname",
             email="takenname@example.com",
@@ -1581,17 +2421,16 @@ class SubscriptionPostCreationTests(TestCase):
         response = self.client.post(
             reverse("socialmanager:signup"),
             {
-                "username": " TakenName ",
-                "email": "secondname@example.com",
+                "email": "takenname@another.example.com",
                 "subscription_name": "Duplicate Username Workspace",
                 "password1": "complex-password-123",
                 "password2": "complex-password-123",
             },
         )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertFormError(response.context["form"], "username", "A user with that username already exists.")
-        self.assertFalse(User.objects.filter(email="secondname@example.com").exists())
+        self.assertEqual(response.status_code, 302)
+        user = User.objects.get(email="takenname@another.example.com")
+        self.assertEqual(user.username, "takenname1")
 
     @override_settings(STORAGES=TEST_STATIC_STORAGES)
     def test_signup_duplicate_email_returns_form_error_without_creating_user(self):
@@ -1774,19 +2613,20 @@ class SubscriptionPostCreationTests(TestCase):
         self.assertTrue(membership.is_active_member)
         self.assertTrue(user_has_active_subscription(user))
 
-    def test_signup_rejects_username_longer_than_twenty_characters(self):
+    def test_signup_truncates_generated_username_to_twenty_characters(self):
         form = SignUpForm(
             data={
-                "username": "x" * 21,
-                "email": "longname@example.com",
+                "email": "averylongemailprefixname@example.com",
                 "subscription_name": "Long Name Workspace",
                 "password1": "complex-password-123",
                 "password2": "complex-password-123",
             }
         )
 
-        self.assertFalse(form.is_valid())
-        self.assertIn("username", form.errors)
+        self.assertTrue(form.is_valid())
+        user = form.save(commit=False)
+        self.assertEqual(user.username, "averylongemailprefix")
+        self.assertEqual(len(user.username), 20)
 
     def test_signup_rejects_duplicate_email(self):
         User.objects.create_user(
@@ -1950,6 +2790,15 @@ class GoogleAccountLinkingTests(TestCase):
         self.adapter = SocialManagerSocialAccountAdapter()
         self.request_factory = RequestFactory()
 
+    def test_new_user_signal_creates_settings_with_ai_push_disabled(self):
+        user = User.objects.create_user(
+            username="settings-defaults",
+            email="settings-defaults@example.com",
+        )
+
+        settings_obj = UserSettings.objects.get(user=user)
+        self.assertFalse(settings_obj.push_ai_finished)
+
     def social_login(self, email, uid="google-uid", user=None):
         user = user or User(username=email.split("@", 1)[0], email=email)
         account = SocialAccount(provider="google", uid=uid, user=user)
@@ -2090,6 +2939,22 @@ class GoogleAccountLinkingTests(TestCase):
         self.assertTrue(UserSettings.objects.filter(user=sociallogin.user).exists())
         self.assertTrue(SubscriptionMembership.objects.filter(user=sociallogin.user).exists())
 
+    def test_google_login_without_email_is_blocked_instead_of_showing_signup(self):
+        request = self.request_for_user()
+        user = User(username="")
+        sociallogin = SocialLogin(
+            user=user,
+            account=SocialAccount(provider="google", uid="no-email", user=user),
+            email_addresses=[],
+        )
+
+        self.assert_blocked_with_message(
+            request,
+            sociallogin,
+            GOOGLE_EMAIL_REQUIRED_MESSAGE,
+            "socialmanager:login",
+        )
+
     def test_new_google_user_uses_email_local_part_username_and_unusable_password(self):
         request = self.request_for_user()
         sociallogin = self.social_login(email="verylongusernameabcde@gmail.com", uid="long-google")
@@ -2112,6 +2977,28 @@ class GoogleAccountLinkingTests(TestCase):
 
         self.assertEqual(user.username, "verylongusernameabc1")
         self.assertEqual(len(user.username), 20)
+
+    def test_google_username_slugifies_email_prefix(self):
+        cases = {
+            "First.Last+tag@example.com": "firstlasttag",
+            "first_last@example.com": "first_last",
+            "使用者@example.com": "user",
+        }
+
+        for email, expected in cases.items():
+            with self.subTest(email=email):
+                user = User(email=email)
+                sociallogin = self.social_login(
+                    email=email,
+                    uid=f"slug-{len(expected)}-{email}",
+                    user=user,
+                )
+                populated = self.adapter.populate_user(
+                    self.request_for_user(),
+                    sociallogin,
+                    {"email": email},
+                )
+                self.assertEqual(populated.username, expected)
 
     def test_logged_in_user_cannot_link_second_google_account(self):
         user = User.objects.create_user(
@@ -3610,7 +4497,7 @@ class VideoAnalyticsChartTests(TestCase):
             caption="Video body",
         )
 
-    def test_video_engagement_line_is_cumulative_from_zero(self):
+    def test_video_engagement_line_uses_per_bucket_intensity(self):
         VideoWatchSession.objects.create(
             post=self.post,
             viewer=self.viewer_one,
@@ -3643,7 +4530,10 @@ class VideoAnalyticsChartTests(TestCase):
         chart = analytics_view.get_video_insights_chart_data()
 
         self.assertEqual([point["seconds"] for point in chart["points"]], [0, 5, 10, 15, 20])
-        self.assertEqual([point["engagement"] for point in chart["points"]], [0, 50.0, 50.0, 100.0, 100.0])
+        self.assertEqual(
+            [point["engagement_intensity"] for point in chart["points"]],
+            [0, 100.0, 0.0, 100.0, 0.0],
+        )
         self.assertEqual(chart["points"][0]["retention"], 100.0)
         self.assertEqual(chart["points"][3]["retention"], 50.0)
         self.assertEqual([tick["value"] for tick in chart["y_ticks"]], [100, 75, 50, 25, 0])
@@ -3675,7 +4565,8 @@ class UserSettingsTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, '<h2 class="card-title">Language</h2>', html=True)
-        self.assertContains(response, '<label class="settings-label" for="id_language">Language</label>', html=True)
+        self.assertContains(response, '<h2 class="settings-section-title">Language</h2>', html=True)
+        self.assertContains(response, '<label class="sr-only" for="id_language">Language</label>', html=True)
         self.assertContains(response, 'name="language"')
 
 
@@ -3772,6 +4663,12 @@ class ProductionTemplateTests(TestCase):
 
 @override_settings(SECURE_SSL_REDIRECT=False, SITE_URL="https://creana.app")
 class SEOInfrastructureTests(TestCase):
+    public_content_routes = (
+        "introduction", "community", "privacy", "terms", "ai_policy",
+        "features", "ai_features", "pricing", "supported_platforms", "faq",
+        "about", "contact", "how_it_works",
+    )
+
     def setUp(self):
         self.author = User.objects.create_user(
             username="seo-author",
@@ -3843,13 +4740,18 @@ class SEOInfrastructureTests(TestCase):
         self.assertContains(response, "Disallow: /posts/new/")
         self.assertContains(response, "Sitemap: https://creana.app/sitemap.xml")
 
-    def test_sitemap_contains_only_landing_and_published_public_posts(self):
+    def test_sitemap_contains_public_content_pages_and_only_public_posts(self):
         response = self.client.get(reverse("sitemap_xml"))
         content = response.content.decode()
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["X-Robots-Tag"], "noindex, follow")
         self.assertIn("https://creana.app/", content)
+        for route_name in self.public_content_routes:
+            self.assertIn(
+                f"https://creana.app{reverse(f'socialmanager:{route_name}')}",
+                content,
+            )
         self.assertIn(
             f"https://creana.app{reverse('socialmanager:post_detail', args=[self.published_post.pk, self.published_post.slug])}",
             content,
@@ -3861,6 +4763,107 @@ class SEOInfrastructureTests(TestCase):
             )
         self.assertNotIn("/dashboard/", content)
         self.assertNotIn("/users/", content)
+
+    def test_public_content_pages_are_anonymous_indexable_and_canonical(self):
+        for route_name in self.public_content_routes:
+            with self.subTest(route_name=route_name):
+                url = reverse(f"socialmanager:{route_name}")
+                response = self.client.get(url)
+
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(
+                    response,
+                    '<meta name="robots" content="index, follow">',
+                    html=True,
+                )
+                self.assertContains(response, '<meta name="description"')
+                self.assertContains(
+                    response,
+                    f'<link rel="canonical" href="https://creana.app{url}">',
+                    html=True,
+                )
+                self.assertContains(
+                    response,
+                    f'<meta property="og:url" content="https://creana.app{url}">',
+                    html=True,
+                )
+                self.assertContains(response, "<h1")
+
+    def test_landing_links_to_pages_and_preserves_hero(self):
+        response = self.client.get(reverse("socialmanager:landing"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "socialmanager/partials/public_header.html")
+        self.assertTemplateUsed(response, "socialmanager/partials/public_footer.html")
+        self.assertContains(response, "Create Smarter.")
+        self.assertContains(response, "Analyse Better.")
+        self.assertContains(response, "landing-hero__fox")
+        for route_name in self.public_content_routes:
+            self.assertContains(response, reverse(f"socialmanager:{route_name}"))
+
+    def test_public_pages_render_simplified_navigation_and_grouped_footer(self):
+        response = self.client.get(reverse("socialmanager:introduction"))
+
+        self.assertTemplateUsed(response, "socialmanager/partials/public_header.html")
+        self.assertTemplateUsed(response, "socialmanager/partials/public_footer.html")
+        self.assertContains(response, "data-mega-panel", count=1)
+        self.assertContains(response, 'aria-label="Breadcrumb"')
+        self.assertContains(response, 'class="public-mobile-nav"')
+        self.assertContains(response, "public-mobile-menu-icon--close")
+        self.assertContains(response, 'aria-label="Mobile public navigation"')
+        self.assertContains(response, 'class="btn btn-primary public-mobile-login"')
+        self.assertContains(response, "Home")
+        self.assertNotContains(response, "Continue learning about Creana")
+        self.assertNotContains(response, "public-related-card")
+        self.assertNotContains(response, "public-content-eyebrow")
+        for heading in ("Product", "Resources", "Company", "Legal"):
+            self.assertContains(response, heading)
+        content = response.content.decode()
+        self.assertGreater(
+            content.rfind("&copy; 2026 Creana. All rights reserved."),
+            content.rfind("AI Policy"),
+        )
+        header = content.split("<main", 1)[0]
+        for route_name in self.public_content_routes:
+            self.assertIn(reverse(f"socialmanager:{route_name}"), header)
+        for group_name in ("Product", "Legal", "Pricing", "FAQ"):
+            self.assertIn(group_name, header)
+        self.assertEqual(header.count("data-mega-trigger="), 2)
+        self.assertEqual(header.count("data-mobile-group-trigger="), 2)
+        self.assertIn("public-mega-trigger is-active", header)
+        footer = content.split('<footer class="footer public-content-footer">', 1)[1]
+        for route_name in self.public_content_routes:
+            self.assertIn(reverse(f"socialmanager:{route_name}"), footer)
+        self.assertContains(response, "public-content-container")
+
+    def test_faq_answers_are_server_rendered_with_safe_schema(self):
+        response = self.client.get(reverse("socialmanager:faq"))
+
+        self.assertContains(response, 'class="public-faq-item"', count=12)
+        self.assertContains(response, "Does Creana analyze my Instagram or TikTok account?")
+        self.assertContains(
+            response,
+            "Creana does not currently claim external social-account analytics import.",
+        )
+        self.assertContains(response, reverse("socialmanager:supported_platforms"))
+        self.assertContains(response, '"@type": "FAQPage"')
+        self.assertContains(response, '"@type": "BreadcrumbList"')
+
+    def test_specialized_public_pages_render_visible_tables_and_timeline(self):
+        platforms = self.client.get(reverse("socialmanager:supported_platforms"))
+        pricing = self.client.get(reverse("socialmanager:pricing"))
+        how_it_works = self.client.get(reverse("socialmanager:how_it_works"))
+
+        self.assertContains(platforms, "Platform support at a glance")
+        self.assertContains(platforms, "Not currently claimed", count=8)
+        self.assertContains(pricing, "Community and member access")
+        self.assertContains(pricing, "USD $5/month")
+        self.assertContains(how_it_works, "public-timeline-step", count=6)
+        self.assertNotContains(how_it_works, "Key parts of the Creana experience")
+
+        ai_features = self.client.get(reverse("socialmanager:ai_features"))
+        self.assertContains(ai_features, "Which AI tool should I use?")
+        self.assertContains(ai_features, "Requires Creana analytics data?")
 
     @override_settings(USE_GCS=True, GS_QUERYSTRING_AUTH=True)
     def test_public_post_is_anonymously_readable_with_safe_metadata(self):
@@ -3875,7 +4878,8 @@ class SEOInfrastructureTests(TestCase):
         self.assertContains(response, "A concise public summary for creators.")
         self.assertContains(response, f'<link rel="canonical" href="https://creana.app{url}">', html=True)
         self.assertContains(response, '<meta property="og:type" content="article">', html=True)
-        self.assertContains(response, "https://creana.app/static/socialmanager/images/icon.webp")
+        self.assertContains(response, "https://creana.app/static/socialmanager/images/icon.")
+        self.assertContains(response, ".webp")
         self.assertNotContains(response, "social_posts/")
 
     def test_non_public_posts_are_not_anonymously_exposed(self):

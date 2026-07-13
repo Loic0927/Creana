@@ -1,0 +1,173 @@
+{% extends "socialmanager/base.html" %}
+{% load static %}
+
+{% block title %}{{ seo_title }}{% endblock %}
+{% block body_class %}public-content-page public-content-page--{{ page.route_name }}{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'socialmanager/css/pages/landing.css' %}?v=creana-tour-popup-card-1" rel="stylesheet">
+<link href="{% static 'socialmanager/css/pages/public_content.css' %}?v=geo-content-13" rel="stylesheet">
+{% endblock %}
+
+{% block public_content %}
+<div class="landing-page-surface public-content-surface">
+    {% include "socialmanager/partials/public_header.html" %}
+
+    <main class="public-content-main">
+        <article class="marketing-wrap public-content-container public-content-article">
+            <nav class="public-breadcrumb" aria-label="Breadcrumb">
+                <ol>
+                    <li><a href="{% url 'socialmanager:landing' %}">Home</a></li>
+                    <li aria-current="page">{{ page.eyebrow }}</li>
+                </ol>
+            </nav>
+
+            <header class="public-content-hero{% if is_policy_page %} public-content-hero--policy{% endif %}">
+                <h1>{{ page.heading }}</h1>
+                <p class="public-content-lead">{{ page.lead }}</p>
+            </header>
+
+            {% if page.differentiators %}
+                <section class="public-why" aria-labelledby="why-choose-creana">
+                    <div>
+                        <h2 id="why-choose-creana">Why choose Creana?</h2>
+                    </div>
+                    <ul>
+                        {% for item in page.differentiators %}<li>{{ item }}</li>{% endfor %}
+                    </ul>
+                </section>
+            {% endif %}
+
+            {% if page.route_name == 'ai_features' %}
+                <section class="public-comparison" aria-labelledby="ai-tool-types">
+                    <div class="public-section-intro">
+                        <h2 id="ai-tool-types">Writing assistance and Creana-data insights</h2>
+                    </div>
+                    <div class="public-comparison-grid">
+                        {% for group in page.tool_groups %}
+                            <article class="public-comparison-card{% if forloop.last %} public-comparison-card--data{% endif %}">
+                                <p class="public-card-label">{{ group.label }}</p>
+                                <h3>{{ group.heading }}</h3>
+                                <ul>{% for item in group.items %}<li>{{ item }}</li>{% endfor %}</ul>
+                                <p>{{ group.summary }}</p>
+                            </article>
+                        {% endfor %}
+                    </div>
+                    <div class="public-tool-matrix">
+                        <h3>Which AI tool should I use?</h3>
+                        <p class="public-table-hint">Scroll horizontally to view the full table.</p>
+                        <div class="public-table-wrap" tabindex="0" role="region" aria-label="Creana AI tool comparison table">
+                            <table>
+                                <thead><tr><th scope="col">Goal</th><th scope="col">Recommended Creana AI tool</th><th scope="col">Requires Creana analytics data?</th></tr></thead>
+                                <tbody>
+                                    {% for row in page.matrix %}<tr><th scope="row">{{ row.0 }}</th><td>{{ row.1 }}</td><td>{{ row.2 }}</td></tr>{% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <p class="public-inline-links">Read the <a href="{% url 'socialmanager:ai_policy' %}">AI Policy</a>, review <a href="{% url 'socialmanager:pricing' %}">member pricing</a>, or check <a href="{% url 'socialmanager:supported_platforms' %}">supported content workflows</a>.</p>
+                </section>
+            {% endif %}
+
+            {% if page.route_name == 'supported_platforms' %}
+                <section class="public-data-block" aria-labelledby="platform-support-table">
+                    <div class="public-section-intro">
+                        <h2 id="platform-support-table">Platform support at a glance</h2>
+                    </div>
+                    <p class="public-table-hint">Scroll horizontally to view the full table.</p>
+                    <div class="public-table-wrap" tabindex="0" role="region" aria-label="Supported platform capability table">
+                        <table>
+                            <thead><tr><th scope="col">Platform</th><th scope="col">AI content preparation</th><th scope="col">Target label in Creana</th><th scope="col">External analytics import</th></tr></thead>
+                            <tbody>
+                                {% for row in page.table %}<tr><th scope="row">{{ row.0 }}</th><td>{{ row.1 }}</td><td>{{ row.2 }}</td><td>{{ row.3 }}</td></tr>{% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="public-inline-links">Learn more about <a href="{% url 'socialmanager:ai_features' %}">AI writing tools</a> or check the <a href="{% url 'socialmanager:faq' %}">platform and analytics FAQ</a>.</p>
+                </section>
+            {% endif %}
+
+            {% if page.route_name == 'pricing' %}
+                <section class="public-data-block" aria-labelledby="pricing-comparison-table">
+                    <div class="public-section-intro">
+                        <h2 id="pricing-comparison-table">Community and member access</h2>
+                    </div>
+                    <p class="public-table-hint">Scroll horizontally to view the full table.</p>
+                    <div class="public-table-wrap" tabindex="0" role="region" aria-label="Community and member access comparison table">
+                        <table>
+                            <thead><tr><th scope="col">Capability</th><th scope="col">Free/community</th><th scope="col">Member</th></tr></thead>
+                            <tbody>
+                                {% for row in page.table %}<tr><th scope="row">{{ row.0 }}</th><td>{{ row.1 }}</td><td>{{ row.2 }}</td></tr>{% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="public-inline-links">See what the <a href="{% url 'socialmanager:ai_features' %}">AI features</a> do, read the <a href="{% url 'socialmanager:faq' %}">FAQ</a>, and review the <a href="{% url 'socialmanager:terms' %}">service terms</a>.</p>
+                </section>
+            {% endif %}
+
+            {% if page.route_name == 'faq' %}
+                <section class="public-faq" aria-label="Frequently asked questions">
+                    {% for group in faq_groups %}
+                        <section class="public-faq-group" aria-labelledby="faq-group-{{ forloop.counter }}">
+                            <h2 id="faq-group-{{ forloop.counter }}">{{ group.heading }}</h2>
+                            {% for section in group.items %}
+                                <details class="public-faq-item"{% if forloop.parentloop.first and forloop.first %} open{% endif %}>
+                                    <summary>{{ section.heading }}</summary>
+                                    <div>
+                                        {% for paragraph in section.paragraphs %}<p>{{ paragraph }}</p>{% endfor %}
+                                        {% if section.link %}<p><a href="{% url 'socialmanager:'|add:section.link.0 %}">{{ section.link.1 }} &rarr;</a></p>{% endif %}
+                                    </div>
+                                </details>
+                            {% endfor %}
+                        </section>
+                    {% endfor %}
+                </section>
+            {% elif page.route_name == 'how_it_works' %}
+                <section class="public-timeline" aria-label="How Creana works">
+                    {% for section in page.sections %}
+                        <article class="public-timeline-step">
+                            <div class="public-timeline-marker" aria-hidden="true">{{ forloop.counter }}</div>
+                            <div><h2>{{ section.heading }}</h2>{% for paragraph in section.paragraphs %}<p>{{ paragraph }}</p>{% endfor %}</div>
+                        </article>
+                    {% endfor %}
+                </section>
+            {% elif page.route_name == 'ai_features' %}
+                {% for section in page.sections %}<section class="public-conclusion"><h2>{{ section.heading }}</h2>{% for paragraph in section.paragraphs %}<p>{{ paragraph }}</p>{% endfor %}</section>{% endfor %}
+            {% elif page.route_name == 'pricing' %}
+                <div class="public-content-sections public-content-sections--concise">
+                    {% for section in page.sections %}<section class="public-content-section"><h2>{{ section.heading }}</h2>{% for paragraph in section.paragraphs %}<p>{{ paragraph }}</p>{% endfor %}</section>{% endfor %}
+                </div>
+            {% elif page.route_name == 'supported_platforms' %}
+                <div class="public-content-sections public-content-sections--concise">
+                    {% for section in page.sections %}<section class="public-content-section"><h2>{{ section.heading }}</h2>{% for paragraph in section.paragraphs %}<p>{{ paragraph }}</p>{% endfor %}</section>{% endfor %}
+                </div>
+            {% else %}
+                <div class="public-content-sections{% if is_policy_page %} public-content-sections--document{% endif %}">
+                    {% for section in page.sections %}
+                        <section class="public-content-section">
+                            <div class="public-content-section-heading">
+                                <h2>{{ section.heading }}</h2>
+                                {% if section.badge %}<span class="public-content-badge">{{ section.badge }}</span>{% endif %}
+                            </div>
+                            {% for paragraph in section.paragraphs %}<p>{{ paragraph }}</p>{% endfor %}
+                            {% if section.bullets %}<ul>{% for bullet in section.bullets %}<li>{{ bullet }}</li>{% endfor %}</ul>{% endif %}
+                        </section>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            {% if page.inline_links %}
+                <nav class="public-inline-links" aria-label="Explore Creana">
+                    {% for link in page.inline_links %}<a href="{% url 'socialmanager:'|add:link.0 %}">{{ link.1 }}</a>{% if not forloop.last %}<span aria-hidden="true">&middot;</span>{% endif %}{% endfor %}
+                </nav>
+            {% endif %}
+
+        </article>
+    </main>
+
+    {% include "socialmanager/partials/public_footer.html" %}
+</div>
+{% if structured_data %}<script type="application/ld+json">{{ structured_data|safe }}</script>{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}<script defer src="{% static 'socialmanager/js/public_navigation.js' %}?v=mega-menu-2"></script>{% endblock %}

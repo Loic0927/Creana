@@ -1,4 +1,5 @@
 ﻿import json
+import ast
 import logging
 import re
 import stripe
@@ -41,6 +42,7 @@ from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, TemplateView, UpdateView
+from PIL import Image, UnidentifiedImageError
 
 from .forms import AnnouncementForm, LoginForm, PostCommentForm, SaaSSubscriptionForm, SignUpForm, SocialMediaCampaignForm, SocialMediaPostForm, UserSettingsForm, validate_video_upload
 from .models import (
@@ -57,6 +59,7 @@ from .models import (
     PostComment,
     PostEngagement,
     PostImage,
+    PushSubscription,
     PostView,
     SaaSSubscription,
     SocialMediaCampaign,
@@ -76,7 +79,8 @@ from .services.ai_assistant import (
     AI_USAGE_LIMIT_REACHED_MESSAGE_ZH_HANT,
     AI_TEMPORARILY_UNAVAILABLE_MESSAGE,
     GeminiQuotaError,
-    NOT_ENOUGH_DASHBOARD_DATA_MESSAGE,
+    ImageInputError,
+    VIDEO_TEXT_FALLBACK_REQUIRED_MESSAGE,
     _localize_analysis_terms,
     generate_caption_and_hashtags,
     generate_campaign_analysis,
@@ -91,13 +95,21 @@ from .services.ai_assistant import (
     generate_video_content_guidance,
     store_suggestion_history,
 )
-from .seo import clean_meta_description, public_post_metadata
+from .seo import absolute_site_url, clean_meta_description, public_post_metadata
+from .geo_content import PUBLIC_PAGES
 from .services.analytics import get_dashboard_summary, get_recent_analytics_date_range, get_recent_post_metrics
 from .services.account_setup import ensure_user_account_setup
 from .services.scheduler import validate_schedule
 from socialmanager.services.scheduler import publish_due_scheduled_posts
 from .services.video_thumbnail import generate_video_thumbnail
 from .services.video_intelligence import analyze_gcs_video
+from .services.video_metadata import (
+    VIDEO_DURATION_UNREADABLE_MESSAGE,
+    VIDEO_TOO_LONG_MESSAGE,
+    VideoDurationError,
+    validate_video_duration_file,
+    validate_video_duration_value,
+)
 from .subscriptions import activate_membership, deactivate_membership_for_subscription, user_has_active_subscription
 from .account_identity import normalize_email, user_email_exists
 from .utils.html_sanitizer import sanitize_article_html
@@ -108,6 +120,10 @@ logger = logging.getLogger(__name__)
 
 SUPPORTED_VIDEO_UPLOAD_TYPES = {"video/mp4": ".mp4", "video/webm": ".webm", "video/quicktime": ".mov"}
 SUPPORTED_VIDEO_UPLOAD_EXTENSIONS = {".mp4", ".webm", ".mov"}
+AI_VIDEO_SIZE_TOO_LARGE_MESSAGE = (
+    "The video is 60 seconds or shorter, but its file size is too large for AI analysis. "
+    "Please compress the video and try again."
+)
 
 
 def _is_posts_timing_request(request):
@@ -136,6 +152,22 @@ def _safe_storage_url(file_field):
 
 def _log_saved_upload(label, uploaded_file, saved_field):
     logger.info("Saved %s upload", label)
+
+
+def _validate_video_duration_value(duration_seconds):
+    return validate_video_duration_value(
+        duration_seconds,
+        max_seconds=getattr(settings, "VIDEO_MAX_DURATION_SECONDS", 60),
+        tolerance_seconds=getattr(settings, "VIDEO_DURATION_TOLERANCE_SECONDS", 0.05),
+    )
+
+
+def _validate_video_duration_file(video_file):
+    return validate_video_duration_file(
+        video_file,
+        max_seconds=getattr(settings, "VIDEO_MAX_DURATION_SECONDS", 60),
+        tolerance_seconds=getattr(settings, "VIDEO_DURATION_TOLERANCE_SECONDS", 0.05),
+    )
 
 
 def ai_quota_limit_message(language, retry_delay_seconds=None):
@@ -693,10 +725,27 @@ def profile_username_search(request):
 
 
 AI_INSIGHT_PLATFORM = SocialMediaPost.Platform.INSTAGRAM
-AI_ANALYSIS_CACHE_VERSION = "post_dynamic_sections_v5_video_basis"
-CAMPAIGN_AI_CACHE_VERSION = "campaign_strategy_v1"
-RETENTION_PROMPT_VERSION = "retention_v2_video_basis_v3"
+AI_ANALYSIS_CACHE_VERSION = "post_dynamic_sections_v7_safe_cache"
+CAMPAIGN_AI_CACHE_VERSION = "campaign_strategy_v2_safe_cache"
+RETENTION_PROMPT_VERSION = "retention_v4_safe_cache"
 AI_MEMBERS_ONLY_MESSAGE = _("AI features are available for members only.")
+AI_INSIGHT_FALLBACK_MESSAGE = _("Unable to format this insight. Please generate it again.")
+
+AI_INSIGHT_KNOWN_HEADINGS = {
+    "overall performance", "key trends", "growth opportunity", "suggested improvements",
+    "content diagnosis", "content understanding", "visual and content signals",
+    "visual & content analysis", "visual and content analysis", "audience behaviour",
+    "audience behavior", "comment analysis", "summary", "campaign overview",
+    "campaign performance", "campaign consistency", "content consistency",
+    "audience response", "content strategy", "growth opportunities",
+    "next campaign recommendation", "posting strategy", "improvement opportunities",
+    "next content recommendation", "retention diagnosis", "engagement diagnosis",
+    "main problems", "analysis basis", "整體表現", "重點趨勢", "成長機會",
+    "建議改善方向", "內容診斷", "內容理解", "視覺與內容訊號", "視覺與內容分析",
+    "受眾行為", "留言分析", "改善機會", "下一則內容建議", "總結", "活動總覽",
+    "活動整體表現", "活動一致性", "內容一致性", "受眾反應", "內容策略",
+    "下一波活動建議", "發文策略", "留存診斷", "互動診斷", "主要問題", "分析依據",
+}
 
 
 def sanitize_ai_insight_text(value):
@@ -721,31 +770,123 @@ def sanitize_ai_insight_text(value):
     return re.sub(r"[ \t]+\n", "\n", text).strip()
 
 
-def parse_ai_insight_sections(report):
-    value = report
-    if isinstance(value, str):
+def _decode_ai_insight_value(value):
+    """Decode JSON, double-encoded JSON, fenced JSON, or a legacy Python literal."""
+    for _ in range(4):
+        if not isinstance(value, str):
+            return value
         stripped = value.strip()
-        if not stripped.startswith("{"):
-            return []
-        try:
-            value = json.loads(stripped)
-        except json.JSONDecodeError:
-            return []
-    if not isinstance(value, dict):
-        return []
-    sections = value.get("sections")
-    if not isinstance(sections, list):
+        fence_match = re.fullmatch(
+            r"```(?:json|python)?\s*(.*?)\s*```",
+            stripped,
+            re.DOTALL | re.IGNORECASE,
+        )
+        if fence_match:
+            stripped = fence_match.group(1).strip()
+        candidates = [stripped]
+        first_brace = stripped.find("{")
+        last_brace = stripped.rfind("}")
+        if first_brace >= 0 and last_brace > first_brace:
+            candidates.append(stripped[first_brace:last_brace + 1])
+        decoded = None
+        for candidate in candidates:
+            try:
+                decoded = json.loads(candidate)
+                break
+            except (json.JSONDecodeError, TypeError):
+                try:
+                    literal = ast.literal_eval(candidate)
+                except (ValueError, SyntaxError):
+                    continue
+                if isinstance(literal, (dict, list, str)):
+                    decoded = literal
+                    break
+        if decoded is None or decoded == value:
+            return value
+        value = decoded
+    return value
+
+
+def _clean_ai_insight_points(value):
+    if isinstance(value, dict):
+        value = value.get("points") or value.get("items") or value.get("bullets") or []
+    if isinstance(value, str):
+        value = [
+            re.sub(r"^\s*(?:[-*\u2022]+|\d+[.)])\s*", "", line).strip()
+            for line in value.splitlines()
+            if line.strip()
+        ]
+    if not isinstance(value, (list, tuple)):
+        value = [value] if value not in (None, "") else []
+    points = []
+    for point in value:
+        if isinstance(point, (dict, list, tuple)):
+            continue
+        decoded_point = _decode_ai_insight_value(point)
+        if isinstance(decoded_point, (dict, list, tuple)):
+            continue
+        clean_point = sanitize_ai_insight_text(point)
+        if clean_point and not clean_point.lstrip().startswith(("{", "[")):
+            points.append(clean_point)
+    return points
+
+
+def _parse_legacy_ai_insight_text(value):
+    sections = []
+    current_heading = ""
+    current_lines = []
+
+    def flush():
+        if current_heading:
+            points = _clean_ai_insight_points("\n".join(current_lines))
+            if points:
+                sections.append({"heading": current_heading, "points": points})
+
+    for raw_line in sanitize_ai_insight_text(value).splitlines():
+        line = raw_line.strip()
+        candidate = re.sub(r"^#+\s*", "", line).rstrip(":：").strip()
+        if candidate and (
+            candidate.lower() in AI_INSIGHT_KNOWN_HEADINGS
+            or candidate in AI_INSIGHT_KNOWN_HEADINGS
+        ):
+            flush()
+            current_heading = candidate
+            current_lines = []
+        elif line and current_heading:
+            current_lines.append(line)
+    flush()
+    return sections
+
+
+def parse_ai_insight_sections(report):
+    value = _decode_ai_insight_value(report)
+    if isinstance(value, str):
+        return _parse_legacy_ai_insight_text(value)
+    if isinstance(value, list):
+        sections = value
+    elif isinstance(value, dict) and isinstance(value.get("sections"), list):
+        sections = value["sections"]
+    elif isinstance(value, dict):
+        sections = [
+            {"heading": heading, "points": points}
+            for heading, points in value.items()
+        ]
+    else:
         return []
     normalized = []
     for section in sections:
         if not isinstance(section, dict):
             continue
-        heading = str(section.get("heading") or "").strip()
-        points = section.get("points")
-        if not isinstance(points, list):
+        heading_value = section.get("heading") or section.get("title") or ""
+        if isinstance(heading_value, (dict, list, tuple)):
             continue
-        clean_points = [str(point).strip() for point in points if str(point).strip()]
-        if heading or clean_points:
+        heading = sanitize_ai_insight_text(
+            heading_value
+        )
+        clean_points = _clean_ai_insight_points(
+            section.get("points") or section.get("items") or section.get("bullets")
+        )
+        if heading and clean_points:
             normalized.append({"heading": heading, "points": clean_points})
     return normalized
 
@@ -767,125 +908,10 @@ def render_ai_insight_html(report):
             html_parts.append("".join(section_html))
         return "".join(html_parts)
 
-    text = sanitize_ai_insight_text(report)
-    if not text:
-        return ""
-
-    known_headings = {
-        "overall performance",
-        "key trends",
-        "growth opportunity",
-        "suggested improvements",
-        "content diagnosis",
-        "content understanding",
-        "visual and content signals",
-        "visual & content analysis",
-        "visual and content analysis",
-        "audience behaviour",
-        "audience behavior",
-        "comment analysis",
-        "summary",
-        "campaign overview",
-        "campaign performance",
-        "campaign consistency",
-        "content consistency",
-        "audience response",
-        "content strategy",
-        "growth opportunities",
-        "next campaign recommendation",
-        "posting strategy",
-        "improvement opportunities",
-        "next content recommendation",
-        "retention diagnosis",
-        "engagement diagnosis",
-        "main problems",
-        "analysis basis",
-        "整體表現",
-        "重點趨勢",
-        "成長機會",
-        "建議改善方向",
-        "內容診斷",
-        "內容理解",
-        "視覺與內容訊號",
-        "視覺與內容分析",
-        "受眾行為",
-        "留言分析",
-        "改善機會",
-        "下一則內容建議",
-        "總結",
-        "活動總覽",
-        "活動整體表現",
-        "活動一致性",
-        "內容一致性",
-        "受眾反應",
-        "內容策略",
-        "下一波活動建議",
-        "發文策略",
-        "留存診斷",
-        "互動診斷",
-        "主要問題",
-        "分析依據",
-    }
-    sections = []
-    current_heading = ""
-    current_lines = []
-    heading_pattern = re.compile(r"^\s*(?:#+\s*)?(.{2,60}?):?\s*$")
-
-    def is_heading(line):
-        heading_match = heading_pattern.match(line)
-        if not heading_match:
-            return ""
-        candidate = heading_match.group(1).strip().rstrip(":：").strip()
-        if candidate.lower() in known_headings or candidate in known_headings:
-            return candidate
-        return ""
-
-    def flush_section():
-        if current_heading or current_lines:
-            sections.append((current_heading, "\n".join(current_lines).strip()))
-
-    for raw_line in text.splitlines():
-        line = raw_line.strip()
-        if not line:
-            if current_lines and current_lines[-1] != "":
-                current_lines.append("")
-            continue
-        heading = is_heading(line)
-        if heading:
-            flush_section()
-            current_heading = heading
-            current_lines = []
-        else:
-            current_lines.append(line)
-    flush_section()
-
-    html_parts = []
-    if sections:
-        for heading, body in sections:
-            section_html = ['<section class="ai-insight-section">']
-            if heading:
-                section_html.append(f'<h3 class="ai-insight-heading">{escape(heading)}</h3>')
-            if body:
-                paragraphs = [paragraph.strip() for paragraph in re.split(r"\n\s*\n", body) if paragraph.strip()]
-                for paragraph in paragraphs:
-                    raw_lines = [item.strip() for item in paragraph.splitlines() if item.strip()]
-                    bullet_pattern = r"^\s*(?:[-*\u2022]+|\d+[.)])\s+"
-                    bullet_lines = [
-                        re.sub(bullet_pattern, "", item).strip()
-                        for item in raw_lines
-                        if re.match(bullet_pattern, item)
-                    ]
-                    if raw_lines and len(bullet_lines) == len(raw_lines):
-                        items = "".join(f"<li>{escape(item)}</li>" for item in bullet_lines if item)
-                        section_html.append(f'<ul class="ai-insight-list">{items}</ul>')
-                    else:
-                        lines = [escape(item.strip().lstrip("-").strip()) for item in raw_lines]
-                        section_html.append(f'<p class="ai-insight-body">{"<br>".join(lines)}</p>')
-            section_html.append("</section>")
-            html_parts.append("".join(section_html))
-    else:
-        html_parts.append(f'<p class="ai-insight-body">{escape(text)}</p>')
-    return "".join(html_parts)
+    return (
+        f'<p class="ai-insight-body ai-insight-error">'
+        f"{escape(AI_INSIGHT_FALLBACK_MESSAGE)}</p>"
+    )
 
 
 def get_user_ai_language(user):
@@ -903,7 +929,15 @@ def uses_traditional_chinese_ai_language(language):
 
 def dashboard_analysis_to_report(analysis, language="English"):
     if not analysis.get("has_enough_data"):
-        return analysis.get("message", "")
+        heading = "儀表板分析" if uses_traditional_chinese_ai_language(language) else "Dashboard insight"
+        return {
+            "sections": [
+                {
+                    "heading": heading,
+                    "points": [analysis.get("message", "")],
+                }
+            ]
+        }
     overall_summary = _localize_analysis_terms(analysis.get("overall_performance_summary", ""), language, analysis)
     trends = "\n".join(
         f"- {_localize_analysis_terms(trend, language, analysis)}"
@@ -943,12 +977,10 @@ def get_cached_ai_insight(subscription, topic):
 
 
 def cache_ai_insight(subscription, user, topic, report, tone):
-    stored_report = report
-    if parse_ai_insight_sections(report):
-        if not isinstance(stored_report, str):
-            stored_report = json.dumps(stored_report, ensure_ascii=False)
-    else:
-        stored_report = sanitize_ai_insight_text(report)
+    sections = parse_ai_insight_sections(report)
+    if not sections:
+        return None
+    stored_report = json.dumps({"sections": sections}, ensure_ascii=False)
     return AISuggestionHistory.objects.create(
         subscription=subscription,
         requested_by=user,
@@ -1178,6 +1210,100 @@ class LandingPageView(TemplateView):
         return super().get(request, *args, **kwargs)
 
 
+class PublicContentPageView(TemplateView):
+    """Render a stable, anonymous, indexable product-knowledge page."""
+
+    template_name = "socialmanager/public_content_page.html"
+    page_key = None
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        page = PUBLIC_PAGES[self.page_key]
+        canonical_path = reverse(f"socialmanager:{page['route_name']}")
+        canonical_url = absolute_site_url(canonical_path, self.request)
+        primary_schema = None
+        if page.get("faq_schema"):
+            primary_schema = {
+                "@type": "FAQPage",
+                "mainEntity": [
+                    {
+                        "@type": "Question",
+                        "name": section["heading"],
+                        "acceptedAnswer": {
+                            "@type": "Answer",
+                            "text": " ".join(section.get("paragraphs", ())),
+                        },
+                    }
+                    for section in page["sections"]
+                ],
+            }
+        elif page.get("organization_schema"):
+            primary_schema = {
+                "@type": "Organization",
+                "@id": f"{absolute_site_url('', self.request).rstrip('/')}#organization",
+                "name": "Creana",
+                "url": absolute_site_url("", self.request),
+            }
+        elif page.get("software_schema"):
+            primary_schema = {
+                "@type": "SoftwareApplication",
+                "@id": f"{absolute_site_url('', self.request).rstrip('/')}#software",
+                "name": "Creana",
+                "applicationCategory": "BusinessApplication",
+                "operatingSystem": "Web",
+                "url": absolute_site_url("", self.request),
+                "description": page["description"],
+            }
+        breadcrumb_schema = {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+                {
+                    "@type": "ListItem",
+                    "position": 1,
+                    "name": "Home",
+                    "item": absolute_site_url("", self.request),
+                },
+                {
+                    "@type": "ListItem",
+                    "position": 2,
+                    "name": page["eyebrow"],
+                    "item": canonical_url,
+                },
+            ],
+        }
+        structured_data = {
+            "@context": "https://schema.org",
+            "@graph": [breadcrumb_schema] + ([primary_schema] if primary_schema else []),
+        }
+        policy_page_keys = {"community", "privacy", "terms", "ai_policy"}
+        faq_groups = ()
+        if self.page_key == "faq":
+            sections = page["sections"]
+            faq_groups = (
+                {"heading": "Product", "items": [sections[index] for index in (0, 1, 6, 10)]},
+                {"heading": "AI tools", "items": sections[2:4]},
+                {"heading": "Analytics and platforms", "items": [sections[index] for index in (4, 5, 7)]},
+                {"heading": "Pricing and membership", "items": sections[8:10]},
+                {"heading": "Privacy and indexing", "items": sections[11:12]},
+            )
+        context.update(
+            {
+                "page": page,
+                "public_pages": PUBLIC_PAGES,
+                "faq_groups": faq_groups,
+                "is_policy_page": self.page_key in policy_page_keys,
+                "seo_title": page["title"],
+                "seo_description": page["description"],
+                "seo_robots": "index, follow",
+                "seo_type": "website",
+                "seo_url": canonical_url,
+                "canonical_url": canonical_url,
+                "structured_data": json.dumps(structured_data, ensure_ascii=False),
+            }
+        )
+        return context
+
+
 class PasswordLoginView(DjangoLoginView):
     authentication_form = LoginForm
     template_name = "socialmanager/auth/login.html"
@@ -1229,7 +1355,6 @@ class SignUpView(CreateView):
         try:
             with transaction.atomic():
                 self.object = form.save(commit=False)
-                self.object.username = (form.cleaned_data.get("username") or "").strip()
                 self.object.email = normalize_email(form.cleaned_data.get("email"))
                 self.object.save()
                 EmailAddress.objects.get_or_create(
@@ -1437,19 +1562,15 @@ class DashboardAIInsightView(AIMemberRequiredMixin, ActiveSubscriptionMixin, Vie
             )
             current_fallback = generate_dashboard_rule_based_analysis(dashboard_summary_data, language=ai_language)
             cached = get_cached_ai_insight(subscription, topic)
-            has_stale_empty_cache = (
-                cached
-                and current_fallback.get("has_enough_data")
-                and cached.generated_caption == NOT_ENOUGH_DASHBOARD_DATA_MESSAGE
-            )
-            if cached and not has_stale_empty_cache:
+            if cached:
                 return ai_insight_json_response(cached.generated_caption, True)
             try:
                 analysis = generate_dashboard_analysis(dashboard_summary_data, language=ai_language)
             except Exception:
                 analysis = current_fallback
             report = dashboard_analysis_to_report(analysis, language=ai_language)
-            cache_ai_insight(subscription, request.user, topic, report, "Dashboard insight")
+            if analysis.get("has_enough_data"):
+                cache_ai_insight(subscription, request.user, topic, report, "Dashboard insight")
             return ai_insight_json_response(report, False)
         except Exception:
             return JsonResponse({"success": False, "error": "Unable to generate AI insight."}, status=500)
@@ -2127,7 +2248,8 @@ class CampaignAIInsightView(AIMemberRequiredMixin, ActiveSubscriptionMixin, View
                 report = generate_campaign_analysis(payload, language=ai_language)
             except Exception:
                 report = generate_campaign_rule_based_analysis(payload, language=ai_language)
-            cache_ai_insight(self.object.subscription, request.user, topic, report, "Campaign insight")
+            if int(payload.get("released_count") or 0) > 0:
+                cache_ai_insight(self.object.subscription, request.user, topic, report, "Campaign insight")
             return ai_insight_json_response(report, False)
         except Exception:
             return JsonResponse({"success": False, "error": "Unable to generate AI insight."}, status=500)
@@ -2595,6 +2717,82 @@ class SettingsView(LoginRequiredMixin, TemplateView):
         return redirect("socialmanager:login")
 
 
+class ServiceWorkerView(TemplateView):
+    template_name = "socialmanager/service-worker.js"
+    content_type = "application/javascript"
+
+
+class PushVapidPublicKeyView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        if not settings.WEB_PUSH_VAPID_PUBLIC_KEY:
+            return JsonResponse({"error": "Web push is not configured."}, status=503)
+        return JsonResponse({"public_key": settings.WEB_PUSH_VAPID_PUBLIC_KEY})
+
+
+class PushSubscriptionView(LoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        try:
+            payload = json.loads(request.body or "{}")
+            endpoint = payload["endpoint"]
+            keys = payload["keys"]
+            p256dh_key = keys["p256dh"]
+            auth_key = keys["auth"]
+        except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+            return JsonResponse({"success": False, "error": "Invalid push subscription."}, status=400)
+
+        existing = PushSubscription.objects.filter(endpoint=endpoint).first()
+        if existing and existing.user_id != request.user.pk:
+            return JsonResponse({"success": False, "error": "This subscription belongs to another user."}, status=409)
+        subscription, _ = PushSubscription.objects.update_or_create(
+            endpoint=endpoint,
+            user=request.user,
+            defaults={
+                "p256dh_key": p256dh_key,
+                "auth_key": auth_key,
+                "user_agent": request.headers.get("User-Agent", "")[:1000],
+                "is_active": True,
+            },
+        )
+        return JsonResponse({"success": True, "subscription_id": subscription.pk})
+
+    def delete(self, request, *args, **kwargs):
+        try:
+            endpoint = json.loads(request.body or "{}").get("endpoint", "")
+        except (ValueError, json.JSONDecodeError):
+            endpoint = ""
+        if not endpoint:
+            return JsonResponse({"success": False, "error": "Endpoint is required."}, status=400)
+        updated = PushSubscription.objects.filter(user=request.user, endpoint=endpoint).update(is_active=False)
+        return JsonResponse({"success": True, "disabled": bool(updated)})
+
+
+class PushPreferencesView(LoginRequiredMixin, View):
+    fields = {
+        "enable_push_notifications", "push_likes", "push_comments", "push_replies",
+        "push_shares", "push_follows", "push_announcements",
+        "push_scheduled_post_published", "push_scheduled_post_failed",
+    }
+
+    def post(self, request, *args, **kwargs):
+        try:
+            payload = json.loads(request.body or "{}")
+        except (ValueError, json.JSONDecodeError):
+            return JsonResponse({"success": False, "error": "Invalid JSON."}, status=400)
+        unknown = set(payload) - self.fields
+        if unknown:
+            return JsonResponse({"success": False, "error": "Unknown push preference."}, status=400)
+        settings_obj, _ = UserSettings.objects.get_or_create(user=request.user)
+        changed = []
+        for field, value in payload.items():
+            if not isinstance(value, bool):
+                return JsonResponse({"success": False, "error": f"{field} must be boolean."}, status=400)
+            setattr(settings_obj, field, value)
+            changed.append(field)
+        if changed:
+            settings_obj.save(update_fields=changed + ["updated_at"])
+        return JsonResponse({"success": True})
+
+
 class SettingsUpdateView(LoginRequiredMixin, View):
     allowed_fields = {
         "language",
@@ -2607,6 +2805,15 @@ class SettingsUpdateView(LoginRequiredMixin, View):
         "ai_tone",
         "ai_language",
         "ai_hashtag_count",
+        "enable_push_notifications",
+        "push_likes",
+        "push_comments",
+        "push_replies",
+        "push_shares",
+        "push_follows",
+        "push_announcements",
+        "push_scheduled_post_published",
+        "push_scheduled_post_failed",
     }
     boolean_fields = {
         "notify_post_like",
@@ -2615,6 +2822,15 @@ class SettingsUpdateView(LoginRequiredMixin, View):
         "notify_comment_like",
         "notify_comment_reply",
         "notify_follow",
+        "enable_push_notifications",
+        "push_likes",
+        "push_comments",
+        "push_replies",
+        "push_shares",
+        "push_follows",
+        "push_announcements",
+        "push_scheduled_post_published",
+        "push_scheduled_post_failed",
     }
 
     def post(self, request, *args, **kwargs):
@@ -2835,7 +3051,6 @@ class PostDetailView(ActiveSubscriptionMixin, DetailView):
             _cache_post_media_urls(post, include_video=False)
         context["related_posts"] = related_posts
         context["show_more_posts_create_button"] = self.request.user == self.object.author
-        context["can_analyze_video"] = self.object.author == self.request.user or self.is_subscription_admin()
         if (
             self.object.status == SocialMediaPost.Status.PUBLISHED
             and self.object.visibility == SocialMediaPost.Visibility.PUBLIC
@@ -3167,40 +3382,71 @@ class PostAnalyticsView(OwnerOrAdminMixin, DetailView):
 
         event_rows = (
             VideoEngagementEvent.objects.filter(post=post)
-            .values("video_second")
+            .values("video_second", "kind")
             .annotate(total=Count("pk"))
-            .order_by("video_second")
+            .order_by("video_second", "kind")
         )
         event_counts_by_second = {}
         for row in event_rows:
             event_second = min(max(row["video_second"] or 0, 0), duration)
-            event_counts_by_second[event_second] = (
-                event_counts_by_second.get(event_second, 0) + (row["total"] or 0)
+            counts = event_counts_by_second.setdefault(
+                event_second,
+                {"like": 0, "comment": 0, "share": 0},
             )
-        total_engagement_events = sum(event_counts_by_second.values())
-
-        cumulative_engagement_count = 0
-        last_engagement_percentage = 0
+            if row["kind"] in counts:
+                counts[row["kind"]] += row["total"] or 0
+        bucket_counts = []
+        previous_second = 0
+        for second in seconds:
+            if second <= 0:
+                bucket_by_kind = {"like": 0, "comment": 0, "share": 0}
+            else:
+                bucket_by_kind = {
+                    kind: sum(
+                        counts.get(kind, 0)
+                        for event_second, counts in event_counts_by_second.items()
+                        if previous_second < event_second <= second
+                    )
+                    for kind in ("like", "comment", "share")
+                }
+            bucket_counts.append(bucket_by_kind)
+            previous_second = second
+        peak_bucket_count = max(
+            (sum(counts.values()) for counts in bucket_counts),
+            default=0,
+        )
 
         points = []
-        for second in seconds:
+        for second, bucket_by_kind in zip(seconds, bucket_counts):
             retained_count = sum(1 for watched_seconds in viewer_watch_seconds if watched_seconds >= second)
             retention_percentage = round((retained_count / viewer_count) * 100, 1)
-            if second > 0 and total_engagement_events:
-                cumulative_engagement_count = sum(
-                    total
-                    for event_second, total in event_counts_by_second.items()
+            cumulative_by_kind = {
+                kind: sum(
+                    counts.get(kind, 0)
+                    for event_second, counts in event_counts_by_second.items()
                     if event_second <= second
                 )
-                last_engagement_percentage = round((cumulative_engagement_count / total_engagement_events) * 100, 1)
+                for kind in ("like", "comment", "share")
+            }
+            cumulative_engagement_count = sum(cumulative_by_kind.values())
+            bucket_engagement_count = sum(bucket_by_kind.values())
+            engagement_intensity = (
+                round((bucket_engagement_count / peak_bucket_count) * 100, 1)
+                if peak_bucket_count
+                else 0
+            )
             points.append(
                 {
                     "label": f"{second}s",
                     "seconds": second,
                     "retained_count": retained_count,
                     "retention": retention_percentage,
-                    "engagement": min(last_engagement_percentage, 100),
+                    "engagement_intensity": engagement_intensity,
+                    "engagement_bucket_count": bucket_engagement_count,
                     "engagement_count": cumulative_engagement_count,
+                    "timed_likes": cumulative_by_kind["like"],
+                    "timed_comments": cumulative_by_kind["comment"],
+                    "timed_shares": cumulative_by_kind["share"],
                 }
             )
 
@@ -3212,7 +3458,7 @@ class PostAnalyticsView(OwnerOrAdminMixin, DetailView):
         for index, point in enumerate(points):
             x = round(left + (x_step * index), 2)
             y = round(top + (plot_height - ((point["retention"] / 100) * plot_height)), 2)
-            engagement_y = round(top + (plot_height - ((point["engagement"] / 100) * plot_height)), 2)
+            engagement_y = round(top + (plot_height - ((point["engagement_intensity"] / 100) * plot_height)), 2)
             retention_coordinates.append((x, y))
             engagement_coordinates.append((x, engagement_y))
             chart_points.append({**point, "x": x, "retention_y": y, "engagement_y": engagement_y})
@@ -3246,6 +3492,21 @@ class PostAnalyticsView(OwnerOrAdminMixin, DetailView):
         post = self.object
         image_file = self.get_first_ai_image_file()
         comment_payload = self.clean_comments_for_ai()
+        video_analysis_context = {"available": False}
+        if post.content_format == SocialMediaPost.Format.VIDEO:
+            analysis_record = VideoAnalysis.objects.filter(
+                post=post,
+                status=VideoAnalysis.Status.SUCCEEDED,
+            ).first()
+            if analysis_record and isinstance(analysis_record.result, dict):
+                analysis_result = analysis_record.result
+                video_analysis_context = {
+                    "available": True,
+                    "labels": (analysis_result.get("labels") or [])[:12],
+                    "shots": (analysis_result.get("shots") or [])[:30],
+                    "shot_count": analysis_result.get("shot_count") or 0,
+                    "explicit_content": analysis_result.get("explicit_content") or {},
+                }
         return {
             "post": {
                 "id": post.pk,
@@ -3274,6 +3535,7 @@ class PostAnalyticsView(OwnerOrAdminMixin, DetailView):
             "meaningful_comment_count": comment_payload["meaningful_comment_count"],
             "ignored_comment_count": comment_payload["ignored_comment_count"],
             "ignored_comment_reasons": comment_payload["ignored_comment_reasons"],
+            "video_analysis": video_analysis_context,
             "metrics": {
                 "views": metrics["views"],
                 "likes": metrics["likes"],
@@ -3284,6 +3546,21 @@ class PostAnalyticsView(OwnerOrAdminMixin, DetailView):
         }
 
     def get_retention_ai_payload(self, metrics, rate_lookup, video_insights_chart):
+        points = [
+            {
+                "label": point.get("label"),
+                "seconds": point.get("seconds"),
+                "retention": point.get("retention"),
+                "engagement_intensity": point.get("engagement_intensity"),
+                "engagement_bucket_count": point.get("engagement_bucket_count", 0),
+                "engagement_count": point.get("engagement_count"),
+                "retained_count": point.get("retained_count"),
+                "timed_likes": point.get("timed_likes", 0),
+                "timed_comments": point.get("timed_comments", 0),
+                "timed_shares": point.get("timed_shares", 0),
+            }
+            for point in video_insights_chart.get("points", [])
+        ]
         return {
             "post": {
                 "id": self.object.pk,
@@ -3291,6 +3568,7 @@ class PostAnalyticsView(OwnerOrAdminMixin, DetailView):
                 "platform": self.object.get_platform_display(),
             },
             "viewer_count": video_insights_chart.get("viewer_count", 0),
+            "completion_rate": points[-1]["retention"] if points else 0,
             "metrics": {
                 "views": metrics["views"],
                 "likes": metrics["likes"],
@@ -3298,17 +3576,7 @@ class PostAnalyticsView(OwnerOrAdminMixin, DetailView):
                 "shares": metrics["shares"],
             },
             "rates": rate_lookup,
-            "points": [
-                {
-                    "label": point.get("label"),
-                    "seconds": point.get("seconds"),
-                    "retention": point.get("retention"),
-                    "engagement": point.get("engagement"),
-                    "engagement_count": point.get("engagement_count"),
-                    "retained_count": point.get("retained_count"),
-                }
-                for point in video_insights_chart.get("points", [])
-            ],
+            "points": points,
         }
 
     def get_context_data(self, **kwargs):
@@ -3330,7 +3598,6 @@ class PostAnalyticsView(OwnerOrAdminMixin, DetailView):
             item["label"].lower().replace(" ", "_"): item["value"]
             for item in engagement_breakdown
         }
-        has_video_retention_insight = bool(video_insights_chart)
         media_images = list(self.object.images.all())
         if not media_images and self.object.image:
             media_images = [LegacyPostImage(self.object.image)]
@@ -3346,7 +3613,6 @@ class PostAnalyticsView(OwnerOrAdminMixin, DetailView):
                     for key in ("views", "likes", "comments", "shares")
                 ),
                 "retention_chart": video_insights_chart,
-                "has_video_retention_insight": has_video_retention_insight,
                 "media_images": media_images,
                 "is_video_post": self.object.content_format == SocialMediaPost.Format.VIDEO,
             }
@@ -3396,13 +3662,6 @@ class PostAIInsightView(AIMemberRequiredMixin, OwnerOrAdminMixin, View):
             except Exception as exc:
                 logger.warning("Post AI generation failed: %s", exc.__class__.__name__)
                 report = generate_post_rule_based_analysis(payload, language=ai_language)
-            if post.content_format == SocialMediaPost.Format.VIDEO:
-                report = (
-                    "Analysis basis\n"
-                    "This insight uses the post title, caption, hashtags, metrics, and comments. "
-                    "Gemini did not receive or inspect the video frames.\n\n"
-                    f"{report}"
-                )
         except Exception as exc:
             logger.warning("Post AI payload/fallback failed: %s", exc.__class__.__name__)
             report = (
@@ -3474,6 +3733,11 @@ class PostVideoAnalysisView(AIMemberRequiredMixin, OwnerOrAdminMixin, View):
                     "guidance": existing.creator_guidance,
                 }
             )
+
+        try:
+            _validate_video_duration_file(post.video_file)
+        except VideoDurationError as exc:
+            return JsonResponse({"success": False, "error": str(exc)}, status=400)
 
         record, _ = VideoAnalysis.objects.update_or_create(
             post=post,
@@ -3557,12 +3821,6 @@ class PostRetentionAIInsightView(AIMemberRequiredMixin, OwnerOrAdminMixin, View)
                 report = generate_video_retention_analysis(payload, language=ai_language)
             except Exception:
                 report = generate_video_retention_rule_based_analysis(payload, language=ai_language)
-            report = (
-                "Analysis basis\n"
-                "This insight uses watch-retention and timed-engagement data. "
-                "Gemini did not receive or inspect the video frames.\n\n"
-                f"{report}"
-            )
             cache_ai_insight(post.subscription, request.user, topic, report, "Post retention insight")
             return ai_insight_json_response(report, False)
         except Exception:
@@ -3827,7 +4085,11 @@ class PostDetailSectionUpdateView(ActiveSubscriptionMixin, View):
                 return redirect("socialmanager:post_detail", pk=post.pk, slug=post.slug)
             post.save(update_fields=update_fields)
             if replacement_video_uploaded:
-                generate_video_thumbnail(post, force=True)
+                logger.info(
+                    "Video thumbnail generation deferred post_id=%r video=%r",
+                    post.pk,
+                    post.video_file.name if post.video_file else "",
+                )
             messages.success(request, "Post updated.")
 
         return redirect("socialmanager:post_detail", pk=post.pk, slug=post.slug)
@@ -3918,6 +4180,54 @@ class PostEngagementToggleView(ActiveSubscriptionMixin, View):
 
 class PostAIFeedbackView(AIMemberRequiredMixin, ActiveSubscriptionMixin, View):
     allowed_feedback_types = {"title", "caption", "hashtags"}
+    image_error_messages = {
+        "image_input_unavailable": "The image could not be provided to AI. Please reselect the image and try again.",
+        "unsupported_image": "This image format is not supported. Please use JPG, PNG, or WebP.",
+        "invalid_image": "The image file is invalid or corrupted.",
+        "empty_image": "The image file is empty. Please choose another image.",
+        "image_too_large": "The image file is too large. Please choose a smaller image.",
+        "image_analysis_failed": "AI could not analyze the image, so no suggestion was generated.",
+    }
+
+    def image_error_response(self, code):
+        return JsonResponse(
+            {
+                "error": code,
+                "message": self.image_error_messages.get(code, self.image_error_messages["image_input_unavailable"]),
+                "used_image_input": False,
+                "image_source": "none",
+                "analyzed_image_count": 0,
+                "grounding_mode": "image_unavailable",
+            },
+            status=400,
+        )
+
+    def validate_uploaded_ai_image(self, image_file):
+        content_type = (getattr(image_file, "content_type", "") or "").lower()
+        if content_type not in {"image/jpeg", "image/png", "image/webp"}:
+            return "unsupported_image"
+        size = int(getattr(image_file, "size", 0) or 0)
+        if size <= 0:
+            return "empty_image"
+        if size > 2 * 1024 * 1024:
+            return "image_too_large"
+        position = None
+        try:
+            if hasattr(image_file, "tell"):
+                position = image_file.tell()
+            if hasattr(image_file, "seek"):
+                image_file.seek(0)
+            with Image.open(image_file) as image:
+                image.verify()
+        except (UnidentifiedImageError, OSError, ValueError):
+            return "invalid_image"
+        finally:
+            if hasattr(image_file, "seek"):
+                try:
+                    image_file.seek(position or 0)
+                except (OSError, ValueError):
+                    pass
+        return ""
 
     def post(self, request, *args, **kwargs):
         if request.content_type and request.content_type.startswith("multipart/form-data"):
@@ -3950,32 +4260,64 @@ class PostAIFeedbackView(AIMemberRequiredMixin, ActiveSubscriptionMixin, View):
                 stored_post_queryset = stored_post_queryset.filter(author=request.user)
             stored_post = stored_post_queryset.first()
 
+        post_type_key = (payload.get("post_type") or "").strip().lower()
+        is_image_primary_post = post_type_key in {"photo_post", "image", "illustration", "carousel"}
+        image_source = "none"
         image_file = request.FILES.get("image")
-        if image_file and (
-            not (getattr(image_file, "content_type", "") or "").startswith("image/")
-            or getattr(image_file, "size", 0) > 2 * 1024 * 1024
-        ):
-            logger.info(
-                "Create-post AI image omitted: name=%r content_type=%r size=%r",
-                getattr(image_file, "name", ""),
-                getattr(image_file, "content_type", ""),
-                getattr(image_file, "size", 0),
-            )
-            image_file = None
+        if image_file:
+            image_error = self.validate_uploaded_ai_image(image_file)
+            if image_error:
+                logger.info(
+                    "Create-post AI image rejected: code=%s feedback_type=%s post_type=%s content_type=%r size=%r",
+                    image_error,
+                    feedback_type,
+                    post_type_key or "unknown",
+                    getattr(image_file, "content_type", ""),
+                    getattr(image_file, "size", 0),
+                )
+                return self.image_error_response(image_error)
+            image_source = "uploaded"
         if not image_file and stored_post:
             if stored_post.content_format == SocialMediaPost.Format.VIDEO and stored_post.video_thumbnail:
                 image_file = stored_post.video_thumbnail
+                image_source = "stored"
             else:
                 stored_image = stored_post.images.order_by("order", "created_at", "pk").first()
                 if stored_image and stored_image.image:
                     image_file = stored_image.image
+                    image_source = "stored"
                 elif stored_post.image:
                     image_file = stored_post.image
+                    image_source = "stored"
+
+        if is_image_primary_post and not image_file:
+            return self.image_error_response("image_input_unavailable")
 
         video_file = request.FILES.get("video")
-        is_video_post = (payload.get("post_type") or "").strip().lower() == "video"
+        is_video_post = post_type_key == "video"
         uploaded_video_object_name = (payload.get("uploaded_video_object_name") or "").strip()
-        if is_video_post and not video_file and uploaded_video_object_name:
+        use_text_only_fallback = bool(payload.get("use_text_only_fallback"))
+        video_fallback_reason = (payload.get("video_fallback_reason") or "").strip()
+        if is_video_post:
+            duration_value = payload.get("video_duration_seconds")
+            if duration_value not in (None, ""):
+                try:
+                    _validate_video_duration_value(duration_value)
+                except VideoDurationError as exc:
+                    return JsonResponse({"error": str(exc)}, status=400)
+            elif video_file:
+                try:
+                    _validate_video_duration_file(video_file)
+                except VideoDurationError as exc:
+                    return JsonResponse({"error": str(exc)}, status=400)
+
+            declared_video_size = int(getattr(video_file, "size", 0) or 0) if video_file else 0
+            if declared_video_size > getattr(settings, "GEMINI_VIDEO_MAX_BYTES", 50 * 1024 * 1024):
+                use_text_only_fallback = True
+                video_fallback_reason = video_fallback_reason or "video_too_large"
+                video_file = None
+
+        if is_video_post and not video_file and uploaded_video_object_name and not use_text_only_fallback:
             expected_pattern = rf"^social_videos/user_{request.user.pk}/[0-9a-f]{{8}}-[0-9a-f]{{4}}-[1-5][0-9a-f]{{3}}-[89ab][0-9a-f]{{3}}-[0-9a-f]{{12}}\.(?:mp4|webm|mov)$"
             if not re.fullmatch(expected_pattern, uploaded_video_object_name, flags=re.IGNORECASE):
                 return JsonResponse({"error": "The uploaded video reference is invalid. Please upload the video again."}, status=400)
@@ -3984,12 +4326,18 @@ class PostAIFeedbackView(AIMemberRequiredMixin, ActiveSubscriptionMixin, View):
                     video_file = default_storage.open(uploaded_video_object_name, "rb")
             except Exception:
                 logger.warning("Create-post AI could not open the private uploaded video")
-        if is_video_post and not video_file and stored_post and stored_post.video_file:
+        if is_video_post and not video_file and stored_post and stored_post.video_file and not use_text_only_fallback:
             video_file = stored_post.video_file
 
         if not article_text and not user_text_context and not image_file and not video_file:
             return JsonResponse(
-                {"error": "Please add a short description, title, or caption before using AI feedback."},
+                {
+                    "error": (
+                        "Video analysis is unavailable. Please add a title or caption so AI can generate a suggestion from your text."
+                        if is_video_post and use_text_only_fallback
+                        else "Please add a short description, title, or caption before using AI feedback."
+                    ),
+                },
                 status=400,
             )
         user_settings, _ = UserSettings.objects.get_or_create(user=request.user)
@@ -4001,7 +4349,10 @@ class PostAIFeedbackView(AIMemberRequiredMixin, ActiveSubscriptionMixin, View):
             "ai_language_display": user_settings.get_ai_language_display(),
             "ai_hashtag_count": user_settings.ai_hashtag_count,
             "image_file": image_file,
+            "image_source": image_source,
             "video_file": video_file,
+            "use_text_only_fallback": use_text_only_fallback,
+            "video_fallback_reason": video_fallback_reason,
         }
 
         try:
@@ -4014,7 +4365,11 @@ class PostAIFeedbackView(AIMemberRequiredMixin, ActiveSubscriptionMixin, View):
                 },
                 status=429,
             )
+        except ImageInputError as exc:
+            return self.image_error_response(exc.code)
         except ValueError as exc:
+            if str(exc) == VIDEO_TEXT_FALLBACK_REQUIRED_MESSAGE:
+                return JsonResponse({"error": str(exc)}, status=400)
             logger.exception("Create-post AI feedback configuration failed")
             return JsonResponse(
                 {
@@ -4043,14 +4398,25 @@ class PostAIFeedbackView(AIMemberRequiredMixin, ActiveSubscriptionMixin, View):
         used_video_input = bool(getattr(result, "used_video_input", False))
         fallback_reason = str(getattr(result, "fallback_reason", "") or "")
         if is_video_post:
-            media_notice = (
-                "Gemini analyzed the uploaded video frames for this suggestion."
-                if used_video_input
-                else "Video frames were not read. This suggestion uses the title, caption, hashtags, thumbnail, and available media metadata."
-            )
+            if used_video_input:
+                media_notice = "Gemini analyzed the uploaded video frames for this suggestion."
+            elif fallback_reason == "video_too_large" or use_text_only_fallback:
+                media_notice = "The video is too large for AI analysis, so this suggestion was generated from your text instead."
+            else:
+                media_notice = "Video analysis was unavailable, so this suggestion was generated from your title, caption, hashtags, and post settings."
         return JsonResponse({
             "suggestion": suggestion,
             "explanation": result.explanation,
+            "used_image_input": bool(getattr(result, "used_image_input", False)),
+            "image_source": str(getattr(result, "image_source", "none") or "none"),
+            "analyzed_image_count": int(getattr(result, "analyzed_image_count", 0) or 0),
+            "grounding_mode": str(getattr(result, "grounding_mode", "") or "text_only"),
+            "context_priority": list(getattr(result, "context_priority", ()) or ()),
+            "context_sources": getattr(result, "context_sources", None) or {
+                "image": False,
+                "bio": False,
+                "previous_posts": False,
+            },
             "used_video_input": used_video_input,
             "fallback_reason": fallback_reason,
             "media_notice": media_notice,
@@ -4080,6 +4446,7 @@ class VideoUploadStartView(ActiveSubscriptionMixin, View):
             size = int(payload.get("size"))
         except (TypeError, ValueError):
             size = 0
+        duration_seconds = payload.get("duration_seconds")
 
         if content_type not in SUPPORTED_VIDEO_UPLOAD_TYPES:
             return JsonResponse({"error": "Upload a supported video file: MP4, WebM, or MOV."}, status=400)
@@ -4097,6 +4464,17 @@ class VideoUploadStartView(ActiveSubscriptionMixin, View):
                 {"error": f"This video is too large. Choose a video smaller than {max_mb} MB."},
                 status=400,
             )
+        try:
+            _validate_video_duration_value(duration_seconds)
+        except VideoDurationError as exc:
+            logger.info(
+                "Rejected direct video upload duration: filename=%r content_type=%r size=%r reason=%s",
+                filename,
+                content_type,
+                size,
+                exc.__class__.__name__,
+            )
+            return JsonResponse({"error": str(exc)}, status=400)
 
         object_name = f"social_videos/user_{request.user.pk}/{uuid.uuid4()}{extension}"
         origin = request.headers.get("Origin") or settings.SITE_URL.rstrip("/") or None
@@ -4203,9 +4581,19 @@ class PostFormMixin(SafeNextRedirectMixin, ActiveSubscriptionMixin):
         context["direct_video_upload_enabled"] = settings.USE_GCS
         context["direct_video_upload_max_bytes"] = settings.VIDEO_UPLOAD_MAX_BYTES
         context["video_upload_max_bytes"] = settings.VIDEO_FORM_UPLOAD_MAX_BYTES
+        context["video_max_duration_seconds"] = settings.VIDEO_MAX_DURATION_SECONDS
         context["gemini_video_max_bytes"] = settings.GEMINI_VIDEO_MAX_BYTES
         context["gemini_video_max_seconds"] = settings.GEMINI_VIDEO_MAX_SECONDS
         return context
+
+    def get_uploaded_video_duration_seconds(self):
+        value = (self.request.POST.get("uploaded_video_duration_seconds") or "").strip()
+        if not value:
+            raise ValidationError(VIDEO_DURATION_UNREADABLE_MESSAGE)
+        try:
+            return _validate_video_duration_value(value)
+        except VideoDurationError as exc:
+            raise ValidationError(str(exc)) from exc
 
     def get_uploaded_video_object_name(self):
         object_name = (self.request.POST.get("uploaded_video_object_name") or "").strip()
@@ -4323,6 +4711,11 @@ class PostFormMixin(SafeNextRedirectMixin, ActiveSubscriptionMixin):
                 form.add_error("video_file", exc.message)
                 return self.form_invalid(form)
             if uploaded_video_object_name:
+                try:
+                    self.get_uploaded_video_duration_seconds()
+                except ValidationError as exc:
+                    form.add_error("video_file", exc.message)
+                    return self.form_invalid(form)
                 if settings.USE_GCS:
                     try:
                         uploaded_object_exists = default_storage.exists(uploaded_video_object_name)
@@ -4370,19 +4763,22 @@ class PostFormMixin(SafeNextRedirectMixin, ActiveSubscriptionMixin):
             _log_saved_upload("post image", self.request.FILES.get("image"), self.object.image)
         current_video_file_name = self.object.video_file.name if self.object.video_file else ""
         video_file_changed = current_video_file_name != previous_video_file_name
+        if video_file_changed and not self.request.FILES.get("video_thumbnail") and self.object.video_thumbnail:
+            self.object.video_thumbnail.delete(save=False)
+            self.object.video_thumbnail = None
+            self.object.save(update_fields=["video_thumbnail", "updated_at"])
+            logger.info("Cleared stale video thumbnail post_id=%r after replacement video", self.object.pk)
         if (
             self.object.content_format == SocialMediaPost.Format.VIDEO
             and self.object.video_file
             and (video_file_changed or not self.object.video_thumbnail)
         ):
-            try:
-                generate_video_thumbnail(self.object, force=video_file_changed)
-            except Exception:
-                logger.exception(
-                    "Video thumbnail generation failed; keeping post_id=%r video=%r",
-                    self.object.pk,
-                    self.object.video_file.name,
-                )
+            logger.info(
+                "Video thumbnail generation deferred post_id=%r video=%r changed=%s",
+                self.object.pk,
+                self.object.video_file.name,
+                video_file_changed,
+            )
         if self.object.video_file and video_file_changed:
             _log_saved_upload("post video", self.request.FILES.get("video_file"), self.object.video_file)
         selected_campaign = form.cleaned_data.get("campaign")

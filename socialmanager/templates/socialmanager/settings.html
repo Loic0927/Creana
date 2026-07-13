@@ -4,10 +4,13 @@
 {% block body_class %}settings-page{% endblock %}
 
 {% block content %}
-<div class="settings-shell" data-settings-update-url="{% url 'socialmanager:settings_update' %}">
+<div class="settings-shell"
+     data-settings-update-url="{% url 'socialmanager:settings_update' %}"
+     data-push-key-url="{% url 'socialmanager:push_vapid_public_key' %}"
+     data-push-subscription-url="{% url 'socialmanager:push_subscription' %}">
     <div class="page-header settings-page-header">
         <div>
-            <h1 class="page-title">{% trans "Settings" %}</h1>
+            <h1 class="page-title settings-page-title">{% trans "Settings" %}</h1>
         </div>
     </div>
 
@@ -16,7 +19,8 @@
 
         <section class="card content-card settings-card">
             <div class="settings-control">
-                <label class="settings-label" for="{{ form.language.id_for_label }}">{% trans "Language" %}</label>
+                <h2 class="settings-section-title">{% trans "Language" %}</h2>
+                <label class="sr-only" for="{{ form.language.id_for_label }}">{% trans "Language" %}</label>
                 <span class="settings-select-wrap">
                     <select id="{{ form.language.id_for_label }}" name="{{ form.language.name }}" data-settings-field="language">
                         <option value="en" {% if form.language.value == "en" %}selected{% endif %}>{% trans "English" %}</option>
@@ -29,39 +33,27 @@
 
         <section class="card content-card settings-card settings-card-vertical">
             <div class="settings-card-copy">
-                <h2 class="card-title">{% trans "Notifications" %}</h2>
+                <h2 class="settings-section-title">{% trans "Notification" %}</h2>
             </div>
             <div class="settings-toggle-list">
                 <label class="settings-toggle-row">
-                    <span><strong>{% trans "Post likes" %}</strong></span>
-                    {{ form.notify_post_like }}<span class="toggle-switch" aria-hidden="true"></span>
+                    <span><strong>{% trans "Notify on your device" %}</strong></span>
+                    {{ form.enable_push_notifications }}<span class="toggle-switch" aria-hidden="true"></span>
                 </label>
-                <label class="settings-toggle-row">
-                    <span><strong>{% trans "Post comments" %}</strong></span>
-                    {{ form.notify_post_comment }}<span class="toggle-switch" aria-hidden="true"></span>
-                </label>
-                <label class="settings-toggle-row">
-                    <span><strong>{% trans "Post shares" %}</strong></span>
-                    {{ form.notify_post_share }}<span class="toggle-switch" aria-hidden="true"></span>
-                </label>
-                <label class="settings-toggle-row">
-                    <span><strong>{% trans "Comment likes" %}</strong></span>
-                    {{ form.notify_comment_like }}<span class="toggle-switch" aria-hidden="true"></span>
-                </label>
-                <label class="settings-toggle-row">
-                    <span><strong>{% trans "Comment replies" %}</strong></span>
-                    {{ form.notify_comment_reply }}<span class="toggle-switch" aria-hidden="true"></span>
-                </label>
-                <label class="settings-toggle-row">
-                    <span><strong>{% trans "Follows" %}</strong></span>
-                    {{ form.notify_follow }}<span class="toggle-switch" aria-hidden="true"></span>
-                </label>
+                <label class="settings-toggle-row"><span><strong>{% trans "Likes" %}</strong></span>{{ form.push_likes }}<span class="toggle-switch" aria-hidden="true"></span></label>
+                <label class="settings-toggle-row"><span><strong>{% trans "Comments" %}</strong></span>{{ form.push_comments }}<span class="toggle-switch" aria-hidden="true"></span></label>
+                <label class="settings-toggle-row"><span><strong>{% trans "Replies" %}</strong></span>{{ form.push_replies }}<span class="toggle-switch" aria-hidden="true"></span></label>
+                <label class="settings-toggle-row"><span><strong>{% trans "Shares" %}</strong></span>{{ form.push_shares }}<span class="toggle-switch" aria-hidden="true"></span></label>
+                <label class="settings-toggle-row"><span><strong>{% trans "Followers" %}</strong></span>{{ form.push_follows }}<span class="toggle-switch" aria-hidden="true"></span></label>
+                <label class="settings-toggle-row"><span><strong>{% trans "Announcements" %}</strong></span>{{ form.push_announcements }}<span class="toggle-switch" aria-hidden="true"></span></label>
+                <label class="settings-toggle-row"><span><strong>{% trans "Scheduled post published" %}</strong></span>{{ form.push_scheduled_post_published }}<span class="toggle-switch" aria-hidden="true"></span></label>
+                <label class="settings-toggle-row"><span><strong>{% trans "Scheduled post failed" %}</strong></span>{{ form.push_scheduled_post_failed }}<span class="toggle-switch" aria-hidden="true"></span></label>
             </div>
         </section>
 
         <section class="card content-card settings-card settings-card-vertical">
             <div class="settings-card-copy">
-                <h2 class="card-title">{% trans "AI Caption Preferences" %}</h2>
+                <h2 class="settings-section-title">{% trans "AI Caption Preferences" %}</h2>
             </div>
             <div class="settings-preference-list">
                 <div class="settings-row">

@@ -31,6 +31,7 @@
         data-video-upload-start-url="{% url 'socialmanager:video_upload_start' %}"
         data-direct-video-upload-enabled="{{ direct_video_upload_enabled|yesno:'true,false' }}"
         data-direct-video-upload-max-bytes="{{ direct_video_upload_max_bytes }}"
+        data-video-max-duration-seconds="{{ video_max_duration_seconds }}"
         data-gemini-video-max-bytes="{{ gemini_video_max_bytes }}"
         data-gemini-video-max-seconds="{{ gemini_video_max_seconds }}"
         data-is-editing="{{ object.pk|yesno:'true,false' }}"
@@ -52,6 +53,8 @@
         <input id="{{ form.status.id_for_label }}" name="{{ form.status.html_name }}" type="hidden" value="{{ form.status.value|default:initial_post_status|default:'draft' }}">
         <input id="{{ form.scheduled_for.id_for_label }}" name="{{ form.scheduled_for.html_name }}" type="hidden" value="{{ form.scheduled_for.value|default:'' }}">
         <input id="uploaded-video-object-name" name="uploaded_video_object_name" type="hidden" value="{{ request.POST.uploaded_video_object_name|default:'' }}">
+        <input id="uploaded-video-duration-seconds" name="uploaded_video_duration_seconds" type="hidden" value="{{ request.POST.uploaded_video_duration_seconds|default:'' }}">
+        <input accept="image/webp,image/jpeg,image/png,image/*" id="{{ form.video_thumbnail.id_for_label }}" name="{{ form.video_thumbnail.html_name }}" type="file" hidden>
 
         <div class="form-grid">
             <section class="stack create-post-main-stack">
@@ -206,6 +209,9 @@
                         {% if form.video_file.errors %}
                             <div class="field-error">{{ form.video_file.errors|join:", " }}</div>
                         {% endif %}
+                        {% if form.video_thumbnail.errors %}
+                            <div class="field-error">{{ form.video_thumbnail.errors|join:", " }}</div>
+                        {% endif %}
                     </div>
                 </article>
 
@@ -316,5 +322,5 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script defer src="{% static 'socialmanager/js/create_post.js' %}?v=gemini-video-validation-2"></script>
+<script defer src="{% static 'socialmanager/js/create_post.js' %}?v=video-ai-fallback-thumbnail-1"></script>
 {% endblock %}

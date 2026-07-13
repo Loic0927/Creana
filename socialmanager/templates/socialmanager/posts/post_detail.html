@@ -101,21 +101,6 @@
             </div>
         {% endif %}
 
-        {% if object.content_format == 'video' and object.video_file and can_analyze_video %}
-            <section class="detail-section video-analysis-card">
-                <div class="video-analysis-header">
-                    <div>
-                        <h2 class="card-title">{% trans "Video content analysis" %}</h2>
-                        <p class="muted">{% trans "Google Video Intelligence reads the clip; Gemini turns its annotations into caption ideas, hashtags, and improvements." %}</p>
-                    </div>
-                    <button class="btn btn-primary" type="button" data-video-analysis-url="{% url 'socialmanager:post_video_analysis' object.pk %}" data-video-analysis-target="video-detail-analysis-panel" data-ai-requires-membership="true">
-                        {% trans "Analyze video" %}
-                    </button>
-                </div>
-                <div class="video-analysis-results" id="video-detail-analysis-panel" hidden></div>
-            </section>
-        {% endif %}
-
         <section class="detail-section detail-body-section post-detail-body">
             <div class="detail-body">
                 <div class="detail-body-content is-collapsed" data-detail-body-content data-detail-view>

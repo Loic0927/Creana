@@ -7,118 +7,12 @@
 
 {% block extra_css %}
 <link href="{% static 'socialmanager/css/pages/landing.css' %}?v=creana-tour-popup-card-1" rel="stylesheet">
+<link href="{% static 'socialmanager/css/pages/public_content.css' %}?v=geo-content-13" rel="stylesheet">
 {% endblock %}
 
 {% block public_content %}
 <div class="landing-page-surface">
-    <header class="landing-header">
-        <div class="marketing-wrap landing-nav">
-            <input
-                class="landing-menu-toggle"
-                id="landing-menu-toggle"
-                type="checkbox"
-            />
-            <div class="landing-nav-inner">
-                <div class="brand landing-brand" aria-label="Creana">
-                    <img
-                        alt=""
-                        class="landing-brand-icon"
-                        src="{% static 'socialmanager/images/icon.webp' %}"
-                        width="44"
-                        height="44"
-                    >
-                    <img
-                        alt="Creana"
-                        class="landing-brand-text"
-                        src="{% static 'socialmanager/images/word.webp' %}"
-                        width="150"
-                        height="34"
-                    >
-                </div>
-                <nav class="landing-links">
-                    <button
-                        class="landing-policy-link"
-                        type="button"
-                        data-policy-modal="introduction"
-                        >Introduction</button
-                    >
-                    <button
-                        class="landing-policy-link"
-                        type="button"
-                        data-policy-modal="community"
-                        >Community</button
-                    >
-                    <button
-                        class="landing-policy-link"
-                        type="button"
-                        data-policy-modal="privacy"
-                        >Privacy</button
-                    >
-                    <button
-                        class="landing-policy-link"
-                        type="button"
-                        data-policy-modal="terms"
-                        >Terms</button
-                    >
-                    <button
-                        class="landing-policy-link"
-                        type="button"
-                        data-policy-modal="ai"
-                        >AI Policy</button
-                    >
-                    <a
-                        class="btn btn-primary"
-                        href="{% url 'socialmanager:login' %}"
-                        >Login</a
-                    >
-                </nav>
-                <label
-                    class="landing-mobile-menu landing-menu-shell"
-                    for="landing-menu-toggle"
-                    aria-label="Open navigation"
-                >
-                    <span class="material-symbols-outlined">menu</span>
-                </label>
-            </div>
-            <div class="landing-mobile-menu-panel">
-                <button
-                    class="landing-policy-link"
-                    type="button"
-                    data-policy-modal="introduction"
-                    >Introduction</button
-                >
-                <button
-                    class="landing-policy-link"
-                    type="button"
-                    data-policy-modal="community"
-                    >Community</button
-                >
-                <button
-                    class="landing-policy-link"
-                    type="button"
-                    data-policy-modal="privacy"
-                    >Privacy</button
-                >
-                <button
-                    class="landing-policy-link"
-                    type="button"
-                    data-policy-modal="terms"
-                    >Terms</button
-                >
-                <button
-                    class="landing-policy-link"
-                    type="button"
-                    data-policy-modal="ai"
-                    >AI Policy</button
-                >
-                <a
-                    class="btn btn-primary"
-                    href="{% url 'socialmanager:login' %}"
-                    >Login</a
-                >
-            </div>
-        </div>
-    </header>
+    {% include "socialmanager/partials/public_header.html" %}
 
     <main>
         <section class="landing-hero section">
@@ -149,7 +43,7 @@
                     </div>
                     <div class="landing-hero__visual" aria-hidden="true">
                         <img
-                            alt=""
+                            alt="Creana fox mascot introducing the AI-powered social media workspace"
                             class="landing-hero__fox"
                             src="{% static 'socialmanager/images/logo.PNG' %}"
                         >
@@ -253,7 +147,7 @@
                         ></path>
                     </svg>
                     <img
-                        alt=""
+                        alt="Creana fox mascot demonstrating the platform features"
                         class="creana-tour__fox"
                         data-creana-tour-fox
                         src="{% static 'socialmanager/images/icon.webp' %}"
@@ -346,7 +240,7 @@
             <div class="marketing-wrap">
                 <div class="card bottom-cta">
                     <img
-                        alt=""
+                        alt="Creana fox mascot inviting creators to start using Creana"
                         class="bottom-cta__illustration"
                         src="{% static 'socialmanager/images/landing_start.png' %}"
                     >
@@ -363,131 +257,12 @@
         </section>
     </main>
 
-    <footer class="footer">
-        <div class="marketing-wrap landing-footer-inner">
-            <p>&copy; 2026 Creana. All rights reserved.</p>
-            <nav class="landing-footer-links" aria-label="Policy links">
-                <button
-                    class="landing-policy-link"
-                    type="button"
-                    data-policy-modal="introduction"
-                    >Introduction</button
-                >
-                <button
-                    class="landing-policy-link"
-                    type="button"
-                    data-policy-modal="community"
-                    >Community</button
-                >
-                <button
-                    class="landing-policy-link"
-                    type="button"
-                    data-policy-modal="privacy"
-                    >Privacy</button
-                >
-                <button
-                    class="landing-policy-link"
-                    type="button"
-                    data-policy-modal="terms"
-                    >Terms</button
-                >
-                <button
-                    class="landing-policy-link"
-                    type="button"
-                    data-policy-modal="ai"
-                    >AI Policy</button
-                >
-            </nav>
-        </div>
-    </footer>
+    {% include "socialmanager/partials/public_footer.html" %}
 
-    <div
-        class="landing-policy-modal"
-        data-policy-modal-root
-        hidden
-    >
-        <div class="landing-policy-modal__overlay" data-policy-close></div>
-        <div
-            class="landing-policy-modal__dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="landing-policy-title"
-            tabindex="-1"
-        >
-            <div class="landing-policy-modal__header">
-                <h2 id="landing-policy-title"></h2>
-                <button
-                    class="landing-policy-modal__x"
-                    type="button"
-                    aria-label="Close policy dialog"
-                    data-policy-close
-                >
-                    <span class="material-symbols-outlined" aria-hidden="true">close</span>
-                </button>
-            </div>
-            <div class="landing-policy-modal__content" data-policy-content></div>
-            <div class="landing-policy-modal__actions">
-                <button
-                    class="btn btn-primary"
-                    type="button"
-                    data-policy-close
-                    >Close</button
-                >
-            </div>
-        </div>
-    </div>
-
-    <template data-policy-template="introduction" data-policy-title="What is Creana?">
-        <p>
-            Creana is an AI-powered social media content management platform
-            designed to help creators, influencers, and businesses create,
-            schedule, analyse, and improve content from one workspace.
-        </p>
-        <ul>
-            <li><strong>Content Creation</strong><br>Create articles, images, videos, and social media posts.</li>
-            <li><strong>AI Assistance</strong><br>Generate captions, hashtags, and content suggestions.</li>
-            <li><strong>Smart Scheduling</strong><br>Plan and publish content at the right time.</li>
-            <li><strong>Analytics</strong><br>Track performance and gain actionable insights.</li>
-        </ul>
-    </template>
-
-    <template data-policy-template="privacy" data-policy-title="Privacy Policy">
-        <ul>
-            <li>Creana collects basic account information such as username, email address, profile details, posts, uploaded media, and engagement data.</li>
-            <li>This information is used to provide account access, content creation, post scheduling, analytics, AI suggestions, and platform security.</li>
-            <li>Creana does not sell user personal information.</li>
-            <li>Users are responsible for keeping their login details secure.</li>
-        </ul>
-    </template>
-
-    <template data-policy-template="terms" data-policy-title="Terms of Service">
-        <ul>
-            <li>By using Creana, users agree to use the platform responsibly.</li>
-            <li>Users are responsible for the content they create, upload, publish, comment on, or share.</li>
-            <li>Users must not misuse the service, attack the system, attempt unauthorized access, or disrupt platform functionality.</li>
-            <li>Creana may update, restrict, or remove features when necessary for security, maintenance, or platform improvement.</li>
-        </ul>
-    </template>
-
-    <template data-policy-template="community" data-policy-title="Community Guidelines">
-        <ul>
-            <li>Users must not post pornographic content, nudity, sexual content, hate speech, harassment, threats, violent content, illegal content, scams, spam, or misleading content.</li>
-            <li>Users must respect other users and avoid abusive behaviour.</li>
-            <li>Creana may remove content, restrict accounts, or suspend users who violate these guidelines.</li>
-        </ul>
-    </template>
-
-    <template data-policy-template="ai" data-policy-title="AI Usage Policy">
-        <ul>
-            <li>Creana provides AI-powered caption suggestions, hashtag suggestions, content ideas, and analytics insights.</li>
-            <li>AI-generated content is for reference only and may not always be accurate, complete, or suitable.</li>
-            <li>Users are responsible for reviewing, editing, and verifying AI-generated content before publishing.</li>
-            <li>Users must not use AI features to generate prohibited, harmful, illegal, misleading, or abusive content.</li>
-        </ul>
-    </template>
 </div>
 {% endblock %}
 
 {% block extra_scripts %}
+<script defer src="{% static 'socialmanager/js/public_navigation.js' %}?v=mega-menu-2"></script>
 <script src="{% static 'socialmanager/js/landing.js' %}?v=creana-tour-popup-card-1"></script>
 {% endblock %}

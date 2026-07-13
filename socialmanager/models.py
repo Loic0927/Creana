@@ -332,6 +332,16 @@ class UserSettings(models.Model):
     notify_comment_like = models.BooleanField(default=True)
     notify_comment_reply = models.BooleanField(default=True)
     notify_follow = models.BooleanField(default=True)
+    enable_push_notifications = models.BooleanField(default=True)
+    push_likes = models.BooleanField(default=True)
+    push_comments = models.BooleanField(default=True)
+    push_replies = models.BooleanField(default=True)
+    push_shares = models.BooleanField(default=True)
+    push_follows = models.BooleanField(default=True)
+    push_announcements = models.BooleanField(default=False)
+    push_scheduled_post_published = models.BooleanField(default=True)
+    push_scheduled_post_failed = models.BooleanField(default=True)
+    push_ai_finished = models.BooleanField(default=False)
     ai_tone = models.CharField(max_length=20, choices=AITone.choices, default=AITone.PROFESSIONAL)
     ai_language = models.CharField(max_length=30, choices=AILanguage.choices, default=AILanguage.AUTO)
     ai_hashtag_count = models.PositiveSmallIntegerField(default=5)
@@ -357,6 +367,45 @@ class UserSettings(models.Model):
             "follow": self.notify_follow,
         }
         return preference_lookup.get(kind, True)
+
+    def allows_push_kind(self, kind):
+        if not self.enable_push_notifications:
+            return False
+        preference_lookup = {
+            "like": self.push_likes,
+            "post_like": self.push_likes,
+            "comment": self.push_comments,
+            "post_comment": self.push_comments,
+            "comment_reply": self.push_replies,
+            "share": self.push_shares,
+            "post_share": self.push_shares,
+            "follow": self.push_follows,
+            "announcement": self.push_announcements,
+            "scheduled_post_published": self.push_scheduled_post_published,
+            "scheduled_post_failed": self.push_scheduled_post_failed,
+        }
+        return preference_lookup.get(kind, True)
+
+
+class PushSubscription(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="push_subscriptions",
+    )
+    endpoint = models.URLField(max_length=2000, unique=True)
+    p256dh_key = models.CharField(max_length=255)
+    auth_key = models.CharField(max_length=255)
+    user_agent = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+
+    def __str__(self):
+        return f"Push subscription for {self.user_id}"
 
 
 class Notification(models.Model):

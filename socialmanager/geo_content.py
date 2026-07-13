@@ -1,0 +1,182 @@
+"""Public, factual product content used by Creana's GEO pages."""
+
+PUBLIC_PAGE_ORDER = (
+    "introduction", "community", "features", "ai_features", "pricing",
+    "supported_platforms", "how_it_works", "faq", "about", "contact",
+    "privacy", "terms", "ai_policy",
+)
+
+PUBLIC_PAGES = {
+    "introduction": {
+        "route_name": "introduction", "title": "What Is Creana? | Introduction",
+        "description": "Learn what Creana is, who it is for, and how its content creation, campaign planning, scheduling, community, and AI tools work.",
+        "eyebrow": "Introduction", "heading": "What is Creana?",
+        "lead": "Creana is an AI-powered social media content workspace for creators, influencers, students, and small businesses.",
+        "differentiators": ["Writing assistance for captions, hashtags, and ideas", "One workspace for drafts, posts, and campaigns", "A public creator community", "Insights grounded in activity recorded inside Creana"],
+        "sections": [
+            {"heading": "Who Creana is for", "paragraphs": ["Creana is for people who want a clearer way to prepare, organise, share, and learn from social media content, including individual creators, influencers, students, and small businesses."]},
+            {"heading": "The problem Creana solves", "paragraphs": ["Content ideas, drafts, campaigns, publishing decisions, and performance notes often live in separate places. Creana brings those parts of the content process into one approachable workspace."]},
+            {"heading": "A clearer content workspace", "paragraphs": ["Creana connects creation, organisation, community participation, and in-platform learning without presenting itself as an external social-account analytics service."]},
+        ], "related": ("features", "ai_features", "supported_platforms"),
+        "inline_links": (("features", "Explore all features"), ("ai_features", "Compare AI tools"), ("supported_platforms", "Review platform support"), ("how_it_works", "See the workflow")),
+    },
+    "community": {
+        "route_name": "community", "title": "Creana Community and Community Guidelines",
+        "description": "Learn how Creana's public creator community works and review the rules for safe, respectful sharing.",
+        "eyebrow": "Community", "heading": "Participating in the Creana community",
+        "lead": "Creana provides a public creator space for discovering content, maintaining profiles, and interacting respectfully.",
+        "sections": [
+            {"heading": "Ways to participate", "bullets": ["Browse public posts and profiles", "Comment on, like, and share public content", "Follow creators", "Discover posts by keyword or hashtag"]},
+            {"heading": "Choose what you share", "paragraphs": ["Users choose whether eligible content is public or private. Public content may be visible in the feed, on profiles, and to search engines; private content is not intended for public discovery."]},
+            {"heading": "Participate respectfully", "paragraphs": ["Respect other people, use content you have the right to share, and do not harass, impersonate, spam, deceive, or publish harmful or illegal material. Detailed service obligations appear in the Terms, and AI-specific responsibilities appear in the AI Policy."]},
+            {"heading": "Moderation outcomes", "paragraphs": ["Creana may remove content, limit visibility, restrict features, or suspend accounts when conduct violates community or service rules or creates a safety or security risk."]},
+        ], "related": ("terms", "privacy", "ai_policy"),
+    },
+    "features": {
+        "route_name": "features", "title": "Creana Features | Content, Campaigns and Analytics",
+        "description": "Explore Creana features for content creation, AI writing, campaign planning, publishing inside Creana, community sharing, and Creana analytics.",
+        "eyebrow": "Features", "heading": "What can Creana do?",
+        "lead": "Creana brings the main parts of an in-platform content workflow into one workspace.",
+        "sections": [
+            {"heading": "Content creation", "paragraphs": ["Create article-style, image, video, and carousel posts, save drafts, and choose public or private visibility."]},
+            {"heading": "Campaign planning", "paragraphs": ["Group related posts around an objective and manage their content and schedule together."]},
+            {"heading": "Scheduling inside Creana", "paragraphs": ["Choose a future date and time for content to be released inside Creana."]},
+            {"heading": "Creator community", "paragraphs": ["Publish eligible content to the Creana feed and participate through profiles, follows, comments, likes, and shares."]},
+            {"heading": "Creana analytics", "paragraphs": ["Review views, engagement, and campaign activity generated or tracked within Creana."]},
+            {"heading": "Video-retention insights", "paragraphs": ["Use watch-session and timed-engagement records from videos viewed inside Creana to understand audience retention."]},
+            {"heading": "AI assistance", "paragraphs": ["Use member-only AI assistance for writing and for interpreting relevant Creana activity. The AI Features page explains each tool and its data requirements."]},
+        ], "related": ("ai_features", "community", "supported_platforms"), "software_schema": True,
+    },
+    "ai_features": {
+        "route_name": "ai_features", "title": "Creana AI Features | Captions, Feedback and Insights",
+        "description": "Understand Creana's AI caption generator, hashtag suggestions, content feedback, and insights based on data collected within Creana.",
+        "eyebrow": "AI features", "heading": "Which Creana AI tool should you use?",
+        "lead": "Creana separates writing assistance from insights that require activity collected or tracked inside Creana.",
+        "tool_groups": [
+            {"label": "AI writing tools", "heading": "Create and refine content", "items": ["AI Caption Generator", "Hashtag suggestions", "Article-style content support", "AI content feedback"], "summary": "These tools do not require analytics data. Users can review and copy the writing for content intended for external platforms."},
+            {"label": "Creana-data tools", "heading": "Understand in-platform activity", "items": ["Post performance insights", "Campaign insights", "Dashboard insights", "Video-retention feedback"], "summary": "These tools require relevant posts, campaigns, engagement, watch sessions, or retention activity recorded inside Creana."},
+        ],
+        "matrix": [
+            ("Write a caption", "AI Caption Generator", "No"), ("Generate hashtags", "Hashtag suggestions", "No"), ("Improve post wording", "AI content feedback", "No"), ("Review post performance", "Post performance insights", "Yes"), ("Review campaign performance", "Campaign insights", "Yes"), ("Review workspace trends", "Dashboard insights", "Yes"), ("Understand video retention", "Video-retention feedback", "Yes"),
+        ],
+        "sections": [{"heading": "Review AI output", "paragraphs": ["AI output may be incomplete, inaccurate, or unsuitable. Review facts, rights, tone, and platform requirements before publishing or acting on a suggestion. See the AI Policy for responsible-use guidance."]}],
+        "related": ("ai_policy", "pricing", "supported_platforms"), "software_schema": True,
+    },
+    "pricing": {
+        "route_name": "pricing", "title": "Creana Pricing | AI Membership",
+        "description": "See Creana's current USD $5 monthly membership concept and learn which AI functionality is member-only.",
+        "eyebrow": "Pricing", "heading": "How does Creana membership work?",
+        "lead": "The application currently displays member access at USD $5/month. Current in-product checkout information takes precedence.",
+        "table": [
+            ("Create public content", "✓", "✓"), ("Browse community posts", "✓", "✓"), ("AI caption and writing tools", "✕", "✓"), ("AI insights", "✕", "✓"), ("Campaign and post analytics", "✓", "✓"), ("Video-retention feedback", "✕", "✓"), ("Membership price", "$0", "USD $5/month"), ("Best for", "Exploring the community", "Using member AI tools"),
+        ],
+        "sections": [{"heading": "Current pricing information", "paragraphs": ["Pricing, limits, and feature availability may change as Creana develops. Review the current checkout details before subscribing."]}],
+        "related": ("ai_features", "faq", "terms"), "software_schema": True,
+    },
+    "supported_platforms": {
+        "route_name": "supported_platforms", "title": "Platforms Supported by Creana Content Tools",
+        "description": "Learn how Creana helps prepare content for social platforms and how content targets differ from external publishing and analytics integrations.",
+        "eyebrow": "Supported platforms", "heading": "Which platforms can Creana help with?",
+        "lead": "Creana helps users prepare writing for external social channels while keeping content targets, publishing, and analytics integrations clearly distinguished.",
+        "table": [
+            ("TikTok", "Yes, by copy and paste", "Yes", "Not currently claimed"), ("Instagram", "Yes, by copy and paste", "Yes", "Not currently claimed"), ("YouTube", "Yes, by copy and paste", "Yes", "Not currently claimed"), ("Facebook", "Yes, by copy and paste", "Yes", "Not currently claimed"), ("X / Twitter", "Yes, by copy and paste", "Yes", "Not currently claimed"), ("Reddit", "Yes, by copy and paste", "Yes", "Not currently claimed"), ("LinkedIn", "Yes, by copy and paste", "Not currently listed", "Not currently claimed"), ("Other platforms", "Where the generated writing is suitable", "Not currently listed", "Not currently claimed"),
+        ],
+        "sections": [
+            {"heading": "Content preparation and target labels", "paragraphs": ["Users can review and copy AI-assisted writing to an external platform. Target labels are organisational fields inside Creana; they do not establish an official integration."]},
+            {"heading": "Current integration boundaries", "paragraphs": ["Creana does not currently claim external social-account analytics import or automatic publishing through external platform APIs. Creana analytics use activity generated or tracked inside Creana."]},
+        ], "related": ("ai_features", "how_it_works", "faq"),
+    },
+    "how_it_works": {
+        "route_name": "how_it_works", "title": "How Creana Works | Six-Step Content Workflow",
+        "description": "Follow Creana's workflow from creating an account and drafting content to sharing inside Creana and reviewing in-platform analytics.",
+        "eyebrow": "How it works", "heading": "What is the Creana workflow?",
+        "lead": "The workflow moves from an initial idea to an informed next piece of content in six steps.",
+        "sections": [
+            {"heading": "1. Create an account", "paragraphs": ["Create a Creana profile and sign in."]},
+            {"heading": "2. Create a post or campaign", "paragraphs": ["Start new content or organise related posts around a campaign objective."]},
+            {"heading": "3. Use AI writing support", "paragraphs": ["Request writing assistance where useful, then review and edit the output."]},
+            {"heading": "4. Publish, share, or manage content inside Creana", "paragraphs": ["Save a draft, choose visibility, publish, or schedule a future release inside Creana."]},
+            {"heading": "5. Review Creana-collected analytics", "paragraphs": ["Review available views, engagement, campaign activity, and, where available, video watch retention recorded within Creana."]},
+            {"heading": "6. Improve future content", "paragraphs": ["Use what you learned to inform the next post or campaign."]},
+        ], "related": ("features", "ai_features", "supported_platforms"),
+    },
+    "faq": {
+        "route_name": "faq", "title": "Creana FAQ | AI Content and Analytics Questions",
+        "description": "Answers about Creana's AI captions, supported content workflows, in-platform analytics, video retention, membership, privacy, and beginner use.",
+        "eyebrow": "FAQ", "heading": "Frequently asked questions about Creana", "lead": "Short answers to common questions, with links to the authoritative page.",
+        "sections": [
+            {"heading": "What is Creana?", "paragraphs": ["Creana is an AI-powered social media content workspace."], "link": ("introduction", "Read the introduction")},
+            {"heading": "Who should use Creana?", "paragraphs": ["Creana is intended for creators, influencers, students, beginners, and small businesses."], "link": ("introduction", "See who Creana is for")},
+            {"heading": "Is Creana an AI caption generator?", "paragraphs": ["Yes. Caption generation is one of several Creana AI tools."], "link": ("ai_features", "Explore AI features")},
+            {"heading": "Can I use Creana captions on TikTok or Instagram?", "paragraphs": ["Yes. Review and copy the writing to the intended external platform."], "link": ("supported_platforms", "Review platform support")},
+            {"heading": "Does Creana analyze my Instagram or TikTok account?", "paragraphs": ["Creana does not currently claim external social-account analytics import."], "link": ("supported_platforms", "See integration boundaries")},
+            {"heading": "Where does Creana analytics data come from?", "paragraphs": ["It comes from relevant activity generated or tracked inside Creana."], "link": ("ai_features", "See which tools require Creana data")},
+            {"heading": "Can I upload videos?", "paragraphs": ["Yes, subject to the formats, limits, and availability shown in the application."], "link": ("features", "Explore content features")},
+            {"heading": "What is video retention analysis?", "paragraphs": ["It describes viewing and timed engagement recorded for a video inside Creana."], "link": ("features", "Learn about retention insights")},
+            {"heading": "Is Creana free?", "paragraphs": ["Community access is available under current account rules; member-only functionality requires membership."], "link": ("pricing", "Compare access")},
+            {"heading": "What does membership unlock?", "paragraphs": ["Membership unlocks functionality marked as members-only, including AI features."], "link": ("pricing", "Review membership")},
+            {"heading": "Can beginners use Creana?", "paragraphs": ["Yes. Creana provides a guided content workflow."], "link": ("how_it_works", "See how it works")},
+            {"heading": "Is my private content indexed by Google?", "paragraphs": ["Creana does not intentionally expose private, draft, or scheduled posts to anonymous visitors or the public sitemap."], "link": ("privacy", "Read about data visibility")},
+        ], "related": ("introduction", "privacy", "pricing"), "faq_schema": True,
+    },
+    "about": {
+        "route_name": "about", "title": "About Creana | Product Mission",
+        "description": "Learn about Creana's mission to make content creation, campaign planning, community sharing, and in-platform performance learning easier.",
+        "eyebrow": "About", "heading": "Why does Creana exist?", "lead": "Creana was created to bring content creation and learning closer together.",
+        "sections": [
+            {"heading": "Our mission", "paragraphs": ["Creana aims to make planning, creating, sharing, and learning from content feel more connected and approachable."]},
+            {"heading": "Our product philosophy", "paragraphs": ["A content workspace should support creative judgement, provide useful context, and make its boundaries clear."]},
+            {"heading": "AI should assist, not replace", "paragraphs": ["Creana treats AI as an assistant for drafting and interpreting available signals. People remain responsible for reviewing output and making publishing decisions."]},
+            {"heading": "Truthful product information", "paragraphs": ["Creana is committed to describing current capabilities accurately and distinguishing existing functionality from future possibilities."]},
+        ], "related": ("contact", "privacy", "terms"), "organization_schema": True,
+    },
+    "contact": {
+        "route_name": "contact", "title": "Contact Creana | Support Information",
+        "description": "Find current guidance for contacting Creana and learn what information to include in a support request.",
+        "eyebrow": "Contact", "heading": "How can users get help?", "lead": "Creana does not currently publish a general support email or public contact form.",
+        "sections": [
+            {"heading": "Current contact path", "paragraphs": ["Use any official support or contact option presented inside your Creana account. This page will be updated when a verified public channel is available."]},
+            {"heading": "What to include", "bullets": ["A concise description of the issue", "The page or feature involved", "What you expected and what happened", "Non-sensitive reproduction steps or screenshots"]},
+            {"heading": "Protect sensitive information", "paragraphs": ["Do not send passwords, payment-card details, authentication tokens, or unnecessary personal information in a support request."]},
+        ], "related": ("faq", "privacy", "terms"),
+    },
+    "privacy": {
+        "route_name": "privacy", "title": "Creana Privacy Policy",
+        "description": "Read Creana's plain-language privacy policy draft covering accounts, uploaded content, analytics, AI features, sessions, and public visibility.",
+        "eyebrow": "Privacy policy", "heading": "What information does Creana process?", "lead": "This plain-language policy draft was last updated on 2 July 2026 and requires jurisdiction-specific legal review.",
+        "sections": [
+            {"heading": "Information Creana processes", "paragraphs": ["Creana may process account details, profile information, uploaded content and media, membership status, preferences, and account-related timestamps."]},
+            {"heading": "Analytics and community activity", "paragraphs": ["Creana may record views, likes, comments, shares, follows, campaign relationships, watch sessions, retention, and timed engagement to operate in-platform features."]},
+            {"heading": "Public and private visibility", "paragraphs": ["Public content may be visible to visitors and search engines. Private, draft, and scheduled content is not intended for anonymous access or inclusion in the public sitemap."]},
+            {"heading": "AI feature data", "paragraphs": ["Content details and relevant Creana activity may be processed to provide requested AI output. Avoid submitting confidential or sensitive information unnecessarily; see the AI Policy for responsible use."]},
+            {"heading": "Cookies and technical data", "paragraphs": ["Creana uses session mechanisms for sign-in, security, preferences, and service operation. Technical records may include request, browser, device, network, and error information."]},
+            {"heading": "Why information is used", "bullets": ["Provide and secure accounts", "Store and display content according to visibility", "Operate community, scheduling, analytics, membership, and AI features", "Diagnose errors, prevent misuse, and improve the service"]},
+            {"heading": "Requests and contact", "paragraphs": ["A verified privacy contact and complete information about retention, processors, user rights, and request procedures still need to be established before this draft is treated as a final legal policy."]},
+        ], "related": ("ai_policy", "contact", "terms"),
+    },
+    "terms": {
+        "route_name": "terms", "title": "Creana Terms of Service",
+        "description": "Read Creana's plain-language service terms draft covering accounts, user content, prohibited behaviour, membership, availability, and disclaimers.",
+        "eyebrow": "Terms of service", "heading": "What rules govern use of Creana?", "lead": "These plain-language draft terms were last updated on 2 July 2026 and require jurisdiction-specific legal review.",
+        "sections": [
+            {"heading": "Use of the service", "paragraphs": ["Users must provide accurate account information, protect their credentials, and use Creana lawfully and responsibly."]},
+            {"heading": "User content", "paragraphs": ["Users are responsible for content they create, upload, publish, comment on, or share and for having the necessary rights and permissions."]},
+            {"heading": "Community and AI obligations", "paragraphs": ["Users must follow the Community Guidelines and AI Policy. Creana may remove content or restrict accounts when conduct violates applicable rules or creates safety, security, or legal risks."]},
+            {"heading": "Membership and payment", "paragraphs": ["Member-only features require active access. Users should review the current price and checkout terms before payment. Failed or ended payments may remove member access."]},
+            {"heading": "Service availability and changes", "paragraphs": ["Creana may change, restrict, suspend, or discontinue functionality for maintenance, security, legal compliance, enforcement, or product development. Continuous availability is not guaranteed."]},
+            {"heading": "Disclaimer", "paragraphs": ["AI output and analytics suggestions may be inaccurate or unsuitable. Users remain responsible for their publishing, business, legal, and safety decisions."]},
+        ], "related": ("community", "ai_policy", "pricing"),
+    },
+    "ai_policy": {
+        "route_name": "ai_policy", "title": "Creana AI Usage Policy",
+        "description": "Learn how Creana's AI writing and in-platform analytics features work, their limitations, and the rules for responsible use.",
+        "eyebrow": "AI usage policy", "heading": "How should Creana AI be used responsibly?", "lead": "AI output is assistance for human review, not a guarantee of accuracy, suitability, or performance. Last updated: 2 July 2026.",
+        "sections": [
+            {"heading": "Review every output", "paragraphs": ["AI output may contain errors, omissions, bias, unsuitable wording, or unsupported conclusions. Verify facts, rights, tone, and platform requirements before relying on it."]},
+            {"heading": "Protect sensitive information", "paragraphs": ["Do not submit passwords, authentication tokens, payment-card details, private identifiers, confidential business information, or unnecessary personal data."]},
+            {"heading": "Use AI responsibly", "paragraphs": ["Do not use Creana AI to create illegal, abusive, hateful, sexually exploitative, fraudulent, infringing, impersonating, or dangerously misleading content."]},
+            {"heading": "Understand the analysis boundary", "paragraphs": ["AI analysis depends on relevant posts, campaigns, engagement, views, watch sessions, and retention activity generated or tracked inside Creana."]},
+            {"heading": "Models and availability may change", "paragraphs": ["AI providers, models, limits, and functionality may change. Creana may restrict output or access for safety, reliability, cost, or policy reasons."]},
+        ], "related": ("ai_features", "privacy", "terms"),
+    },
+}

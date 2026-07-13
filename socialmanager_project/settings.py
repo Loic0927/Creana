@@ -197,6 +197,10 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "Creana <no-reply@creana.local>")
 SERVER_EMAIL = os.getenv("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
 
+WEB_PUSH_VAPID_PUBLIC_KEY = os.getenv("WEB_PUSH_VAPID_PUBLIC_KEY", "").strip()
+WEB_PUSH_VAPID_PRIVATE_KEY = os.getenv("WEB_PUSH_VAPID_PRIVATE_KEY", "").strip()
+WEB_PUSH_VAPID_EMAIL = os.getenv("WEB_PUSH_VAPID_EMAIL", "mailto:no-reply@creana.local").strip()
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 SITE_ID = 1
@@ -211,7 +215,12 @@ LOGIN_REDIRECT_URL = "socialmanager:post_list"
 LOGOUT_REDIRECT_URL = "socialmanager:login"
 
 ACCOUNT_LOGIN_METHODS = {"username", "email"}
-ACCOUNT_SIGNUP_FIELDS = ["username*", "email*", "password1*", "password2*"]
+# Usernames are generated from the email address by SocialManagerAccountAdapter.
+# Keeping username out of this list also prevents social auto-signup from falling
+# back to allauth's username form.
+# allauth's social SignupForm inherits these fields. Password signup uses the
+# project's separate SignUpForm, so the allauth fallback must remain passwordless.
+ACCOUNT_SIGNUP_FIELDS = ["email*"]
 ACCOUNT_EMAIL_VERIFICATION = "none"
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_ADAPTER = "socialmanager.adapters.SocialManagerAccountAdapter"
@@ -250,6 +259,8 @@ GEMINI_ENABLED = env_bool("GEMINI_ENABLED", True)
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash") or "gemini-2.5-flash"
 GEMINI_VIDEO_MAX_BYTES = int(os.getenv("GEMINI_VIDEO_MAX_BYTES", str(50 * 1024 * 1024)))
 GEMINI_VIDEO_MAX_SECONDS = int(os.getenv("GEMINI_VIDEO_MAX_SECONDS", "60"))
+VIDEO_MAX_DURATION_SECONDS = int(os.getenv("VIDEO_MAX_DURATION_SECONDS", "60"))
+VIDEO_DURATION_TOLERANCE_SECONDS = float(os.getenv("VIDEO_DURATION_TOLERANCE_SECONDS", "0.05"))
 VIDEO_INTELLIGENCE_TIMEOUT_SECONDS = int(os.getenv("VIDEO_INTELLIGENCE_TIMEOUT_SECONDS", "300"))
 
 STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
@@ -257,6 +268,8 @@ STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_MEMBERSHIP_PRICE_ID = os.getenv("STRIPE_MEMBERSHIP_PRICE_ID", "")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 SITE_URL = os.getenv("SITE_URL", "")
+INDEXNOW_KEY = os.getenv("INDEXNOW_KEY", "")
+INDEXNOW_ENDPOINT = os.getenv("INDEXNOW_ENDPOINT", "https://api.indexnow.org/indexnow")
 IS_LOCAL_HTTP_SITE = SITE_URL.startswith(("http://127.0.0.1", "http://localhost"))
 
 # Cloud Run terminates TLS at its proxy and forwards the original scheme.

@@ -17,6 +17,7 @@ from ..models import AISuggestionHistory, POST_CAPTION_MAX_LENGTH, POST_HASHTAGS
 
 
 TEXT_BASED_FEEDBACK_MESSAGE = "AI suggestions are based on your text input and selected platform."
+VIDEO_TEXT_FALLBACK_REQUIRED_MESSAGE = "Video analysis is unavailable. Please add a title or caption so AI can generate a suggestion from your text."
 AI_TEMPORARILY_UNAVAILABLE_MESSAGE = "AI suggestions are temporarily unavailable. Please try again later."
 AI_USAGE_LIMIT_REACHED_MESSAGE = "AI usage limit reached. Please wait a moment and try again."
 AI_USAGE_LIMIT_REACHED_MESSAGE_ZH_HANT = "AI 使用額度暫時已達上限，請稍候再試。"
@@ -40,6 +41,12 @@ class FieldFeedbackResult:
     suggestion: str
     explanation: str
     used_video_input: bool = False
+    used_image_input: bool = False
+    image_source: str = "none"
+    analyzed_image_count: int = 0
+    grounding_mode: str = "text_only"
+    context_priority: tuple[str, ...] = ()
+    context_sources: dict | None = None
     fallback_reason: str = ""
 
 
@@ -47,6 +54,12 @@ class FieldFeedbackResult:
 class GeminiImageInput:
     data: bytes
     mime_type: str
+
+
+@dataclass
+class ImageInputResult:
+    image_input: GeminiImageInput | None
+    reason: str = ""
 
 
 @dataclass
@@ -71,6 +84,13 @@ class GeminiQuotaError(RuntimeError):
     def __init__(self, message=AI_USAGE_LIMIT_REACHED_MESSAGE, retry_delay_seconds=None):
         super().__init__(message)
         self.retry_delay_seconds = retry_delay_seconds
+
+
+class ImageInputError(ValueError):
+    def __init__(self, code, message):
+        super().__init__(message)
+        self.code = code
+        self.message = message
 
 
 NOT_ENOUGH_DASHBOARD_DATA_MESSAGE = (
@@ -273,19 +293,31 @@ def _read_image_bytes(image_file):
 
 
 def _first_supported_image_input(*candidates):
+    return _first_supported_image_input_result(*candidates).image_input
+
+
+def _first_supported_image_input_result(*candidates):
+    saw_candidate = False
+    last_reason = "image_input_unavailable"
     for candidate in candidates:
         if not candidate:
             continue
+        saw_candidate = True
         image_file = getattr(candidate, "image", candidate)
         mime_type = _supported_image_mime_type(image_file)
         if not mime_type:
+            last_reason = "unsupported_image"
             continue
         data = _read_image_bytes(image_file)
         if len(data) > MAX_GEMINI_IMAGE_BYTES:
+            last_reason = "image_too_large"
             continue
         if data:
-            return GeminiImageInput(data=data, mime_type=mime_type)
-    return None
+            return ImageInputResult(GeminiImageInput(data=data, mime_type=mime_type), "")
+        last_reason = "empty_image"
+    if not saw_candidate:
+        last_reason = "image_input_unavailable"
+    return ImageInputResult(None, last_reason)
 
 
 def _supported_video_mime_type(video_file):
@@ -958,6 +990,7 @@ def _generate_post_rule_based_sections(analytics_data, language="English"):
     headings = _post_insight_headings(use_zh, include_comment_analysis)
     hashtags = _post_hashtag_list(analytics_data)
     media = analytics_data.get("media") or {}
+    video_analysis = analytics_data.get("video_analysis") or {}
     views = int(metrics.get("views") or 0)
     likes = int(metrics.get("likes") or 0)
     comment_count = int(metrics.get("comments") or 0)
@@ -1027,10 +1060,25 @@ def _generate_post_rule_based_sections(analytics_data, language="English"):
                 f"At {views} views, early interaction patterns are visible, but no single rate proves success.",
                 f"The {engagement_rate:.1f}% engagement rate should be read alongside comment and share quality.",
             ]
+        if video_analysis.get("available"):
+            detected_labels = [
+                _clean_ai_text(item.get("description"))
+                for item in (video_analysis.get("labels") or [])[:3]
+                if isinstance(item, dict) and _clean_ai_text(item.get("description"))
+            ]
+            signal_text = ", ".join(detected_labels) or "the stored video annotations"
+            visual_context_point = (
+                f"Stored video annotations identify {signal_text} across "
+                f"{int(video_analysis.get('shot_count') or 0)} detected shot(s); align the opening and caption with those signals."
+            )
+        elif media.get("media_type") == "video":
+            visual_context_point = "No stored video annotations are available, so visual claims should not be inferred."
+        elif media.get("media_type") == "image":
+            visual_context_point = "The first image offers visual context, although oversized media may be skipped for Gemini analysis."
+        else:
+            visual_context_point = "No image context is available, so visual or brand-role claims should not be inferred."
         visual_points = [
-            "The first image offers visual context, although oversized media may be skipped for Gemini analysis."
-            if media.get("media_type") == "image"
-            else "No image context is available, so visual or brand-role claims should not be inferred.",
+            visual_context_point,
             f"The post uses {len(hashtags)} hashtag(s); keep only tags tied to the subject and audience search intent."
             if hashtags
             else "Without hashtags, discoverability depends mostly on the title, caption, and platform distribution.",
@@ -1313,7 +1361,9 @@ def generate_post_analysis(analytics_data, language="English"):
             "Analyze post content: title, caption/description, article caption, article body, hashtags, platform, post type, visibility, created/published time when available.",
             "Analyze creator context: bio, display name, username, recent post titles, and recent hashtags if supplied. Do not quote private profile details unnecessarily.",
             "If a supported image is attached, analyze only the first image. Use it as visual strategy context: composition, subject, style, scroll-stopping potential, brand fit, and clarity.",
-            "If media_type is video, do not inspect frames and do not analyze video retention here.",
+            "For video posts, use video_analysis labels, shots, and safety annotations when available as supporting content signals; these are machine annotations, not direct frame access.",
+            "Never claim that Gemini watched or directly inspected the video. Clearly ground video observations in the supplied annotations.",
+            "Do not analyze retention curves or timed engagement here; those belong to the separate Retention AI insight.",
             "Classify the likely content purpose when possible: artwork showcase, portfolio update, brand awareness, product/project update, community engagement, educational content, entertainment, campaign teaser, or personal update.",
             "Do not assume something is an official mascot, logo, or brand character unless title, caption, bio, campaign, or visual context supports that claim. If uncertain, say artwork, character illustration, or design work.",
             "Analyze hashtags for relevance, specificity, platform fit, and discoverability. Do not repeat every hashtag.",
@@ -1342,7 +1392,6 @@ def generate_post_analysis(analytics_data, language="English"):
             "Recommend one next content idea, such as process/before-after, a clearer reveal, a question prompt, a carousel breakdown, a stronger CTA, or improved hashtag direction when supported.",
             f"If there is no audience data and English is selected, include this exact sentence: {NO_POST_ANALYTICS_DATA_MESSAGE}",
             f"If there is no audience data and Traditional Chinese is selected, include this exact sentence: {_localized_no_post_data_message('traditional_chinese')}",
-            "Do not analyze video retention data in this response.",
             "Do not invent or estimate missing metric values.",
             "Do not use AI score or numeric scoring.",
             "Return only valid JSON using this exact schema: {\"sections\":[{\"heading\":\"Overall performance\",\"points\":[\"one concise point\"]}]}.",
@@ -1656,7 +1705,18 @@ def _generate_campaign_strategy_fallback(campaign_data, language="English"):
     released_count = _safe_int(campaign_data.get("released_count")) or len(released_posts)
     if released_count == 0:
         effective_language = "traditional_chinese" if use_zh else language
-        return _localized_not_enough_campaign_message(effective_language)
+        heading = "活動分析" if use_zh else "Campaign insight"
+        return json.dumps(
+            {
+                "sections": [
+                    {
+                        "heading": heading,
+                        "points": [_localized_not_enough_campaign_message(effective_language)],
+                    }
+                ]
+            },
+            ensure_ascii=False,
+        )
 
     campaign = campaign_data.get("campaign") or {}
     metrics = campaign_data.get("metrics") or {}
@@ -1886,6 +1946,7 @@ def generate_video_retention_rule_based_analysis(retention_data, language="Engli
     last_point = points[-1]
     start_retention = float(first_point.get("retention") or 0)
     final_retention = float(last_point.get("retention") or 0)
+    completion_rate = float(retention_data.get("completion_rate") or final_retention)
     retention_loss = max(start_retention - final_retention, 0)
 
     biggest_drop = None
@@ -1898,14 +1959,18 @@ def generate_video_retention_rule_based_analysis(retention_data, language="Engli
                 "retention": float(current.get("retention") or 0),
             }
 
-    engagement_points = [
-        point for point in points
-        if int(point.get("engagement_count") or 0) > 0
-    ]
+    engagement_points = []
+    previous_engagement_count = 0
+    for point in points:
+        engagement_count = int(point.get("engagement_count") or 0)
+        new_events = max(engagement_count - previous_engagement_count, 0)
+        if new_events:
+            engagement_points.append({**point, "new_events": new_events})
+        previous_engagement_count = engagement_count
     if engagement_points:
         peak_engagement = max(
             engagement_points,
-            key=lambda point: int(point.get("engagement_count") or 0),
+            key=lambda point: int(point.get("new_events") or 0),
         )
         timing = _engagement_timing_label(int(peak_engagement.get("seconds") or 0), duration)
         if use_traditional_chinese:
@@ -1915,6 +1980,32 @@ def generate_video_retention_rule_based_analysis(retention_data, language="Engli
             engagement_timing = (
                 f"Engagement is strongest {timing} in the video, which suggests viewers respond once the content gives them a clear reason to act."
             )
+        timed_totals = {
+            "likes": int(last_point.get("timed_likes") or 0),
+            "comments": int(last_point.get("timed_comments") or 0),
+            "shares": int(last_point.get("timed_shares") or 0),
+        }
+        if use_traditional_chinese:
+            event_labels = {
+                "likes": "次按讚",
+                "comments": "則留言",
+                "shares": "次分享",
+            }
+            recorded_events = [
+                f"{count} {event_labels[kind]}"
+                for kind, count in timed_totals.items()
+                if count
+            ]
+            if recorded_events:
+                engagement_timing += f" 記錄到的定時互動包括：{'、'.join(recorded_events)}。"
+        else:
+            recorded_events = [
+                f"{count} timed {kind[:-1] if count == 1 else kind}"
+                for kind, count in timed_totals.items()
+                if count
+            ]
+            if recorded_events:
+                engagement_timing += f" Recorded activity includes {', '.join(recorded_events)}."
     else:
         timing = "unknown"
         engagement_timing = (
@@ -2016,7 +2107,7 @@ def generate_video_retention_rule_based_analysis(retention_data, language="Engli
     return _localize_analysis_terms(
         (
         "Overall performance\n"
-        f"{opening_line} {pattern}\n\n"
+        f"{opening_line} {pattern} The completion rate is {completion_rate:.1f}%, based on viewers reaching the final sampled second.\n\n"
         "Retention diagnosis\n"
         f"{drop_off} Use this part of the chart to inspect what appears on screen, how quickly the idea develops, and whether the viewer gets a clear reason to continue.\n\n"
         "Engagement diagnosis\n"
@@ -2060,6 +2151,10 @@ def generate_video_retention_analysis(retention_data, language="English"):
             "Use the chart data to interpret audience behaviour rather than restating the chart.",
             "Keep the answer clear and useful, but not overly short.",
             "Analyze only the supplied real retention and timed engagement data.",
+            "Use completion_rate as the measured share of viewers who reached the final sampled second.",
+            "Treat engagement_intensity as chart-relative bucket intensity, not an absolute engagement rate.",
+            "Use engagement_bucket_count as the raw number of events in that sampled time bucket.",
+            "Distinguish timed_likes, timed_comments, and timed_shares when those counts are available.",
             "Analyze what the retention curve means, where the video holds attention, and where viewers may drop off.",
             "Explain why viewers may drop off based on likely content, pacing, hook, payoff, or transition issues.",
             "Explain whether engagement happens early, middle, late, or is missing when the data supports it.",
@@ -2477,20 +2572,88 @@ def _has_weak_generic_hashtags(value):
     return bool(tags & weak_tags)
 
 
-def _sanitize_field_feedback(feedback_type, suggestion, explanation, payload, hashtag_count=POST_HASHTAGS_MAX_COUNT):
+def _field_feedback_fallback(feedback_type, payload, hashtag_count, image_facts=None):
+    if image_facts:
+        return _image_grounded_fallback(feedback_type, payload, image_facts, hashtag_count)
+    return _safe_field_feedback_fallback(feedback_type, payload, hashtag_count)
+
+
+def _traceable_content_tokens(value):
+    text = _clean_ai_text(value).lower()
+    english = {
+        token
+        for token in re.findall(r"[a-z0-9]+", text)
+        if len(token) >= 3 and token not in {
+            "the", "and", "with", "this", "that", "from", "your", "what", "which",
+            "more", "into", "most", "post", "photo", "image", "moment",
+        }
+    }
+    cjk_runs = re.findall(r"[\u3400-\u9fff]+", text)
+    cjk = {
+        run[index:index + 2]
+        for run in cjk_runs
+        for index in range(max(len(run) - 1, 1))
+        if len(run[index:index + 2]) == 2
+    }
+    return english | cjk
+
+
+def _image_feedback_is_traceable(feedback_type, suggestion, image_facts, payload):
+    source_text = f"{_image_facts_text(image_facts)} {_current_input_text(payload)}"
+    source_tokens = _traceable_content_tokens(source_text)
+    if not source_tokens:
+        return False
+
+    creator_context = payload.get("creator_context") if isinstance(payload.get("creator_context"), dict) else {}
+    excluded_text = " ".join(
+        [
+            _clean_ai_text(creator_context.get("bio")),
+            _clean_ai_text(creator_context.get("display_name")),
+            _clean_ai_text(creator_context.get("username")),
+            *(_clean_ai_text(item) for item in _payload_list(creator_context.get("recent_post_titles"))),
+            *(_clean_ai_text(item) for item in _payload_list(creator_context.get("recent_hashtags"))),
+            *(_clean_ai_text(item) for item in _payload_list(payload.get("previous_post_titles"))),
+            *(_clean_ai_text(item) for item in _payload_list(payload.get("previous_post_captions"))),
+            *(_clean_ai_text(item) for item in _payload_list(payload.get("previous_post_hashtags"))),
+        ]
+    )
+    excluded_only_tokens = _traceable_content_tokens(excluded_text) - source_tokens
+    if _traceable_content_tokens(suggestion) & excluded_only_tokens:
+        return False
+
+    if feedback_type == "caption":
+        value = re.split(r"[.!?。！？\n]", _clean_ai_text(suggestion), maxsplit=1)[0]
+        return bool(_traceable_content_tokens(value) & source_tokens)
+    if feedback_type == "hashtags":
+        tags = split_hashtags(suggestion)
+        if not tags:
+            return False
+        traceable = sum(bool(_traceable_content_tokens(tag) & source_tokens) for tag in tags)
+        return traceable >= max(1, (len(tags) + 1) // 2)
+    return bool(_traceable_content_tokens(suggestion) & source_tokens)
+
+
+def _sanitize_field_feedback(
+    feedback_type,
+    suggestion,
+    explanation,
+    payload,
+    hashtag_count=POST_HASHTAGS_MAX_COUNT,
+    image_facts=None,
+):
     clean_hashtag_count = _coerce_hashtag_count(hashtag_count)
     if not suggestion:
-        return _safe_field_feedback_fallback(feedback_type, payload, clean_hashtag_count)
+        return _field_feedback_fallback(feedback_type, payload, clean_hashtag_count, image_facts)
     if feedback_type == "title":
         suggestion = _limit_text(suggestion, POST_TITLE_MAX_LENGTH)
         if suggestion.lower().startswith("a better "):
-            return _safe_field_feedback_fallback(feedback_type, payload, clean_hashtag_count)
+            return _field_feedback_fallback(feedback_type, payload, clean_hashtag_count, image_facts)
     elif feedback_type == "caption":
         suggestion = _limit_text(suggestion, POST_CAPTION_MAX_LENGTH)
     elif feedback_type == "hashtags":
         suggestion = _limit_hashtags(suggestion, clean_hashtag_count)
         if len(split_hashtags(suggestion)) < clean_hashtag_count:
-            fallback = _safe_field_feedback_fallback(feedback_type, payload, clean_hashtag_count)
+            fallback = _field_feedback_fallback(feedback_type, payload, clean_hashtag_count, image_facts)
             suggestion = _limit_hashtags(
                 _hashtag_text_from_candidates(
                     split_hashtags(suggestion) + split_hashtags(fallback.suggestion),
@@ -2499,14 +2662,43 @@ def _sanitize_field_feedback(feedback_type, suggestion, explanation, payload, ha
                 clean_hashtag_count,
             )
         if _has_weak_generic_hashtags(suggestion) and _field_feedback_context_is_limited(payload):
-            return _safe_field_feedback_fallback(feedback_type, payload, clean_hashtag_count)
+            return _field_feedback_fallback(feedback_type, payload, clean_hashtag_count, image_facts)
 
-    if _contains_forbidden_field_context(suggestion):
-        return _safe_field_feedback_fallback(feedback_type, payload, clean_hashtag_count)
+    if not image_facts and _contains_forbidden_field_context(suggestion):
+        return _field_feedback_fallback(feedback_type, payload, clean_hashtag_count, image_facts)
+
+    if image_facts and not _image_feedback_is_traceable(feedback_type, suggestion, image_facts, payload):
+        return _field_feedback_fallback(feedback_type, payload, clean_hashtag_count, image_facts)
 
     explanation = _first_sentence(explanation)
     if not explanation or explanation == TEXT_BASED_FEEDBACK_MESSAGE:
-        explanation = _safe_field_feedback_fallback(feedback_type, payload, clean_hashtag_count).explanation
+        explanation = _field_feedback_fallback(
+            feedback_type, payload, clean_hashtag_count, image_facts
+        ).explanation
+    if image_facts:
+        internal_terms = ("unsupported profile context", "grounding mode", "internal weighting", "80/15/5")
+        creator_context = payload.get("creator_context") if isinstance(payload.get("creator_context"), dict) else {}
+        excluded_explanation_text = " ".join(
+            [
+                _clean_ai_text(creator_context.get("bio")),
+                _clean_ai_text(creator_context.get("display_name")),
+                _clean_ai_text(creator_context.get("username")),
+                *(_clean_ai_text(item) for item in _payload_list(payload.get("previous_post_titles"))),
+                *(_clean_ai_text(item) for item in _payload_list(payload.get("previous_post_captions"))),
+                *(_clean_ai_text(item) for item in _payload_list(payload.get("previous_post_hashtags"))),
+            ]
+        )
+        allowed_tokens = _traceable_content_tokens(
+            f"{_image_facts_text(image_facts)} {_current_input_text(payload)}"
+        )
+        excluded_tokens = _traceable_content_tokens(excluded_explanation_text) - allowed_tokens
+        if (
+            any(term in explanation.lower() for term in internal_terms)
+            or bool(_traceable_content_tokens(explanation) & excluded_tokens)
+        ):
+            explanation = _field_feedback_fallback(
+                feedback_type, payload, clean_hashtag_count, image_facts
+            ).explanation
     return FieldFeedbackResult(suggestion=suggestion, explanation=explanation)
 
 
@@ -2546,10 +2738,9 @@ def _caption_generation_prompt(topic, platform, tone, language, hashtag_count):
             "Return only valid JSON with exactly these keys: caption, hashtags.",
             "caption must be a string.",
             "hashtags must be an array of strings.",
-            "Act as a social media content strategist, not an image description tool.",
-            "Use the image as visual context for social media strategy, not as a simple image description task.",
+            "For image requests, the central subject must come from normalized image facts.",
             "Write a natural, human-written social media caption that feels ready to publish.",
-            "The caption must include a hook, the strongest visual/content highlight, why it matters to the creator or audience, and a short interaction question or CTA.",
+            "For image requests, the first caption sentence must include a concrete visible fact; a second sentence may add a simple question or CTA without introducing a new topic.",
             "Match the selected platform and selected tone.",
             "If platform is unclear, default to Instagram style.",
             "Instagram style is natural, visual, and warm; one relevant emoji is allowed but not required.",
@@ -2564,10 +2755,9 @@ def _caption_generation_prompt(topic, platform, tone, language, hashtag_count):
             f"Keep caption under {POST_CAPTION_MAX_LENGTH} characters.",
             "Avoid generic AI phrases, abstract motivational filler, and overly formal essay wording.",
             "Do not include hashtags inside the caption.",
-            "Make hashtags specific to the image, topic, creator bio, platform, and content purpose.",
+            "Derive most image-request hashtags from normalized image facts or explicit current topic text; creator bio must not supply the subject.",
             "Avoid overly generic hashtags unless directly supported.",
-            "For LinkedIn, prefer professional tags such as #BrandIdentity or #ContentStrategy when relevant.",
-            "For Instagram or TikTok, prefer visual and creator tags such as #CharacterDesign or #DigitalArt when relevant.",
+            "Use platform style without inventing a professional audience, industry, campaign, or brand purpose.",
             "Traditional Chinese output may use Chinese hashtags. English output should use English hashtags.",
             f"Return exactly {hashtag_count} hashtags.",
             f"Never return more than {hashtag_count} hashtags.",
@@ -2678,23 +2868,34 @@ def generate_caption_and_hashtags(
         language=clean_language,
         hashtag_count=clean_hashtag_count,
     )
-    prompt["creator_context"] = creator_context or {}
+    prompt["creator_context"] = _creator_context_for_style_only(creator_context or {})
     image_input = _first_supported_image_input(image_file)
+    image_facts = None
     if image_input:
+        image_facts = _analyze_image_facts(
+            image_input,
+            {
+                "image_bytes_present": True,
+                "image_source": "uploaded",
+                "language": clean_language,
+                "tone": clean_tone,
+                "hashtag_count": clean_hashtag_count,
+            },
+        )
+        prompt["image_facts"] = image_facts
         prompt["image_context"] = (
-            "Use the image as visual context for social media strategy, not as a simple image description task. "
-            "Analyze the attached first image and combine visible image details with the topic, platform, tone, "
-            "creator bio, and text context. Use only the first image. Do not mention that image analysis was used."
+            "The central subject must come from normalized image_facts. Bio may affect tone only. "
+            "Previous content must not supply a topic."
         )
 
     try:
         response_text = _gemini_generate_text(
             (
                 "You are an AI social media caption assistant. "
-                "Think like a social media content strategist. "
-                "Create concise, platform-native captions and relevant hashtags that connect the visual, creator identity, audience, and platform. "
+                "Create concise, platform-native captions and relevant hashtags. "
                 "Avoid generic AI wording, formal essay style, and hashtags inside captions. "
-                "If an image is attached, analyze only that first image and use it as visual context for social media strategy, not as a simple image description task. "
+                "When image_facts are supplied, the caption's first sentence and most hashtags must use concrete facts from them. "
+                "A hook or CTA must not introduce a new topic, audience, event, profession, campaign, or business purpose. "
                 "If no supported image is attached, use only the text context. "
                 "Return only valid JSON in the requested schema."
             ),
@@ -2704,7 +2905,7 @@ def generate_caption_and_hashtags(
             ),
             temperature=0.7,
             response_json=True,
-            image_input=image_input,
+            image_input=None if image_facts else image_input,
         )
         try:
             parsed = _parse_ai_json(response_text)
@@ -2715,6 +2916,20 @@ def generate_caption_and_hashtags(
         hashtags_text = _limit_hashtags(_format_ai_hashtags(parsed.get("hashtags")), clean_hashtag_count)
         if not caption or len(split_hashtags(hashtags_text)) != clean_hashtag_count:
             return fallback
+        if image_facts:
+            validation_payload = {
+                "current_value": clean_topic,
+                "platform": clean_platform,
+                "creator_context": creator_context or {},
+            }
+            caption_result = _sanitize_field_feedback(
+                "caption", caption, "", validation_payload, clean_hashtag_count, image_facts=image_facts
+            )
+            hashtag_result = _sanitize_field_feedback(
+                "hashtags", hashtags_text, "", validation_payload, clean_hashtag_count, image_facts=image_facts
+            )
+            caption = caption_result.suggestion
+            hashtags_text = hashtag_result.suggestion
         return SuggestionResult(caption=caption, hashtags_text=hashtags_text)
     except (ValueError, GeminiQuotaError):
         raise
@@ -2747,9 +2962,217 @@ def generate_post_field_feedback_fallback(payload):
     )
 
 
+def _is_image_primary_post_type(post_type):
+    return _clean_ai_text(post_type).lower() in {"photo_post", "image", "illustration", "carousel"}
+
+
+def _trim_text(value, max_length=400):
+    text = re.sub(r"\s+", " ", _clean_ai_text(value))
+    return text[:max_length]
+
+
+def _creator_context_for_style_only(creator_context):
+    if not isinstance(creator_context, dict):
+        return {}
+    return {
+        "bio_style_hint": _trim_text(creator_context.get("bio"), 500),
+        "recent_post_titles_style_hint": [
+            _trim_text(item, 120)
+            for item in _payload_list(creator_context.get("recent_post_titles"))[:5]
+        ],
+        "recent_hashtags_style_hint": [
+            _trim_text(item, 80)
+            for item in _payload_list(creator_context.get("recent_hashtags"))[:10]
+        ],
+    }
+
+
+def _previous_post_style_summary(previous_titles, previous_captions, previous_hashtags):
+    return {
+        "title_style_examples": [_trim_text(item, 120) for item in previous_titles[:5]],
+        "caption_style_examples": [_trim_text(item, 180) for item in previous_captions[:5]],
+        "hashtag_style_examples": [_trim_text(item, 120) for item in previous_hashtags[:5]],
+        "usage_rule": (
+            "Use these only as weak writing-style references: sentence length, punctuation, emoji frequency, "
+            "question/CTA style, and hashtag format. Do not reuse topics, factual claims, tutorials, launches, "
+            "products, lessons, future plans, or phrases from previous posts."
+        ),
+    }
+
+
+def _image_facts_have_grounding(facts):
+    if not isinstance(facts, dict):
+        return False
+    for key in ("main_subjects", "actions", "objects", "setting", "visual_style", "visible_text", "mood"):
+        value = facts.get(key)
+        if isinstance(value, list) and any(_clean_ai_text(item) for item in value):
+            return True
+        if _clean_ai_text(value):
+            return True
+    return False
+
+
+def _image_facts_text(image_facts):
+    if not isinstance(image_facts, dict):
+        return ""
+    values = []
+    for value in image_facts.values():
+        if isinstance(value, list):
+            values.extend(_clean_ai_text(item) for item in value)
+        else:
+            values.append(_clean_ai_text(value))
+    return " ".join(value for value in values if value).lower()
+
+
+def _current_input_text(payload):
+    values = [
+        payload.get("current_value", ""),
+        payload.get("title", ""),
+        payload.get("caption", ""),
+        payload.get("article_caption", ""),
+        payload.get("article_text", ""),
+        payload.get("hashtags", ""),
+        payload.get("content_description", ""),
+        payload.get("campaign", ""),
+        payload.get("campaign_objective", ""),
+        payload.get("campaign_strategy", ""),
+    ]
+    return " ".join(_clean_ai_text(value) for value in values if _clean_ai_text(value)).lower()
+
+
+def _contains_ungrounded_image_claim(value, image_facts, payload):
+    text = _clean_ai_text(value).lower()
+    if not text:
+        return False
+    grounded_text = f"{_image_facts_text(image_facts)} {_current_input_text(payload)}"
+    forbidden_terms = (
+        "magic",
+        "tutorial",
+        "illusion",
+        "lesson",
+        "course",
+        "class",
+        "launch",
+        "product",
+        "promotion",
+        "announcement",
+        "upcoming",
+        "master ",
+        "learn ",
+    )
+    return any(term in text and term.strip() not in grounded_text for term in forbidden_terms)
+
+
+def _image_grounded_fallback(feedback_type, payload, image_facts, hashtag_count):
+    subjects = _payload_list(image_facts.get("main_subjects"))
+    objects = _payload_list(image_facts.get("objects"))
+    mood = _payload_list(image_facts.get("mood"))
+    mood_hint = mood[0] if mood else ""
+    style = _clean_ai_text(image_facts.get("visual_style"))
+    setting = _clean_ai_text(image_facts.get("setting"))
+    subject = subjects[0] if subjects else (objects[0] if objects else (setting or "visible scene"))
+    object_hint = objects[0] if objects else (setting or subject)
+    detail_parts = [item for item in (subject, object_hint, setting) if item]
+    visible_detail = " and ".join(dict.fromkeys(detail_parts[:2]))
+    use_traditional_chinese = _is_traditional_chinese_language(_field_feedback_language(payload))
+    if feedback_type == "title":
+        suggestion = _limit_text(subject.title(), POST_TITLE_MAX_LENGTH)
+        explanation = (
+            f"這個標題直接呈現圖片中可見的{subject}，並保持簡潔易讀。"
+            if use_traditional_chinese
+            else f"This title directly highlights the visible {subject} while remaining easy to scan."
+        )
+    elif feedback_type == "caption":
+        if use_traditional_chinese:
+            suggestion = f"圖片中的{visible_detail}構成了清楚的視覺焦點。\n哪個細節最吸引你？"
+            explanation = f"這段說明先呈現圖片中可見的{visible_detail}，再用簡單問題鼓勵互動。"
+        else:
+            suggestion = f"The {visible_detail} creates a clear visual focus.\nWhich detail stands out to you most?"
+            explanation = f"This caption highlights the visible {visible_detail} before inviting a simple response."
+        suggestion = _limit_text(suggestion, POST_CAPTION_MAX_LENGTH)
+    else:
+        candidates = []
+        for item in [*subjects[:2], *objects[:3], style, mood_hint]:
+            token = re.sub(r"[^A-Za-z0-9]+", "", _clean_ai_text(item).title())
+            if token:
+                candidates.append(f"#{token}")
+        candidates.extend(["#PhotoDetails", "#VisualFocus", "#ImageStory"])
+        suggestion = _limit_hashtags(_hashtag_text_from_candidates(candidates, hashtag_count), hashtag_count)
+        explanation = (
+            "這些標籤以圖片中可見的主體、物件與風格為主。"
+            if use_traditional_chinese
+            else "These hashtags reflect the image's visible subjects, objects, and style."
+        )
+    return FieldFeedbackResult(suggestion=suggestion, explanation=explanation)
+
+
+def _analyze_image_facts(image_input, diagnostic_context):
+    if not image_input:
+        raise RuntimeError("image_input_unavailable")
+    system_prompt = (
+        "You analyze only visible image content. Return grounded JSON facts and no prose. "
+        "Do not use creator biography, previous posts, brand assumptions, campaign assumptions, or outside context. "
+        "Do not infer tutorials, products, launches, events, lessons, promotions, future plans, professions, "
+        "business activities, or announcements unless directly visible in the image. "
+        "If a detail is uncertain, place it in uncertain_details instead of presenting it as fact."
+    )
+    user_prompt = json.dumps(
+        {
+            "task": "Analyze only what is visibly present in the attached image.",
+            "schema": {
+                "main_subjects": [],
+                "actions": [],
+                "objects": [],
+                "setting": "",
+                "visual_style": "",
+                "visible_text": [],
+                "mood": [],
+                "uncertain_details": [],
+            },
+            "rules": [
+                "List only visually supported facts.",
+                "Do not interpret a glowing light bulb, box, mascot, character, or illustration as a product launch, tutorial, magic lesson, or announcement unless explicit visual evidence exists.",
+                "Use concise noun phrases.",
+            ],
+        }
+    )
+    response_text = _gemini_generate_text(
+        system_prompt,
+        user_prompt,
+        temperature=0.2,
+        response_json=True,
+        image_input=image_input,
+        diagnostic_context={**diagnostic_context, "gemini_request_stage": "image_analysis"},
+    )
+    facts = _parse_ai_json(response_text)
+    if not _image_facts_have_grounding(facts):
+        raise RuntimeError("image_analysis_failed")
+    normalized = {
+        "main_subjects": _payload_list(facts.get("main_subjects"))[:8],
+        "actions": _payload_list(facts.get("actions"))[:8],
+        "objects": _payload_list(facts.get("objects"))[:12],
+        "setting": _trim_text(facts.get("setting"), 160),
+        "visual_style": _trim_text(facts.get("visual_style"), 160),
+        "visible_text": _payload_list(facts.get("visible_text"))[:8],
+        "mood": _payload_list(facts.get("mood"))[:8],
+        "uncertain_details": _payload_list(facts.get("uncertain_details"))[:10],
+    }
+    logger.info(
+        "Gemini image analysis stage completed: mime_type=%s byte_length=%s fact_fields=%s",
+        image_input.mime_type,
+        len(image_input.data),
+        sum(1 for value in normalized.values() if bool(value)),
+    )
+    return normalized
+
+
 def generate_post_field_feedback(payload):
     feedback_type = payload.get("feedback_type")
     current_value = (payload.get("current_value") or "").strip()
+    text_fallback_available = any(
+        _clean_ai_text(payload.get(field_name))
+        for field_name in ("title", "caption", "article_caption", "hashtags", "current_value", "article_text", "content_description")
+    )
     action = "improve" if current_value else "generate"
     platform = (payload.get("platform") or "").strip() or "Instagram"
     campaign = (payload.get("campaign") or "").strip()
@@ -2766,13 +3189,17 @@ def generate_post_field_feedback(payload):
     clean_language_mode = "auto_match_input" if _is_auto_language(_field_feedback_language_key(payload)) else "force_selected_language"
     clean_hashtag_count = _coerce_hashtag_count(payload.get("ai_hashtag_count"))
     platform_key = _platform_key(platform)
-    image_input = _first_supported_image_input(payload.get("image_file"))
+    image_input_result = _first_supported_image_input_result(payload.get("image_file"))
+    image_input = image_input_result.image_input
+    image_source = _clean_ai_text(payload.get("image_source")) or ("stored" if image_input else "none")
+    is_image_primary_post = _is_image_primary_post_type(payload.get("post_type"))
     is_video_post = _clean_ai_text(payload.get("post_type")).lower() == "video"
     video_file = payload.get("video_file") if is_video_post else None
     video_file_detected = bool(video_file)
     video_input = None
-    video_fallback_reason = ""
-    if is_video_post:
+    video_fallback_reason = _clean_ai_text(payload.get("video_fallback_reason"))
+    use_text_only_fallback = bool(payload.get("use_text_only_fallback"))
+    if is_video_post and not use_text_only_fallback:
         video_input, video_fallback_reason = _load_video_for_ai(
             video_file,
             duration_seconds=payload.get("video_duration_seconds"),
@@ -2784,8 +3211,17 @@ def generate_post_field_feedback(payload):
                 api_call_success=False,
                 fallback_reason=video_fallback_reason,
             )
+    elif is_video_post:
+        video_fallback_reason = video_fallback_reason or "text_only_fallback_requested"
+        _video_ai_diagnostic(
+            video_file_detected=video_file_detected,
+            video_input_used=False,
+            api_call_success=False,
+            fallback_reason=video_fallback_reason,
+        )
     diagnostic_context = {
         "image_bytes_present": bool(image_input),
+        "image_source": image_source,
         "video_file_detected": video_file_detected,
         "video_input_used": bool(video_input),
         "language": clean_language,
@@ -2801,6 +3237,26 @@ def generate_post_field_feedback(payload):
         message = "GEMINI_API_KEY is missing from the runtime environment."
         _gemini_pipeline_diagnostics(**diagnostic_context, exception_text=message)
         raise ValueError(message)
+    if is_image_primary_post and not image_input:
+        raise ImageInputError(
+            image_input_result.reason or "image_input_unavailable",
+            "The image could not be provided to AI. Please reselect the image and try again.",
+        )
+
+    image_facts = None
+    if image_input and not is_video_post:
+        try:
+            image_facts = _analyze_image_facts(image_input, diagnostic_context)
+        except GeminiQuotaError:
+            raise
+        except Exception as exc:
+            logger.warning("Gemini image analysis failed: %s", exc.__class__.__name__)
+            if is_image_primary_post:
+                raise ImageInputError(
+                    "image_analysis_failed",
+                    "AI could not analyze the image, so no suggestion was generated.",
+                ) from exc
+            image_input = None
 
     field_rules = {
         "title": [
@@ -2808,11 +3264,10 @@ def generate_post_field_feedback(payload):
             f"Keep the title at {POST_TITLE_MAX_LENGTH} characters or fewer.",
             "Target 2-6 words for most platforms.",
             "A good title creates curiosity, is easy to scan, fits the platform, avoids generic wording, and does not simply describe the image.",
-            "Infer a supported content purpose from the image and text, such as brand identity, new mascot, character reveal, campaign teaser, creator update, or project launch.",
+            "Reflect the normalized image facts directly. Use identity, campaign, or launch concepts only when explicit current user input supports them.",
             "Avoid overly plain titles such as My New Avatar, New Image, or New Post.",
             "Traditional Chinese example styles: Creana 小狐狸正式登場; 品牌新角色亮相; 藍色小狐狸帶來全新創作能量.",
-            "English example styles: Meet Creana's New Mascot; A Fresh New Face for Creana; Blue Fox Energy Arrives.",
-            "Use plain, natural phrasing. Reusable style examples include One Pose, One Spell; Small Moment, Strong Energy; Behind the Shot; Wait for the Pose; A Little Bit of Magic.",
+            "Use plain, natural phrasing that names a concrete visible subject, object, action, setting, style, or visible text fact.",
             "Do not copy example titles unless they match the user's explicit context.",
             "Use the existing title, caption, hashtags, content description, post type, selected platform, creator context, campaign, campaign objective, campaign strategy, and previous post context when provided.",
             "Avoid awkward AI-style phrasing such as Unlock Your Next-Level Journey or Discover the Magic of Every Moment.",
@@ -2825,7 +3280,7 @@ def generate_post_field_feedback(payload):
             "Generate a natural social media caption, not an essay.",
             f"Keep the caption at {POST_CAPTION_MAX_LENGTH} characters or fewer.",
             "Use short sentence structures and conversational pacing.",
-            "Do not merely describe what is in the image.",
+            "The first sentence must include at least one concrete normalized image fact; a second sentence may add a simple question or CTA without introducing a new topic.",
             "A good caption includes a hook, a visual/content highlight, why it matters to the brand, creator, or audience, and a simple interaction question or CTA.",
             "A good caption feels like a real social post, matches the topic, feels human, avoids fake details, and encourages interaction.",
             "Prefer captions that help comments, saves, or shares depending on platform.",
@@ -2856,7 +3311,7 @@ def generate_post_field_feedback(payload):
             "If context is limited, use safer broad-but-relevant hashtags tied to the post type or platform instead of guessing specific details.",
             "Avoid generic tags like #InstagramPhoto, #PhotoPost, #AestheticPost, #VisualStory, #product, #socialmedia, #content, #marketing, or #business unless directly relevant.",
             "If platform is LinkedIn, hashtags should be more professional, such as #BrandIdentity, #ContentStrategy, #ProductUpdate, or #CreativeStrategy when relevant.",
-            "If platform is Instagram or TikTok, hashtags can lean visual and creative, such as #CharacterDesign, #DigitalArt, #MascotDesign, or #CreatorBranding when relevant.",
+            "Derive most hashtags from normalized image facts or explicit current input. Use at most one broad creator or brand hashtag.",
             "Traditional Chinese output may use Chinese hashtags. English output should use English hashtags.",
             "Do not invent scenery or location hashtags.",
             "Keep the existing hashtag quality: specific, discoverable, and platform-appropriate.",
@@ -2873,25 +3328,16 @@ def generate_post_field_feedback(payload):
         "youtube": "Searchable title and description style. Use topic-focused hashtags.",
     }
     writing_examples = {
-        "better_titles": [
-            "One Pose, One Spell",
-            "Small Moment, Strong Energy",
-            "Behind the Shot",
-            "Wait for the Pose",
-            "A Little Bit of Magic",
-        ],
-        "avoid_titles": [
-            "A Better Magic Pose",
-            "Unlock Your Next-Level Journey",
-            "Discover the Magic of Every Moment",
-            "Elevate Your Day With Endless Inspiration",
+        "title_shape": [
+            "Name a concrete visible subject or setting.",
+            "Keep the wording short and easy to scan.",
         ],
         "caption_shape": [
             "Start with a grounded hook from the supplied context.",
             "Add one short line that clarifies the topic or value.",
             "End with a simple question, save prompt, or share prompt.",
         ],
-        "instruction": "Examples show style only. Do not copy them unless they match the user's explicit context.",
+        "instruction": "These are structural rules only; they do not supply a topic.",
     }
 
     prompt = {
@@ -2910,12 +3356,27 @@ def generate_post_field_feedback(payload):
         "campaign": campaign or None,
         "campaign_objective": campaign_objective or None,
         "campaign_strategy": campaign_strategy or None,
-        "previous_post_titles": previous_post_titles,
-        "previous_post_captions": previous_post_captions,
-        "previous_post_hashtags": previous_post_hashtags,
-        "creator_context": creator_context,
+        "image_facts": image_facts,
+        "source_priority": [
+            "visible_image_facts",
+            "explicit_current_user_input",
+            "bio_tone_only",
+            "previous_posts_style_only",
+        ],
+        "expected_weighting": {
+            "image_facts": "80%",
+            "bio_tone_and_persona": "15%",
+            "previous_post_style": "5%",
+        },
+        "previous_post_style": _previous_post_style_summary(
+            previous_post_titles,
+            previous_post_captions,
+            previous_post_hashtags,
+        ),
+        "creator_context": _creator_context_for_style_only(creator_context),
         "content_description": content_description or None,
         "has_supported_image": bool(image_input),
+        "image_source": image_source if image_input else "none",
         "has_supported_video": bool(video_input),
         "video_analysis_basis": (
             "Gemini is receiving the bounded uploaded video and may use its frames and temporal sequence."
@@ -2943,30 +3404,32 @@ def generate_post_field_feedback(payload):
         },
         "instructions": {
             "general_rules": [
-                "You are an AI social media content strategist, not a simple image description assistant.",
+                "The central subject of image-post output must come from normalized image_facts.",
                 "When has_supported_video is true, analyze the attached video itself and ground the requested title, caption, or hashtags in visible video content and sequence.",
                 "When video_analysis_basis says video frames were not read, never imply that you watched, viewed, or analyzed the video.",
-                "When a supported image is attached, analyze only the first attached image and combine visible details with the text context, creator bio, platform, language preference, and hashtag count.",
-                "Use the image as visual context for social media strategy, not as a simple image description task.",
-                "Do not produce content that only says what appears in the image.",
-                "Infer a supported social content angle when appropriate: brand identity, mascot reveal, character reveal, campaign teaser, creator update, product/project introduction, or audience engagement moment.",
+                "When image_facts are provided, they are the primary source of subject matter and meaning.",
+                "Include at least one concrete visible subject, object, action, setting, style, or visible-text fact.",
+                "If any source conflicts with image_facts, follow image_facts.",
+                "You may add a short platform-native hook, question, or CTA, but it must not introduce a new topic, audience, event, profession, campaign, or business purpose.",
+                "Infer a supported social content angle only when it can be traced to image_facts or explicit current user input.",
                 "When no supported image is attached, this feature is text-based content assistance only.",
                 "If no supported image is attached, do not claim to analyse, inspect, see, view, or understand uploaded images or media.",
-                "When content_description is provided, treat it as a visual/context clue.",
-                "Use previous_post_titles, previous_post_captions, and previous_post_hashtags only as pattern/context clues; do not copy them.",
-                "Creator bio is the primary source of creator identity.",
-                "Use creator bio to determine the creator's niche, audience, expertise, and content style.",
-                "Maintain that creator identity consistently across title, caption, and hashtag suggestions unless the current post clearly belongs to another niche.",
-                "Use recent post titles and recent hashtags only to refine the creator niche, not replace the identity implied by the bio.",
-                "Use creator_context only to infer the creator's niche, tone, audience, expertise, content style, and recurring subject matter when helpful.",
-                "If creator_context suggests a niche such as card tricks or close-up magic, lean titles, captions, and hashtags toward that niche, challenges, and audience interaction when relevant to the post.",
+                "Explicit current user input may add context, including posting intent, only when supplied in the current form.",
+                "Use the bio only to influence tone, persona, vocabulary, and audience positioning.",
+                "Do not introduce factual claims, activities, tutorials, events, products, launches, lessons, promotions, or future plans from the bio unless supported by image_facts or explicit current input.",
+                "Creator profile and brand preferences may affect tone only. Do not replace visible image content with creator, brand, or previous-post context.",
+                "Use previous posts only as a weak writing-style reference.",
+                "Do not reuse previous post topics, factual claims, events, tutorials, launches, products, lessons, or future plans.",
+                "Previous posts must not determine what the new image is about.",
                 "Do not reveal or quote private profile details, profile links, username, display name, or bio text in the generated post.",
                 "Do not copy the creator bio directly.",
                 "Do not invent identity claims beyond the supplied profile text.",
                 "If creator_context is empty or unclear, ignore it.",
-                "Generate or improve title, caption, and hashtags from the selected platform, post type, content description, existing title, caption, hashtags, article text, creator context, campaign, campaign objective, campaign strategy, and previous post context when provided.",
+                "Generate or improve title, caption, and hashtags from image_facts first, then selected platform, current title, caption, hashtags, article text, and explicit current campaign fields when provided.",
                 "Never invent locations, travel experiences, achievements, events, timelines, emotions, scenery, objects, or activities unless explicitly provided.",
                 "Do not invent scenery, location, activity, objects, mood, or aesthetics that are not included in the user text, attached image, content_description, title, caption, hashtags, creator_context, campaign, campaign objective, campaign strategy, previous post context, or post type.",
+                "Before returning, verify that central nouns, actions, subjects, and claims can be traced to image_facts or explicit current user input.",
+                "Remove any claim supported only by bio or previous posts.",
                 "Do not say today, this took longer than expected, finally clicked, peaceful place, nature walk, or similar invented context unless the user supplied that context.",
                 "If the user input is short or vague, create safer content based on the visible text context only.",
                 "When context is limited, use simple engagement prompts rather than invented stories.",
@@ -2987,7 +3450,7 @@ def generate_post_field_feedback(payload):
                 f"Never return more than {clean_hashtag_count} hashtags.",
                 f"Never return fewer than {clean_hashtag_count} hashtags.",
                 "Do not repeat every hashtag inside the feedback explanation.",
-                "Feedback explanation must explain the strategic benefit, such as engagement, clarity, brand identity, audience interaction, or discoverability.",
+                "Feedback explanation must only explain how the suggestion reflects the image, improves clarity, or invites interaction.",
                 "If Traditional Chinese is selected, translate those concepts naturally: engagement -> 互動率 or 互動表現, clarity -> 清楚度, brand identity -> 品牌識別, audience interaction -> 受眾互動, discoverability -> 曝光與搜尋性.",
                 "If Traditional Chinese is selected, do not use English analysis terms like engagement, clarity, brand identity, audience interaction, or discoverability unless they are platform names or proper nouns.",
                 "Avoid AI-generated prose patterns: big abstract claims, excessive adjectives, polished essay rhythm, and generic inspirational wording.",
@@ -3000,9 +3463,9 @@ def generate_post_field_feedback(payload):
                 "Do not include markdown formatting, bullets, labels, or code fences.",
                 "If mode is generate, create a new field suggestion from the text context.",
                 "If mode is improve, make the existing field clearly better instead of appending one word or repeating the same phrase.",
-                "Feedback must be one short, product-like sentence that explains why the suggestion improves engagement, clarity, brand identity, audience interaction, or discoverability.",
+                "Feedback must be one short, natural sentence and must not infer an industry, professional audience, campaign purpose, or brand strategy.",
                 "Do not only say that suggestions are based on text input and selected platform.",
-                "Good English feedback examples: This title strengthens brand identity while staying easy to scan. This caption gives the audience a clearer reason to respond. These hashtags improve discoverability without drifting away from the visual concept.",
+                "Do not expose internal terms such as grounding, unsupported profile context, or source weighting.",
                 "Good Traditional Chinese feedback examples: 這個標題能強化品牌識別，也更容易一眼理解。這段文案讓受眾更清楚知道為什麼要互動。這組 hashtag 更聚焦主題，有助於提升曝光與搜尋性。",
                 f"Use this idea only as supporting context when useful, not as the whole explanation: {TEXT_BASED_FEEDBACK_MESSAGE}",
             ],
@@ -3023,14 +3486,16 @@ def generate_post_field_feedback(payload):
         system_prompt = (
                 "You are an AI social media content strategist for a SaaS social media manager. "
                 "Provide platform-aware help for titles, captions, and hashtags. "
-                "Do not behave like a simple image description tool. "
+                "For image posts, the central subject must come from normalized image facts. "
                 "Always write the requested field and feedback in the selected AI language. "
                 "Do not copy the input language unless selected language is Auto. "
-                "If an image is attached, analyze only the first image and use it as visual context for social media strategy, not as a simple image description task. "
-                "Connect the image to creator identity, brand identity, audience interaction, discoverability, and platform-native posting goals when supported. "
+                "When image_facts are supplied, treat them as the primary source of subject matter and meaning. "
+                "Include a concrete visible fact and add only a short hook, question, or CTA that introduces no new topic. "
                 "If no supported image is attached, do not refer to uploaded images or media. "
-                "Prioritize explicit user context, especially content_description when supplied, then platform style, then engagement optimisation. "
+                "Use visible image facts and explicit current input for subject matter; bio may affect tone and previous posts may affect style only. "
+                "Bio and previous posts may affect how the message is written, but not what happened in the image. "
                 "Do not add unsupported visual details, settings, objects, activities, moods, events, timelines, achievements, or aesthetics. "
+                "Do not invent tutorials, lessons, launches, products, promotions, announcements, courses, or future plans unless explicit current input supports them. "
                 "When context is sparse, stay simple and useful instead of inventing a story. "
                 "If an attached video is provided, analyze its actual visual and temporal content. "
                 "If no video input is attached, never claim to have watched the video. "
@@ -3055,6 +3520,8 @@ def generate_post_field_feedback(payload):
             except GeminiQuotaError:
                 raise
             except Exception as exc:
+                if not text_fallback_available:
+                    raise ValueError(VIDEO_TEXT_FALLBACK_REQUIRED_MESSAGE) from exc
                 video_fallback_reason = f"video_api_{exc.__class__.__name__.lower()}"
                 _video_ai_diagnostic(
                     video_file_detected=True,
@@ -3079,7 +3546,7 @@ def generate_post_field_feedback(payload):
             user_prompt,
             temperature=0.7,
             response_json=True,
-            image_input=image_input,
+            image_input=None if image_facts and not is_video_post else image_input,
             diagnostic_context=diagnostic_context,
         )
         if is_video_post:
@@ -3130,7 +3597,19 @@ def generate_post_field_feedback(payload):
             explanation = _first_sentence(_field_payload_value(field_data, "feedback", "reason", "explanation") or parsed.get("explanation"))
         except Exception as exc:
             logger.warning("Gemini request failed during language retry: %s", exc.__class__.__name__)
-    result = _sanitize_field_feedback(feedback_type, suggestion, explanation, payload, clean_hashtag_count)
+    result = _sanitize_field_feedback(
+        feedback_type,
+        suggestion,
+        explanation,
+        payload,
+        clean_hashtag_count,
+        image_facts=image_facts,
+    )
+    if image_facts and (
+        _contains_ungrounded_image_claim(result.suggestion, image_facts, payload)
+        or _contains_ungrounded_image_claim(result.explanation, image_facts, payload)
+    ):
+        result = _image_grounded_fallback(feedback_type, payload, image_facts, clean_hashtag_count)
     if _field_feedback_language_mismatch(
         feedback_type,
         result.suggestion,
@@ -3138,11 +3617,32 @@ def generate_post_field_feedback(payload):
         clean_language,
         _field_feedback_language_key(payload),
     ):
-        result = _safe_field_feedback_fallback(feedback_type, payload, clean_hashtag_count)
+        result = (
+            _image_grounded_fallback(feedback_type, payload, image_facts, clean_hashtag_count)
+            if image_facts
+            else _safe_field_feedback_fallback(feedback_type, payload, clean_hashtag_count)
+        )
 
     return FieldFeedbackResult(
         suggestion=result.suggestion,
         explanation=result.explanation,
+        used_image_input=bool(image_facts),
+        image_source=image_source if image_facts else "none",
+        analyzed_image_count=1 if image_facts else 0,
+        grounding_mode="image_primary" if image_facts else "text_only",
+        context_priority=(
+            "image",
+            "current_input",
+            "bio",
+            "previous_posts",
+        ) if image_facts else (),
+        context_sources={
+            "image": bool(image_facts),
+            "bio": bool(_creator_context_for_style_only(creator_context).get("bio_style_hint")),
+            "previous_posts": bool(
+                previous_post_titles or previous_post_captions or previous_post_hashtags
+            ),
+        },
         used_video_input=bool(video_input) and not bool(video_fallback_reason),
         fallback_reason=video_fallback_reason,
     )
