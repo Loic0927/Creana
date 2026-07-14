@@ -9,6 +9,9 @@
     <meta name="author" content="Creana">
     <meta name="robots" content="{% block robots %}{{ seo_robots }}{% endblock %}">
     <meta name="theme-color" content="#7C8CFF">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Creana">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta property="og:title" content="{% block open_graph_title %}{{ seo_title }}{% endblock %}">
     <meta property="og:description" content="{% block open_graph_description %}{{ seo_description }}{% endblock %}">
     <meta property="og:image" content="{% block open_graph_image %}{{ open_graph_image_url }}{% endblock %}">
@@ -21,9 +24,10 @@
     <meta name="twitter:image" content="{% block twitter_image %}{{ open_graph_image_url }}{% endblock %}">
     <title>{% block title %}Creana{% endblock %}</title>
     {% block canonical %}{% if canonical_url %}<link rel="canonical" href="{{ canonical_url }}">{% endif %}{% endblock %}
+    {% if structured_data %}<script type="application/ld+json">{{ structured_data|safe }}</script>{% endif %}
     <link rel="icon" type="image/webp" href="{% static 'socialmanager/images/icon.webp' %}">
-    <link rel="apple-touch-icon" href="{% static 'socialmanager/images/icon.webp' %}">
-    <link rel="manifest" href="{% static 'site.webmanifest' %}">
+    <link rel="apple-touch-icon" sizes="192x192" href="{% url 'pwa_icon' filename='pwa-icon-192.png' %}">
+    <link rel="manifest" href="{% url 'web_app_manifest' %}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -80,6 +84,9 @@
 
                     <main class="page">
                         <div class="page-inner">
+        {% elif public_page_standalone %}
+            <main class="page public-standalone-page">
+                <div class="page-inner">
         {% endif %}
 
                             {% block content %}{% endblock %}
@@ -89,6 +96,9 @@
                     </main>
                 </div>
             </div>
+        {% elif public_page_standalone %}
+                </div>
+            </main>
         {% endif %}
     {% endblock %}
 

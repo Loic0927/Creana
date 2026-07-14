@@ -74,14 +74,14 @@
                 <p class="metric-label">{% trans "Posts" %}</p>
                 <p class="metric-value">{{ profile_stats.posts }}</p>
             </article>
-            <article class="profile-stat">
+            <a class="profile-stat profile-stat-link" href="{% url 'socialmanager:profile_connections' user.username %}?tab=followers" aria-label="{% blocktranslate with username=user.username %}View {{ username }}'s followers{% endblocktranslate %}">
                 <p class="metric-label">{% trans "Followers" %}</p>
                 <p class="metric-value">{{ profile_stats.followers }}</p>
-            </article>
-            <article class="profile-stat">
+            </a>
+            <a class="profile-stat profile-stat-link" href="{% url 'socialmanager:profile_connections' user.username %}?tab=following" aria-label="{% blocktranslate with username=user.username %}View {{ username }}'s following{% endblocktranslate %}">
                 <p class="metric-label">{% trans "Following" %}</p>
                 <p class="metric-value">{{ profile_stats.following }}</p>
-            </article>
+            </a>
         </div>
     </form>
 

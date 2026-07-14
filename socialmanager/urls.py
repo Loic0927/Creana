@@ -73,6 +73,7 @@ urlpatterns = [
     path("profiles/search/", views.profile_username_search, name="profile_username_search"),
     path("profiles/<int:user_id>/", views.PublicProfileView.as_view(), name="public_profile"),
     path("users/<str:username>/", views.PublicProfileView.as_view(), name="public_profile_username"),
+    path("users/<str:username>/connections/", views.ProfileConnectionsView.as_view(), name="profile_connections"),
     path("profiles/<int:user_id>/follow/", views.UserFollowToggleView.as_view(), name="profile_follow_toggle"),
     path("profiles/<int:user_id>/hide/", views.HiddenUserToggleView.as_view(), name="profile_hidden_user_toggle"),
     path("users/<str:username>/hide/", views.HiddenUserToggleView.as_view(), name="profile_hidden_user_toggle_username"),

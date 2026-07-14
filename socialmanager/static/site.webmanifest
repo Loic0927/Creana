@@ -1,15 +1,48 @@
 {
   "name": "Creana",
   "short_name": "Creana",
-  "start_url": "/",
+  "description": "Create, plan, schedule, and improve social media content with Creana.",
+  "id": "/",
+  "start_url": "/dashboard/?source=pwa",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "background_color": "#F8FAFC",
   "theme_color": "#7C8CFF",
   "icons": [
     {
-      "src": "/static/socialmanager/images/icon.webp",
-      "type": "image/webp",
-      "sizes": "128x128"
+      "src": "/pwa/icons/pwa-icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa/icons/pwa-icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa/icons/pwa-icon-maskable-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "url": "/dashboard/?source=pwa-shortcut"
+    },
+    {
+      "name": "Feed",
+      "short_name": "Feed",
+      "url": "/posts/?source=pwa-shortcut"
+    },
+    {
+      "name": "Create Post",
+      "short_name": "Create",
+      "url": "/posts/new/?source=pwa-shortcut"
     }
   ]
 }

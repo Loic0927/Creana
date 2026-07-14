@@ -1,0 +1,48 @@
+{% load i18n %}
+<section class="card content-card settings-card settings-card-install" data-install-app hidden>
+    <h2 class="settings-section-title">{% trans "Install Creana" %}</h2>
+    <button
+        class="btn btn-primary"
+        type="button"
+        aria-label="{% trans 'Install Creana on this device' %}"
+        data-install-app-button
+    >
+        <span class="material-symbols-outlined" aria-hidden="true">install_mobile</span>
+        <span>{% trans "Install Creana" %}</span>
+    </button>
+</section>
+
+<div class="settings-modal-backdrop" data-install-instructions-modal hidden>
+    <div
+        class="settings-modal settings-install-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="install-instructions-title"
+        aria-describedby="install-instructions-description"
+    >
+        <div class="settings-modal-header">
+            <h2 id="install-instructions-title">{% trans "Install Creana" %}</h2>
+            <button
+                class="icon-button"
+                type="button"
+                aria-label="{% trans 'Close install instructions' %}"
+                data-install-instructions-close
+            >
+                <span class="material-symbols-outlined" aria-hidden="true">close</span>
+            </button>
+        </div>
+        <div id="install-instructions-description">
+            <p data-install-ios-safari hidden>
+                {% trans "In Safari, tap Share, then choose Add to Home Screen." %}
+            </p>
+            <p data-install-ios-other hidden>
+                {% trans "Open this page in Safari, then tap Share and choose Add to Home Screen." %}
+            </p>
+        </div>
+        <div class="settings-modal-actions">
+            <button class="btn btn-primary" type="button" data-install-instructions-close>
+                {% trans "Got it" %}
+            </button>
+        </div>
+    </div>
+</div>

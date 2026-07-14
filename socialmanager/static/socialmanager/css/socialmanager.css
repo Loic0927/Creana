@@ -1054,8 +1054,11 @@ h3 {
 .profile-post-empty-state.creana-empty-state,
 .feed-empty-state.creana-empty-state {
     align-items: center;
-    background:
-        linear-gradient(135deg, rgba(235, 248, 255, 0.96) 0%, rgba(245, 241, 255, 0.96) 100%);
+    background: linear-gradient(
+        135deg,
+        rgba(235, 248, 255, 0.96) 0%,
+        rgba(245, 241, 255, 0.96) 100%
+    );
     border: 1px solid #cfe3ff;
     border-radius: 18px;
     box-shadow:
@@ -3538,14 +3541,13 @@ body.media-lightbox-open {
 
 .settings-page .settings-section-title {
     display: block;
-    margin: 0 0 24px;
+    margin: 0 0 12px;
     color: var(--color-text);
     font-size: 32px;
     font-weight: 700;
     line-height: 1.2;
     letter-spacing: -0.03em;
 }
-
 
 .settings-shell .settings-control,
 .settings-shell .settings-preference-list {
@@ -3724,6 +3726,35 @@ body.media-lightbox-open {
     color: var(--color-danger-text);
 }
 
+.settings-shell .settings-card-install {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    text-align: left;
+}
+
+.settings-card-install .settings-section-title {
+    margin: 0;
+    text-align: left;
+}
+
+.settings-card-install > .btn {
+    flex: 0 0 auto;
+    min-height: 46px;
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.settings-install-modal p {
+    margin: 0;
+    color: var(--color-muted);
+    line-height: 1.6;
+}
+
 .settings-modal-backdrop[hidden] {
     display: none;
 }
@@ -3771,5 +3802,45 @@ body.media-lightbox-open {
     .settings-bottom-actions .settings-delete-link,
     .settings-modal-actions .btn {
         width: 100%;
+    }
+
+    .settings-shell .settings-card-install {
+        align-items: stretch;
+        justify-content: flex-start;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .settings-card-install > .btn {
+        width: 100%;
+    }
+}
+
+@media (min-width: 768px) {
+    .settings-shell .settings-card-install {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        text-align: left;
+    }
+
+    .settings-card-install .settings-section-title {
+        margin: 0;
+        text-align: left;
+    }
+
+    .settings-card-install > .btn {
+        width: auto;
+        margin: 0 0 0 auto;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .settings-card-install *,
+    .settings-install-modal * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
     }
 }

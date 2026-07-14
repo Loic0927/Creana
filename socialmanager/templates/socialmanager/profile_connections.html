@@ -1,0 +1,65 @@
+{% extends "socialmanager/base.html" %}
+{% load i18n static socialmanager_content %}
+
+{% block title %}{{ seo_title }}{% endblock %}
+{% block body_class %}profile-page public-profile-page connections-page{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'socialmanager/css/pages/profile.css' %}?v=connections-1" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="stack connections-shell">
+    <header class="card connections-header">
+        <form class="connections-search-form" method="get" action="{% url 'socialmanager:profile_connections' profile_user.username %}">
+            <input type="hidden" name="tab" value="{{ active_tab }}">
+            <label class="sr-only" for="connections-search-input">
+                {% if active_tab == "following" %}{% trans "Search following" %}{% else %}{% trans "Search followers" %}{% endif %}
+            </label>
+            <input
+                class="connections-search-input"
+                id="connections-search-input"
+                type="search"
+                name="q"
+                value="{{ search_query }}"
+                placeholder="{% if active_tab == 'following' %}{% trans 'Search following' %}{% else %}{% trans 'Search followers' %}{% endif %}"
+            >
+            <button class="connections-search-button" type="submit" aria-label="{% if active_tab == 'following' %}{% trans 'Search following' %}{% else %}{% trans 'Search followers' %}{% endif %}">
+                <span class="material-symbols-outlined" aria-hidden="true">search</span>
+            </button>
+        </form>
+    </header>
+
+    <section class="card connections-card" aria-label="{% trans 'Connections' %}">
+        <nav class="connections-tabs" aria-label="{% trans 'Connections' %}">
+            <a class="connections-tab{% if active_tab == 'followers' %} is-active{% endif %}" href="?tab=followers"{% if active_tab == 'followers' %} aria-current="page"{% endif %}>{% trans "Followers" %}</a>
+            <a class="connections-tab{% if active_tab == 'following' %} is-active{% endif %}" href="?tab=following"{% if active_tab == 'following' %} aria-current="page"{% endif %}>{% trans "Following" %}</a>
+        </nav>
+
+        <div class="connections-list">
+            {% for connection in connections %}
+                <article class="connection-row">
+                    <a class="connection-avatar-link" href="{% url 'socialmanager:public_profile_username' connection.username %}" aria-label="{% blocktranslate with username=connection.username %}View {{ username }}'s profile{% endblocktranslate %}">
+                        <img class="connection-avatar" src="{{ connection|avatar_url }}" alt="{% blocktranslate with username=connection.username %}{{ username }}'s avatar{% endblocktranslate %}" width="52" height="52" loading="lazy" decoding="async">
+                    </a>
+                    <a class="connection-username" href="{% url 'socialmanager:public_profile_username' connection.username %}">{{ connection.username }}</a>
+                </article>
+            {% empty %}
+                <p class="connections-empty">
+                    {% if search_query %}
+                        {% if active_tab == "following" %}{% trans "No followed accounts match your search." %}{% else %}{% trans "No followers match your search." %}{% endif %}
+                    {% elif active_tab == "following" %}{% trans "Not following anyone yet." %}{% else %}{% trans "No followers yet." %}{% endif %}
+                </p>
+            {% endfor %}
+        </div>
+
+        {% if is_paginated %}
+            <nav class="connections-pagination" aria-label="{% trans 'Pagination' %}">
+                {% if page_obj.has_previous %}<a class="btn btn-secondary" href="?tab={{ active_tab }}{% if search_query %}&amp;q={{ search_query|urlencode }}{% endif %}&amp;page={{ page_obj.previous_page_number }}">{% trans "Previous" %}</a>{% endif %}
+                <span>{% blocktranslate with current=page_obj.number total=page_obj.paginator.num_pages %}Page {{ current }} of {{ total }}{% endblocktranslate %}</span>
+                {% if page_obj.has_next %}<a class="btn btn-secondary" href="?tab={{ active_tab }}{% if search_query %}&amp;q={{ search_query|urlencode }}{% endif %}&amp;page={{ page_obj.next_page_number }}">{% trans "Next" %}</a>{% endif %}
+            </nav>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

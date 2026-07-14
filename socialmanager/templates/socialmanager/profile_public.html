@@ -2,7 +2,7 @@
 {% load i18n static %}
 {% load socialmanager_content %}
 
-{% block title %}Creana | {{ profile_user.username|default:profile_user.email }}{% endblock %}
+{% block title %}{{ seo_title }}{% endblock %}
 {% block body_class %}profile-page public-profile-page{% endblock %}
 
 {% block extra_css %}
@@ -23,7 +23,7 @@
             </div>
             {% if is_own_profile %}
                 <a class="btn btn-primary edit-profile-btn" href="{% url 'socialmanager:profile' %}">Edit profile</a>
-            {% else %}
+            {% elif request.user.is_authenticated %}
                 <div class="profile-action-row">
                     <form class="profile-follow-form" method="post" action="{% url 'socialmanager:profile_follow_toggle' profile_user.pk %}">
                         {% csrf_token %}
@@ -78,14 +78,25 @@
                 <p class="metric-label">Posts</p>
                 <p class="metric-value">{{ profile_stats.posts }}</p>
             </article>
-            <article class="profile-stat">
-                <p class="metric-label">Followers</p>
-                <p class="metric-value">{{ profile_stats.followers }}</p>
-            </article>
-            <article class="profile-stat">
-                <p class="metric-label">Following</p>
-                <p class="metric-value">{{ profile_stats.following }}</p>
-            </article>
+            {% if is_own_profile %}
+                <a class="profile-stat profile-stat-link" href="{% url 'socialmanager:profile_connections' profile_user.username %}?tab=followers" aria-label="{% blocktranslate with username=profile_user.username %}View {{ username }}'s followers{% endblocktranslate %}">
+                    <p class="metric-label">{% trans "Followers" %}</p>
+                    <p class="metric-value">{{ profile_stats.followers }}</p>
+                </a>
+                <a class="profile-stat profile-stat-link" href="{% url 'socialmanager:profile_connections' profile_user.username %}?tab=following" aria-label="{% blocktranslate with username=profile_user.username %}View {{ username }}'s following{% endblocktranslate %}">
+                    <p class="metric-label">{% trans "Following" %}</p>
+                    <p class="metric-value">{{ profile_stats.following }}</p>
+                </a>
+            {% else %}
+                <article class="profile-stat">
+                    <p class="metric-label">{% trans "Followers" %}</p>
+                    <p class="metric-value">{{ profile_stats.followers }}</p>
+                </article>
+                <article class="profile-stat">
+                    <p class="metric-label">{% trans "Following" %}</p>
+                    <p class="metric-value">{{ profile_stats.following }}</p>
+                </article>
+            {% endif %}
         </div>
     </section>
 

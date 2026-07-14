@@ -24,9 +24,10 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from django.core.exceptions import DisallowedHost, ValidationError
 from django.core.files.storage import default_storage
+from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
 from django.db.models import Case, Count, DateTimeField, Exists, Max, OuterRef, Prefetch, Q, Sum, When
-from django.db.models.functions import Coalesce, TruncDate
+from django.db.models.functions import Coalesce, Lower, TruncDate
 from django.http import HttpResponseBadRequest, HttpResponseForbidden, HttpResponseRedirect, JsonResponse
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
@@ -95,7 +96,13 @@ from .services.ai_assistant import (
     generate_video_content_guidance,
     store_suggestion_history,
 )
-from .seo import absolute_site_url, clean_meta_description, public_post_metadata
+from .seo import (
+    absolute_site_url,
+    clean_meta_description,
+    fallback_open_graph_image_url,
+    json_ld_dumps,
+    public_post_metadata,
+)
 from .geo_content import PUBLIC_PAGES
 from .services.analytics import get_dashboard_summary, get_recent_analytics_date_range, get_recent_post_metrics
 from .services.account_setup import ensure_user_account_setup
@@ -346,6 +353,8 @@ def public_published_posts(queryset=None):
     return queryset.filter(
         status=SocialMediaPost.Status.PUBLISHED,
         visibility=SocialMediaPost.Visibility.PUBLIC,
+        subscription__is_archived=False,
+        author__is_active=True,
     )
 
 
@@ -1193,13 +1202,50 @@ class LandingPageView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        site_url = absolute_site_url("", self.request).rstrip("/")
+        home_url = f"{site_url}/"
+        logo_url = fallback_open_graph_image_url(self.request)
+        organization_id = f"{home_url}#organization"
+        website_id = f"{home_url}#website"
+        application_id = f"{home_url}#webapplication"
+        description = (
+            "Create, schedule, and improve social media content with Creana's "
+            "AI caption tools, campaign planning, and performance analytics."
+        )
+        structured_data = {
+            "@context": "https://schema.org",
+            "@graph": [
+                {
+                    "@type": "Organization",
+                    "@id": organization_id,
+                    "name": "Creana",
+                    "url": home_url,
+                    "logo": {"@type": "ImageObject", "url": logo_url},
+                },
+                {
+                    "@type": "WebSite",
+                    "@id": website_id,
+                    "name": "Creana",
+                    "url": home_url,
+                    "publisher": {"@id": organization_id},
+                },
+                {
+                    "@type": "WebApplication",
+                    "@id": application_id,
+                    "name": "Creana",
+                    "url": home_url,
+                    "description": description,
+                    "applicationCategory": "BusinessApplication",
+                    "operatingSystem": "Web",
+                    "publisher": {"@id": organization_id},
+                },
+            ],
+        }
         context.update(
             {
                 "seo_title": "Creana | AI Social Media Content Management",
-                "seo_description": (
-                    "Create, schedule, and improve social media content with Creana's "
-                    "AI caption tools, campaign planning, and performance analytics."
-                ),
+                "seo_description": description,
+                "structured_data": json_ld_dumps(structured_data),
             }
         )
         return context
@@ -1298,7 +1344,7 @@ class PublicContentPageView(TemplateView):
                 "seo_type": "website",
                 "seo_url": canonical_url,
                 "canonical_url": canonical_url,
-                "structured_data": json.dumps(structured_data, ensure_ascii=False),
+                "structured_data": json_ld_dumps(structured_data),
             }
         )
         return context
@@ -2529,11 +2575,20 @@ class PostListView(ActiveSubscriptionMixin, ListView):
 class PublicProfileView(ActiveSubscriptionMixin, TemplateView):
     template_name = "socialmanager/profile_public.html"
 
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            if request.method not in {"GET", "HEAD", "OPTIONS"}:
+                return self.handle_no_permission()
+            self.membership = None
+            self.subscription = None
+            return TemplateView.dispatch(self, request, *args, **kwargs)
+        return super().dispatch(request, *args, **kwargs)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user_lookup = {"pk": kwargs.get("user_id")} if kwargs.get("user_id") else {"username": kwargs.get("username")}
-        profile_user = get_object_or_404(User, **user_lookup)
-        profile, _ = UserProfile.objects.get_or_create(user=profile_user)
+        profile_user = get_object_or_404(User, is_active=True, **user_lookup)
+        profile = UserProfile.objects.filter(user=profile_user).first() or UserProfile(user=profile_user)
         public_posts = (
             with_viewer_engagement_annotations(
                 public_published_posts(SocialMediaPost.objects.filter(author=profile_user)),
@@ -2553,6 +2608,8 @@ class PublicProfileView(ActiveSubscriptionMixin, TemplateView):
                 kind=PostEngagement.Kind.SHARE,
                 post__status=SocialMediaPost.Status.PUBLISHED,
                 post__visibility=SocialMediaPost.Visibility.PUBLIC,
+                post__subscription__is_archived=False,
+                post__author__is_active=True,
             )
             .select_related("post", "post__author", "post__author__profile", "post__campaign")
             .annotate(
@@ -2573,12 +2630,16 @@ class PublicProfileView(ActiveSubscriptionMixin, TemplateView):
         context["shared_posts"] = shared_posts
         context["can_unshare_shared_posts"] = profile_user == self.request.user
         context["is_own_profile"] = profile_user == self.request.user
-        context["is_following"] = UserFollow.objects.filter(
-            follower=self.request.user,
-            following=profile_user,
-        ).exists()
+        context["is_following"] = bool(
+            self.request.user.is_authenticated
+            and UserFollow.objects.filter(
+                follower=self.request.user,
+                following=profile_user,
+            ).exists()
+        )
         context["is_hidden_by_current_user"] = (
-            not context["is_own_profile"]
+            self.request.user.is_authenticated
+            and not context["is_own_profile"]
             and HiddenUser.objects.filter(owner=self.request.user, hidden_user=profile_user).exists()
         )
         context["profile_stats"] = {
@@ -2586,13 +2647,98 @@ class PublicProfileView(ActiveSubscriptionMixin, TemplateView):
             "followers": profile_user.follower_relationships.count(),
             "following": profile_user.following_relationships.count(),
         }
+        canonical_path = reverse(
+            "socialmanager:public_profile_username",
+            kwargs={"username": profile_user.get_username()},
+        )
+        canonical_url = absolute_site_url(canonical_path, self.request)
+        profile_description = clean_meta_description(
+            context["profile_bio"],
+            f"View {profile_user.get_username()}'s public profile and published posts on Creana.",
+        )
+        profile_image_url = fallback_open_graph_image_url(self.request)
+        avatar_url = profile.avatar_thumbnail_url
+        if avatar_url:
+            profile_image_url = absolute_site_url(avatar_url, self.request)
+        person_schema = {
+            "@type": "Person",
+            "@id": f"{canonical_url}#person",
+            "name": profile_user.get_username(),
+            "url": canonical_url,
+            "description": profile_description,
+            "image": profile_image_url,
+        }
+        structured_data = {
+            "@context": "https://schema.org",
+            "@type": "ProfilePage",
+            "@id": f"{canonical_url}#profilepage",
+            "url": canonical_url,
+            "name": f"{profile_user.get_username()} | Creana",
+            "description": profile_description,
+            "mainEntity": person_schema,
+        }
         context.update(
             {
                 "seo_title": f"{profile_user.get_username()} | Creana",
-                "seo_description": clean_meta_description(
-                    context["profile_bio"],
-                    f"View {profile_user.get_username()}'s public profile and posts on Creana.",
-                ),
+                "seo_description": profile_description,
+                "seo_robots": "index, follow",
+                "seo_type": "profile",
+                "seo_url": canonical_url,
+                "canonical_url": canonical_url,
+                "open_graph_image_url": profile_image_url,
+                "structured_data": json_ld_dumps(structured_data),
+                "public_page_standalone": True,
+            }
+        )
+        return context
+
+
+class ProfileConnectionsView(LoginRequiredMixin, TemplateView):
+    template_name = "socialmanager/profile_connections.html"
+    paginate_by = 20
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        profile_user = get_object_or_404(
+            User,
+            pk=self.request.user.pk,
+            username=kwargs.get("username"),
+            is_active=True,
+        )
+        active_tab = self.request.GET.get("tab", "followers")
+        if active_tab not in {"followers", "following"}:
+            active_tab = "followers"
+        search_query = self.request.GET.get("q", "").strip()
+
+        if active_tab == "following":
+            connections = User.objects.filter(
+                follower_relationships__follower=profile_user,
+                is_active=True,
+            )
+        else:
+            connections = User.objects.filter(
+                following_relationships__following=profile_user,
+                is_active=True,
+            )
+        if search_query:
+            connections = connections.filter(username__icontains=search_query)
+        connections = connections.select_related("profile").order_by(
+            Lower("username"), "username", "pk"
+        )
+        page_obj = Paginator(connections, self.paginate_by).get_page(
+            self.request.GET.get("page")
+        )
+        context.update(
+            {
+                "profile_user": profile_user,
+                "active_tab": active_tab,
+                "search_query": search_query,
+                "connections": page_obj.object_list,
+                "page_obj": page_obj,
+                "is_paginated": page_obj.has_other_pages(),
+                "seo_title": f"{profile_user.get_username()} Connections | Creana",
+                "seo_robots": "noindex, follow",
+                "public_page_standalone": True,
             }
         )
         return context
@@ -2720,6 +2866,43 @@ class SettingsView(LoginRequiredMixin, TemplateView):
 class ServiceWorkerView(TemplateView):
     template_name = "socialmanager/service-worker.js"
     content_type = "application/javascript"
+
+    def get(self, request, *args, **kwargs):
+        response = super().get(request, *args, **kwargs)
+        response["Service-Worker-Allowed"] = "/"
+        response["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response["Pragma"] = "no-cache"
+        response["X-Content-Type-Options"] = "nosniff"
+        return response
+
+
+class WebAppManifestView(View):
+    def get(self, request, *args, **kwargs):
+        manifest_path = settings.BASE_DIR / "socialmanager" / "static" / "site.webmanifest"
+        response = HttpResponse(
+            manifest_path.read_bytes(),
+            content_type="application/manifest+json",
+        )
+        response["Cache-Control"] = "public, max-age=3600"
+        response["X-Content-Type-Options"] = "nosniff"
+        return response
+
+
+class PWAIconView(View):
+    allowed_filenames = {
+        "pwa-icon-192.png",
+        "pwa-icon-512.png",
+        "pwa-icon-maskable-512.png",
+    }
+
+    def get(self, request, filename, *args, **kwargs):
+        if filename not in self.allowed_filenames:
+            return HttpResponse(status=404)
+        icon_path = settings.BASE_DIR / "socialmanager" / "static" / "socialmanager" / "images" / filename
+        response = HttpResponse(icon_path.read_bytes(), content_type="image/png")
+        response["Cache-Control"] = "public, max-age=86400"
+        response["X-Content-Type-Options"] = "nosniff"
+        return response
 
 
 class PushVapidPublicKeyView(LoginRequiredMixin, View):
@@ -2933,6 +3116,8 @@ class PostDetailView(ActiveSubscriptionMixin, DetailView):
         public_filter = Q(
             status=SocialMediaPost.Status.PUBLISHED,
             visibility=SocialMediaPost.Visibility.PUBLIC,
+            subscription__is_archived=False,
+            author__is_active=True,
         )
         if not self.request.user.is_authenticated:
             return queryset.filter(public_filter)
@@ -3054,6 +3239,8 @@ class PostDetailView(ActiveSubscriptionMixin, DetailView):
         if (
             self.object.status == SocialMediaPost.Status.PUBLISHED
             and self.object.visibility == SocialMediaPost.Visibility.PUBLIC
+            and not self.object.subscription.is_archived
+            and self.object.author.is_active
         ):
             context.update(public_post_metadata(self.object, self.request))
         return context

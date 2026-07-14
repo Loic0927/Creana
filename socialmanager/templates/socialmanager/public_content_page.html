@@ -6,7 +6,7 @@
 
 {% block extra_css %}
 <link href="{% static 'socialmanager/css/pages/landing.css' %}?v=creana-tour-popup-card-1" rel="stylesheet">
-<link href="{% static 'socialmanager/css/pages/public_content.css' %}?v=geo-content-13" rel="stylesheet">
+<link href="{% static 'socialmanager/css/pages/public_content.css' %}?v=geo-content-phase2-1" rel="stylesheet">
 {% endblock %}
 
 {% block public_content %}
@@ -38,6 +38,36 @@
                 </section>
             {% endif %}
 
+            {% if page.route_name == 'features' %}
+                <div class="public-feature-document">
+                    {% for group in page.feature_groups %}
+                        <section class="public-feature-group" aria-labelledby="feature-group-{{ forloop.counter }}">
+                            <div class="public-section-intro">
+                                <h2 id="feature-group-{{ forloop.counter }}">{{ group.heading }}</h2>
+                                <p>{{ group.intro }}</p>
+                            </div>
+                            {% if group.features %}
+                                <div class="public-feature-grid">
+                                    {% for feature in group.features %}
+                                        <article class="public-feature-card">
+                                            <h3>{{ feature.name }}</h3>
+                                            <dl>
+                                                <div><dt>Purpose</dt><dd>{{ feature.purpose }}</dd></div>
+                                                <div><dt>When to use</dt><dd>{{ feature.scenario }}</dd></div>
+                                                <div><dt>How it works</dt><dd>{{ feature.description }}</dd></div>
+                                            </dl>
+                                        </article>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            {% if group.link %}
+                                <p class="public-feature-cta"><a href="{% url 'socialmanager:'|add:group.link.0 %}">{{ group.link.1 }} &rarr;</a></p>
+                            {% endif %}
+                        </section>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
             {% if page.route_name == 'ai_features' %}
                 <section class="public-comparison" aria-labelledby="ai-tool-types">
                     <div class="public-section-intro">
@@ -66,6 +96,26 @@
                         </div>
                     </div>
                     <p class="public-inline-links">Read the <a href="{% url 'socialmanager:ai_policy' %}">AI Policy</a>, review <a href="{% url 'socialmanager:pricing' %}">member pricing</a>, or check <a href="{% url 'socialmanager:supported_platforms' %}">supported content workflows</a>.</p>
+                </section>
+                <section class="public-ai-reference" aria-labelledby="ai-feature-reference">
+                    <div class="public-section-intro">
+                        <h2 id="ai-feature-reference">AI feature reference</h2>
+                        <p>Each workflow begins with user-provided context and ends with user review.</p>
+                    </div>
+                    <div class="public-ai-doc-grid">
+                        {% for feature in page.ai_feature_docs %}
+                            <article class="public-ai-doc-card">
+                                <h3>{{ feature.name }}</h3>
+                                <div><h4>What it does</h4><p>{{ feature.what_it_does }}</p></div>
+                                <div><h4>When to use</h4><p>{{ feature.when_to_use }}</p></div>
+                                <div><h4>Limitations</h4><p>{{ feature.limitations }}</p></div>
+                                <div>
+                                    <h4>Example workflow</h4>
+                                    <ol>{% for step in feature.workflow %}<li>{{ step }}</li>{% endfor %}</ol>
+                                </div>
+                            </article>
+                        {% endfor %}
+                    </div>
                 </section>
             {% endif %}
 
@@ -105,7 +155,8 @@
                 </section>
             {% endif %}
 
-            {% if page.route_name == 'faq' %}
+            {% if page.route_name == 'features' %}
+            {% elif page.route_name == 'faq' %}
                 <section class="public-faq" aria-label="Frequently asked questions">
                     {% for group in faq_groups %}
                         <section class="public-faq-group" aria-labelledby="faq-group-{{ forloop.counter }}">
@@ -167,7 +218,6 @@
 
     {% include "socialmanager/partials/public_footer.html" %}
 </div>
-{% if structured_data %}<script type="application/ld+json">{{ structured_data|safe }}</script>{% endif %}
 {% endblock %}
 
 {% block extra_scripts %}<script defer src="{% static 'socialmanager/js/public_navigation.js' %}?v=mega-menu-2"></script>{% endblock %}

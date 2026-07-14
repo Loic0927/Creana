@@ -1,6 +1,6 @@
 import json
 import tempfile
-from datetime import timedelta
+from datetime import datetime, timedelta
 from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
@@ -18,11 +18,13 @@ from django.contrib.admin.sites import AdminSite
 from django.core.management import call_command
 from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import connection
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.contrib.sessions.backends.db import SessionStore
 from django.contrib.auth.models import Permission
 from django.contrib.auth.models import User
 from django.test import RequestFactory, TestCase, override_settings
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils.encoding import force_bytes
 from django.utils import timezone
@@ -43,7 +45,7 @@ from .adapters import (
 from .forms import CreanaPasswordResetForm, SignUpForm, SocialMediaCampaignForm, SocialMediaPostForm
 from .services import ai_assistant
 from .services.video_metadata import VideoDurationError
-from .models import AISuggestionHistory, Announcement, HiddenUser, Notification, POST_CAPTION_MAX_LENGTH, POST_TITLE_MAX_LENGTH, PostComment, PostImage, SaaSSubscription, SocialMediaCampaign, SocialMediaPost, SubscriptionMembership, UserProfile, UserSettings, VideoAnalysis, VideoEngagementEvent, VideoWatchSession
+from .models import AISuggestionHistory, Announcement, HiddenUser, Notification, POST_CAPTION_MAX_LENGTH, POST_TITLE_MAX_LENGTH, PostComment, PostImage, SaaSSubscription, SocialMediaCampaign, SocialMediaPost, SubscriptionMembership, UserFollow, UserProfile, UserSettings, VideoAnalysis, VideoEngagementEvent, VideoWatchSession
 from .subscriptions import user_has_active_subscription
 from .views import cache_ai_insight, dashboard_analysis_to_report, PostAnalyticsView, parse_ai_insight_sections, render_ai_insight_html
 
@@ -609,6 +611,230 @@ class AnnouncementTests(TestCase):
         self.assertContains(response, "data-announcement-edit-url")
         self.assertContains(response, "data-announcement-delete-url")
         self.assertNotContains(response, "announcement-item__action")
+
+
+@override_settings(
+    SECURE_SSL_REDIRECT=False,
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    },
+)
+class ProfileConnectionsTests(TestCase):
+    def setUp(self):
+        self.profile_user = User.objects.create_user(username="Creator", password="password12345")
+        self.follower = User.objects.create_user(username="alphaFollower", password="password12345")
+        self.following = User.objects.create_user(username="betaFollowing", password="password12345")
+        UserFollow.objects.create(follower=self.follower, following=self.profile_user)
+        UserFollow.objects.create(follower=self.profile_user, following=self.following)
+        self.url = reverse("socialmanager:profile_connections", args=[self.profile_user.username])
+        self.subscription = SaaSSubscription.objects.create(
+            name="Creator Workspace", owner=self.profile_user
+        )
+        SubscriptionMembership.objects.create(
+            subscription=self.subscription,
+            user=self.profile_user,
+            role=SubscriptionMembership.Role.ADMIN,
+        )
+        self.client.force_login(self.profile_user)
+
+    def test_own_profile_cards_link_to_the_correct_tabs(self):
+        response = self.client.get(reverse("socialmanager:profile"))
+
+        self.assertContains(response, f'{self.url}?tab=followers')
+        self.assertContains(response, f'{self.url}?tab=following')
+        self.assertContains(response, f"View {self.profile_user.username}'s followers")
+        self.assertContains(response, f"View {self.profile_user.username}'s following")
+        self.assertContains(response, '<p class="metric-label">Followers</p>', html=True)
+        self.assertContains(response, '<p class="metric-value">1</p>', html=True)
+
+    def test_other_and_anonymous_public_profiles_do_not_link_connections(self):
+        other_response = self.client.get(
+            reverse("socialmanager:public_profile_username", args=[self.follower.username])
+        )
+        other_url = reverse(
+            "socialmanager:profile_connections", args=[self.follower.username]
+        )
+        self.assertNotContains(other_response, other_url)
+        self.assertContains(other_response, '<p class="metric-label">Followers</p>', html=True)
+        self.assertContains(other_response, '<p class="metric-label">Following</p>', html=True)
+
+        self.client.logout()
+        anonymous_response = self.client.get(
+            reverse("socialmanager:public_profile_username", args=[self.profile_user.username])
+        )
+        self.assertNotContains(anonymous_response, self.url)
+
+    def test_own_public_profile_cards_are_linked(self):
+        response = self.client.get(
+            reverse("socialmanager:public_profile_username", args=[self.profile_user.username])
+        )
+        self.assertContains(response, f"{self.url}?tab=followers")
+        self.assertContains(response, f"{self.url}?tab=following")
+
+    def test_followers_and_following_use_the_correct_relationship_direction(self):
+        followers = self.client.get(f"{self.url}?tab=followers")
+        following = self.client.get(f"{self.url}?tab=following")
+
+        self.assertEqual(list(followers.context["connections"]), [self.follower])
+        self.assertContains(followers, self.follower.username)
+        self.assertNotContains(followers, self.following.username)
+        self.assertEqual(list(following.context["connections"]), [self.following])
+        self.assertContains(following, self.following.username)
+        self.assertNotContains(following, self.follower.username)
+
+    def test_search_is_scoped_to_the_active_relationship_direction(self):
+        outsider = User.objects.create_user(username="alphaOutsider")
+
+        followers = self.client.get(f"{self.url}?tab=followers&q=alpha")
+        following = self.client.get(f"{self.url}?tab=following&q=beta")
+
+        self.assertEqual(list(followers.context["connections"]), [self.follower])
+        self.assertContains(followers, self.follower.username)
+        self.assertNotContains(followers, self.following.username)
+        self.assertNotContains(followers, outsider.username)
+        self.assertEqual(list(following.context["connections"]), [self.following])
+        self.assertContains(following, self.following.username)
+        self.assertNotContains(following, self.follower.username)
+
+    def test_search_is_case_insensitive_partial_and_trimmed(self):
+        response = self.client.get(f"{self.url}?tab=followers&q=%20PHAFOLL%20")
+
+        self.assertEqual(response.context["search_query"], "PHAFOLL")
+        self.assertEqual(list(response.context["connections"]), [self.follower])
+        self.assertContains(response, 'value="PHAFOLL"')
+
+        empty_query = self.client.get(f"{self.url}?tab=followers&q=%20%20")
+        self.assertEqual(empty_query.context["search_query"], "")
+        self.assertEqual(list(empty_query.context["connections"]), [self.follower])
+
+    def test_search_excludes_inactive_matching_users(self):
+        inactive = User.objects.create_user(username="alphaInactive", is_active=False)
+        UserFollow.objects.create(follower=inactive, following=self.profile_user)
+
+        response = self.client.get(f"{self.url}?tab=followers&q=alpha")
+
+        self.assertContains(response, self.follower.username)
+        self.assertNotContains(response, inactive.username)
+
+    def test_avatar_and_username_link_to_existing_profile_with_default_avatar(self):
+        response = self.client.get(f"{self.url}?tab=followers")
+        profile_url = reverse(
+            "socialmanager:public_profile_username", args=[self.follower.username]
+        )
+
+        self.assertContains(response, f'href="{profile_url}"', count=2)
+        self.assertContains(response, "socialmanager/images/default_avatar.webp")
+        self.assertContains(response, f"{self.follower.username}'s avatar")
+
+    def test_invalid_username_is_404_and_invalid_tab_falls_back_to_followers(self):
+        self.assertEqual(
+            self.client.get(
+                reverse("socialmanager:profile_connections", args=["missing-user"])
+            ).status_code,
+            404,
+        )
+
+        response = self.client.get(f"{self.url}?tab=invalid")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["active_tab"], "followers")
+        self.assertEqual(list(response.context["connections"]), [self.follower])
+
+    def test_other_user_connections_are_404_and_anonymous_is_redirected_to_login(self):
+        other_url = reverse(
+            "socialmanager:profile_connections", args=[self.follower.username]
+        )
+        self.assertEqual(self.client.get(other_url).status_code, 404)
+
+        self.client.logout()
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse("socialmanager:login"), response.url)
+
+    def test_empty_states_are_specific_to_each_tab(self):
+        UserFollow.objects.filter(follower=self.profile_user).delete()
+        UserFollow.objects.filter(following=self.profile_user).delete()
+
+        self.assertContains(self.client.get(f"{self.url}?tab=followers"), "No followers yet.")
+        self.assertContains(self.client.get(f"{self.url}?tab=following"), "Not following anyone yet.")
+
+    def test_search_empty_states_are_distinct(self):
+        followers = self.client.get(f"{self.url}?tab=followers&q=missing")
+        following = self.client.get(f"{self.url}?tab=following&q=missing")
+
+        self.assertContains(followers, "No followers match your search.")
+        self.assertNotContains(followers, "No followers yet.")
+        self.assertContains(following, "No followed accounts match your search.")
+        self.assertNotContains(following, "Not following anyone yet.")
+
+    def test_pagination_has_twenty_items_and_preserves_tab(self):
+        for index in range(21):
+            user = User.objects.create_user(username=f"followed{index:02d}")
+            UserFollow.objects.create(follower=self.profile_user, following=user)
+
+        first_page = self.client.get(f"{self.url}?tab=following")
+        second_page = self.client.get(f"{self.url}?tab=following&page=2")
+
+        self.assertEqual(len(first_page.context["connections"]), 20)
+        self.assertEqual(len(second_page.context["connections"]), 2)
+        self.assertContains(first_page, "?tab=following&amp;page=2")
+        out_of_range = self.client.get(f"{self.url}?tab=following&page=999")
+        self.assertEqual(out_of_range.context["page_obj"].number, 2)
+
+    def test_search_pagination_preserves_tab_and_query(self):
+        for index in range(21):
+            user = User.objects.create_user(username=f"followedSearch{index:02d}")
+            UserFollow.objects.create(follower=self.profile_user, following=user)
+
+        response = self.client.get(f"{self.url}?tab=following&q=followed")
+
+        self.assertEqual(len(response.context["connections"]), 20)
+        self.assertContains(
+            response,
+            "?tab=following&amp;q=followed&amp;page=2",
+        )
+
+    def test_inactive_users_are_hidden_from_own_connections(self):
+        inactive = User.objects.create_user(username="inactiveFollower", is_active=False)
+        UserFollow.objects.create(follower=inactive, following=self.profile_user)
+
+        response = self.client.get(f"{self.url}?tab=followers")
+
+        self.assertContains(response, self.follower.username)
+        self.assertNotContains(response, inactive.username)
+
+    def test_connections_page_has_search_form_and_tabs_clear_query(self):
+        response = self.client.get(f"{self.url}?tab=followers&q=alpha")
+        self.assertNotContains(response, '<h1 class="card-title">')
+        self.assertNotContains(response, '<h2 class="sr-only"')
+        self.assertNotContains(response, "connections-back-link")
+        self.assertNotContains(response, "arrow_back")
+        self.assertContains(response, 'class="connections-search-form"')
+        self.assertContains(response, 'name="tab" value="followers"')
+        self.assertContains(response, 'name="q"')
+        self.assertContains(response, 'value="alpha"')
+        self.assertContains(response, 'aria-label="Search followers"')
+        self.assertNotContains(response, "connections-search-clear")
+        self.assertNotContains(response, ">Clear</a>")
+        self.assertContains(response, 'href="?tab=followers"')
+        self.assertContains(response, 'href="?tab=following"')
+        self.assertNotContains(response, "?tab=following&amp;q=")
+
+    def test_connection_rendering_does_not_add_per_user_profile_queries(self):
+        for index in range(5):
+            user = User.objects.create_user(username=f"queryFollower{index}")
+            UserProfile.objects.create(user=user)
+            UserFollow.objects.create(follower=user, following=self.profile_user)
+
+        with CaptureQueriesContext(connection) as queries:
+            response = self.client.get(f"{self.url}?tab=followers")
+            self.assertEqual(response.status_code, 200)
+            response.content
+        profile_queries = [
+            query for query in queries.captured_queries
+            if "socialmanager_userprofile" in query["sql"].lower()
+        ]
+        self.assertLessEqual(len(profile_queries), 2)
 
 
 @override_settings(
@@ -4643,8 +4869,7 @@ class ProductionTemplateTests(TestCase):
         self.assertContains(response, 'rel="icon" type="image/webp"')
         self.assertContains(response, "/static/socialmanager/images/icon.")
         self.assertContains(response, ".webp")
-        self.assertContains(response, 'rel="manifest" href="/static/site.')
-        self.assertContains(response, ".webmanifest")
+        self.assertContains(response, 'rel="manifest" href="/manifest.webmanifest"')
         self.assertNotContains(response, "https://creana.app//")
 
     @override_settings(SITE_URL="", DEBUG=True, ALLOWED_HOSTS=["fallback.example"])
@@ -4659,6 +4884,83 @@ class ProductionTemplateTests(TestCase):
 
         self.assertContains(response, '<link rel="canonical" href="https://creana.app/">', html=True)
         self.assertNotContains(response, "run-host.example")
+
+
+class PWAInfrastructureTests(TestCase):
+    def test_manifest_is_public_json_with_required_fields_and_shortcuts(self):
+        response = self.client.get(reverse("web_app_manifest"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/manifest+json")
+        manifest = response.json()
+        self.assertEqual(manifest["name"], "Creana")
+        self.assertEqual(manifest["short_name"], "Creana")
+        self.assertTrue(manifest["description"])
+        self.assertEqual(manifest["start_url"], "/dashboard/?source=pwa")
+        self.assertEqual(manifest["scope"], "/")
+        self.assertEqual(manifest["display"], "standalone")
+        self.assertTrue(manifest["background_color"])
+        self.assertEqual(manifest["theme_color"], "#7C8CFF")
+        self.assertEqual(
+            {shortcut["url"].split("?")[0] for shortcut in manifest["shortcuts"]},
+            {"/dashboard/", "/posts/", "/posts/new/"},
+        )
+
+    def test_manifest_icons_are_public_pngs_with_install_sizes(self):
+        manifest = self.client.get(reverse("web_app_manifest")).json()
+        icons_by_size = {icon["sizes"]: icon for icon in manifest["icons"] if icon["purpose"] == "any"}
+        self.assertEqual(set(icons_by_size), {"192x192", "512x512"})
+        self.assertTrue(any(icon["purpose"] == "maskable" for icon in manifest["icons"]))
+
+        for icon in manifest["icons"]:
+            response = self.client.get(icon["src"])
+            self.assertEqual(response.status_code, 200, icon["src"])
+            self.assertEqual(response["Content-Type"], "image/png")
+            self.assertTrue(response.content.startswith(b"\x89PNG\r\n\x1a\n"))
+
+    def test_service_worker_is_root_scoped_updateable_and_keeps_push(self):
+        response = self.client.get(reverse("service_worker"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response["Content-Type"].startswith("application/javascript"))
+        self.assertEqual(response["Service-Worker-Allowed"], "/")
+        self.assertIn("no-cache", response["Cache-Control"])
+        worker = response.content.decode()
+        for event_name in ("install", "activate", "fetch", "push", "notificationclick"):
+            self.assertIn(f'addEventListener("{event_name}"', worker)
+        self.assertIn("skipWaiting", worker)
+        self.assertIn("clients.claim", worker)
+        self.assertIn('request.method !== "GET"', worker)
+        self.assertIn('request.mode === "navigate"', worker)
+        self.assertIn('cache: "no-store"', worker)
+        for private_path in ("/accounts/", "/admin/", "/api/", "/settings/", "/push/", "/upload"):
+            self.assertIn(private_path, worker)
+
+    def test_base_template_contains_manifest_and_apple_metadata(self):
+        response = self.client.get(reverse("socialmanager:login"))
+
+        self.assertContains(response, '<link rel="manifest" href="/manifest.webmanifest">', html=True)
+        self.assertContains(response, '<meta name="theme-color" content="#7C8CFF">', html=True)
+        self.assertContains(response, '<meta name="apple-mobile-web-app-capable" content="yes">', html=True)
+        self.assertContains(response, '<meta name="apple-mobile-web-app-title" content="Creana">', html=True)
+        self.assertContains(response, '<meta name="apple-mobile-web-app-status-bar-style" content="default">', html=True)
+        self.assertContains(response, 'rel="apple-touch-icon" sizes="192x192"')
+
+    def test_settings_exposes_non_intrusive_accessible_install_component(self):
+        user = User.objects.create_user(username="pwa-settings-user", password="password12345")
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("socialmanager:settings"))
+
+        self.assertContains(response, "data-install-app")
+        self.assertContains(response, "data-install-app-button")
+        self.assertContains(response, 'aria-label="Install Creana on this device"')
+        self.assertContains(response, '<h2 class="settings-section-title">Install Creana</h2>', html=True)
+        self.assertNotContains(response, "Add Creana to this device for quick access in its own app window.")
+        self.assertNotContains(response, "data-install-description")
+        self.assertContains(response, 'role="dialog"')
+        self.assertContains(response, 'aria-modal="true"')
+        self.assertContains(response, "Add to Home Screen")
 
 
 @override_settings(SECURE_SSL_REDIRECT=False, SITE_URL="https://creana.app")
@@ -4729,6 +5031,20 @@ class SEOInfrastructureTests(TestCase):
             status=SocialMediaPost.Status.PUBLISHED,
             visibility=SocialMediaPost.Visibility.PUBLIC,
         )
+
+        profile, _ = UserProfile.objects.get_or_create(user=self.author)
+        profile.bio = "Creana creator sharing practical social media content."
+        profile.links = "private-contact@example.com"
+        profile.links_public = False
+        profile.save(update_fields=["bio", "links", "links_public", "updated_at"])
+
+    def structured_data_from(self, response):
+        content = response.content.decode()
+        marker = '<script type="application/ld+json">'
+        start = content.index(marker) + len(marker)
+        end = content.index("</script>", start)
+        self.assertLess(start, content.index("</head>"))
+        return json.loads(content[start:end])
 
     def test_robots_txt_lists_sitemap_and_private_routes(self):
         response = self.client.get(reverse("robots_txt"))
@@ -4801,6 +5117,46 @@ class SEOInfrastructureTests(TestCase):
         for route_name in self.public_content_routes:
             self.assertContains(response, reverse(f"socialmanager:{route_name}"))
 
+    def test_landing_json_ld_is_parseable_and_defines_site_entities(self):
+        response = self.client.get(reverse("socialmanager:landing"))
+
+        structured_data = self.structured_data_from(response)
+        graph = structured_data["@graph"]
+        schemas_by_type = {item["@type"]: item for item in graph}
+
+        self.assertEqual(
+            set(schemas_by_type),
+            {"Organization", "WebSite", "WebApplication"},
+        )
+        self.assertEqual(schemas_by_type["Organization"]["name"], "Creana")
+        self.assertEqual(schemas_by_type["Organization"]["url"], "https://creana.app/")
+        self.assertEqual(schemas_by_type["WebSite"]["url"], "https://creana.app/")
+        self.assertEqual(schemas_by_type["WebApplication"]["operatingSystem"], "Web")
+
+    def test_features_and_ai_features_render_product_documentation(self):
+        features = self.client.get(reverse("socialmanager:features"))
+        ai_features = self.client.get(reverse("socialmanager:ai_features"))
+
+        for heading in (
+            "Content Creation", "Campaign Planning", "Scheduling", "Community",
+            "Analytics", "AI",
+        ):
+            self.assertContains(features, heading)
+        for item in ("Article", "Carousel", "Manage Scheduled Posts", "Video Retention"):
+            self.assertContains(features, item)
+        self.assertContains(features, "Learn more about AI Features")
+        self.assertContains(features, reverse("socialmanager:ai_features"))
+
+        for feature_name in (
+            "AI Caption Generator", "Hashtag Suggestions", "AI Content Feedback",
+            "Dashboard Insights", "Campaign Insights", "Video Retention Feedback",
+        ):
+            self.assertContains(ai_features, feature_name)
+        for label in ("What it does", "When to use", "Limitations", "Example workflow"):
+            self.assertContains(ai_features, label, count=6)
+        self.assertContains(ai_features, "Responsible AI")
+        self.assertContains(ai_features, "AI features do not automatically publish content")
+
     def test_public_pages_render_simplified_navigation_and_grouped_footer(self):
         response = self.client.get(reverse("socialmanager:introduction"))
 
@@ -4848,6 +5204,11 @@ class SEOInfrastructureTests(TestCase):
         self.assertContains(response, reverse("socialmanager:supported_platforms"))
         self.assertContains(response, '"@type": "FAQPage"')
         self.assertContains(response, '"@type": "BreadcrumbList"')
+        structured_data = self.structured_data_from(response)
+        self.assertEqual(
+            {item["@type"] for item in structured_data["@graph"]},
+            {"FAQPage", "BreadcrumbList"},
+        )
 
     def test_specialized_public_pages_render_visible_tables_and_timeline(self):
         platforms = self.client.get(reverse("socialmanager:supported_platforms"))
@@ -4881,6 +5242,77 @@ class SEOInfrastructureTests(TestCase):
         self.assertContains(response, "https://creana.app/static/socialmanager/images/icon.")
         self.assertContains(response, ".webp")
         self.assertNotContains(response, "social_posts/")
+
+    def test_public_profile_is_anonymously_readable_with_only_public_posts(self):
+        url = reverse(
+            "socialmanager:public_profile_username",
+            args=[self.author.username],
+        )
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.author.username)
+        self.assertContains(response, self.published_post.title)
+        for post in (self.private_post, self.draft_post, self.scheduled_post, self.archived_post):
+            self.assertNotContains(response, post.title)
+        self.assertNotContains(response, "private-contact@example.com")
+        self.assertNotContains(response, "profile-follow-form")
+        self.assertNotContains(response, "Hide this user from my feed")
+
+    def test_public_profile_has_canonical_social_metadata_and_parseable_schema(self):
+        url = reverse(
+            "socialmanager:public_profile_username",
+            args=[self.author.username],
+        )
+        canonical_url = f"https://creana.app{url}"
+
+        response = self.client.get(reverse("socialmanager:public_profile", args=[self.author.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f'<link rel="canonical" href="{canonical_url}">', html=True)
+        self.assertContains(response, f'<meta property="og:url" content="{canonical_url}">', html=True)
+        self.assertContains(response, '<meta property="og:type" content="profile">', html=True)
+        self.assertContains(response, '<meta name="twitter:card" content="summary_large_image">', html=True)
+        self.assertContains(response, "Creana creator sharing practical social media content.")
+
+        structured_data = self.structured_data_from(response)
+        self.assertEqual(structured_data["@type"], "ProfilePage")
+        self.assertEqual(structured_data["url"], canonical_url)
+        self.assertEqual(structured_data["mainEntity"]["@type"], "Person")
+        self.assertEqual(structured_data["mainEntity"]["name"], self.author.username)
+        self.assertNotIn("email", structured_data["mainEntity"])
+
+    def test_public_post_json_ld_is_parseable_blog_posting(self):
+        url = reverse(
+            "socialmanager:post_detail",
+            args=[self.published_post.pk, self.published_post.slug],
+        )
+        canonical_url = f"https://creana.app{url}"
+
+        response = self.client.get(url)
+        structured_data = self.structured_data_from(response)
+
+        self.assertEqual(structured_data["@type"], "BlogPosting")
+        self.assertEqual(structured_data["headline"], self.published_post.title)
+        self.assertEqual(structured_data["description"], self.published_post.article_caption)
+        self.assertEqual(structured_data["author"]["name"], self.author.username)
+        self.assertEqual(structured_data["publisher"]["@type"], "Organization")
+        self.assertEqual(structured_data["publisher"]["name"], "Creana")
+        self.assertEqual(structured_data["mainEntityOfPage"]["@id"], canonical_url)
+        self.assertTrue(structured_data["image"].startswith("https://creana.app/"))
+        datetime.fromisoformat(structured_data["datePublished"])
+        datetime.fromisoformat(structured_data["dateModified"])
+
+    def test_archived_public_post_is_not_anonymously_readable(self):
+        response = self.client.get(
+            reverse(
+                "socialmanager:post_detail",
+                args=[self.archived_post.pk, self.archived_post.slug],
+            )
+        )
+
+        self.assertEqual(response.status_code, 404)
 
     def test_non_public_posts_are_not_anonymously_exposed(self):
         for post in (self.private_post, self.draft_post, self.scheduled_post):

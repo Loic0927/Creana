@@ -105,6 +105,24 @@
 .public-conclusion h2 { color: var(--public-ink); font-size: 1.3rem; margin: 0 0 .7rem; }
 .public-conclusion p { color: var(--public-copy); line-height: 1.7; margin: 0; max-width: 860px; }
 .public-content-sections--concise { margin-top: .5rem; }
+.public-feature-document, .public-ai-reference { display: grid; gap: 2.75rem; margin-bottom: 3rem; }
+.public-feature-group { border-top: 1px solid var(--public-line); padding-top: 2rem; }
+.public-feature-group:first-child { border-top: 0; padding-top: 0; }
+.public-section-intro > p { color: var(--public-copy); line-height: 1.7; max-width: 820px; }
+.public-feature-grid, .public-ai-doc-grid { display: grid; gap: 1.2rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.public-feature-card, .public-ai-doc-card { background: #fff; border: 1px solid var(--public-line); border-radius: 16px; box-shadow: 0 5px 18px rgba(42, 53, 99, .035); padding: clamp(1.25rem, 2.5vw, 1.65rem); }
+.public-feature-card h3, .public-ai-doc-card h3 { color: var(--public-ink); font-size: 1.22rem; margin: 0 0 1rem; }
+.public-feature-card dl { display: grid; gap: .9rem; margin: 0; }
+.public-feature-card dl > div { border-top: 1px solid #edf0f6; padding-top: .8rem; }
+.public-feature-card dl > div:first-child { border-top: 0; padding-top: 0; }
+.public-feature-card dt, .public-ai-doc-card h4 { color: #5966cf; font-size: .82rem; font-weight: 800; letter-spacing: .04em; margin: 0 0 .3rem; text-transform: uppercase; }
+.public-feature-card dd, .public-ai-doc-card p, .public-ai-doc-card li { color: var(--public-copy); line-height: 1.65; margin: 0; }
+.public-feature-cta { margin: 1.25rem 0 0; }
+.public-feature-cta a { color: var(--public-accent); font-size: 1.05rem; font-weight: 800; }
+.public-ai-reference { border-top: 1px solid var(--public-line); padding-top: 2.25rem; }
+.public-ai-doc-card { display: grid; gap: 1rem; }
+.public-ai-doc-card ol { margin: .45rem 0 0; padding-left: 1.25rem; }
+.public-ai-doc-card li + li { margin-top: .35rem; }
 .public-content-footer { border-top: 1px solid #e6e8f0; padding-block: 2.5rem; }
 .public-content-footer .marketing-wrap { max-width: 900px; }
 .public-footer-layout { align-items: start; display: grid; gap: 2rem; grid-template-columns: minmax(220px, .7fr) 1.3fr; }
@@ -169,7 +187,7 @@
     .public-content-hero h1 { font-size: clamp(2rem, 9vw, 2.75rem); letter-spacing: -.032em; line-height: 1.1; overflow-wrap: anywhere; }
     .public-content-lead { font-size: 1.05rem; line-height: 1.68; margin-top: 1rem; }
     .public-section-intro h2, .public-why h2 { font-size: clamp(1.5rem, 7vw, 1.9rem); }
-    .public-summary-grid, .public-comparison-grid, .public-why { grid-template-columns: 1fr; }
+    .public-summary-grid, .public-comparison-grid, .public-why, .public-feature-grid, .public-ai-doc-grid { grid-template-columns: 1fr; }
     .public-summary-card { min-height: 0; }
     .public-comparison-card, .public-faq-item, .public-timeline-step > div:last-child { border-radius: 14px; }
     .public-comparison-grid { gap: 1rem; }

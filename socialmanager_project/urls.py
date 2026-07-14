@@ -26,6 +26,8 @@ urlpatterns = [
         name="bing_site_auth",
     ),
     path("service-worker.js", socialmanager_views.ServiceWorkerView.as_view(), name="service_worker"),
+    path("manifest.webmanifest", socialmanager_views.WebAppManifestView.as_view(), name="web_app_manifest"),
+    path("pwa/icons/<str:filename>", socialmanager_views.PWAIconView.as_view(), name="pwa_icon"),
     path("robots.txt", robots_txt, name="robots_txt"),
     path("sitemap.xml", sitemap_xml, name="sitemap_xml"),
     path("profiles/search/", socialmanager_views.profile_username_search, name="profile_username_search"),

@@ -1,4 +1,34 @@
 const SIDEBAR_BREAKPOINT = 991.98;
+let creanaServiceWorkerRegistrationPromise = null;
+let deferredInstallPrompt = null;
+
+function registerCreanaServiceWorker() {
+    if (!("serviceWorker" in navigator)) {
+        return Promise.reject(new Error("Service workers are not supported."));
+    }
+    const isLocalhost = ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname);
+    if (!window.isSecureContext && !isLocalhost) {
+        return Promise.reject(new Error("A secure context is required."));
+    }
+    if (!creanaServiceWorkerRegistrationPromise) {
+        creanaServiceWorkerRegistrationPromise = navigator.serviceWorker.register(
+            "/service-worker.js",
+            { scope: "/", updateViaCache: "none" },
+        );
+    }
+    return creanaServiceWorkerRegistrationPromise;
+}
+
+window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    window.dispatchEvent(new Event("creana:installavailable"));
+});
+
+window.addEventListener("appinstalled", () => {
+    deferredInstallPrompt = null;
+    window.dispatchEvent(new Event("creana:appinstalled"));
+});
 
 function getCookieValue(name) {
     return (
@@ -1028,7 +1058,7 @@ function setupSettingsPage() {
             pushToggle.checked = false;
             pushToggle.disabled = true;
         } else {
-            navigator.serviceWorker.register("/service-worker.js", { scope: "/" })
+            registerCreanaServiceWorker()
                 .catch(() => {
                     pushToggle.checked = false;
                     pushToggle.disabled = true;
@@ -1120,7 +1150,87 @@ function setupSettingsPage() {
     });
 }
 
+function setupInstallApp() {
+    const component = document.querySelector("[data-install-app]");
+    const installButton = component?.querySelector("[data-install-app-button]");
+    const modal = document.querySelector("[data-install-instructions-modal]");
+    const closeButtons = modal?.querySelectorAll("[data-install-instructions-close]") || [];
+    const safariInstructions = modal?.querySelector("[data-install-ios-safari]");
+    const otherBrowserInstructions = modal?.querySelector("[data-install-ios-other]");
+    if (!component || !installButton) return;
+
+    const userAgent = navigator.userAgent || "";
+    const isIOS = /iPad|iPhone|iPod/i.test(userAgent)
+        || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const isIOSAlternativeBrowser = /CriOS|EdgiOS|FxiOS|OPiOS/i.test(userAgent);
+    const isStandalone = () => window.matchMedia("(display-mode: standalone)").matches
+        || navigator.standalone === true;
+
+    const refreshVisibility = () => {
+        component.hidden = isStandalone() || (!isIOS && !deferredInstallPrompt);
+    };
+
+    let previouslyFocused = null;
+    const setModalOpen = (isOpen) => {
+        if (!modal) return;
+        modal.hidden = !isOpen;
+        document.body.classList.toggle("settings-modal-open", isOpen);
+        if (isOpen) {
+            previouslyFocused = document.activeElement;
+            safariInstructions.hidden = isIOSAlternativeBrowser;
+            otherBrowserInstructions.hidden = !isIOSAlternativeBrowser;
+            modal.querySelector("[data-install-instructions-close]")?.focus();
+        } else if (previouslyFocused instanceof HTMLElement) {
+            previouslyFocused.focus();
+        }
+    };
+
+    installButton.addEventListener("click", async () => {
+        if (isIOS) {
+            setModalOpen(true);
+            return;
+        }
+        if (!deferredInstallPrompt) return;
+        const promptEvent = deferredInstallPrompt;
+        deferredInstallPrompt = null;
+        await promptEvent.prompt();
+        await promptEvent.userChoice;
+        refreshVisibility();
+    });
+
+    closeButtons.forEach((button) => button.addEventListener("click", () => setModalOpen(false)));
+    modal?.addEventListener("click", (event) => {
+        if (event.target === modal) setModalOpen(false);
+    });
+    modal?.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+            event.preventDefault();
+            setModalOpen(false);
+            return;
+        }
+        if (event.key !== "Tab") return;
+        const focusable = [...modal.querySelectorAll("button:not([disabled]), [href], input, select, textarea")]
+            .filter((element) => !element.hidden);
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
+    });
+
+    window.addEventListener("creana:installavailable", refreshVisibility);
+    window.addEventListener("creana:appinstalled", refreshVisibility);
+    window.matchMedia("(display-mode: standalone)").addEventListener?.("change", refreshVisibility);
+    refreshVisibility();
+}
+
 function initializeCreana() {
+    registerCreanaServiceWorker().catch(() => {});
     setupAiMembersOnlyModal();
     setupAiMembershipFormGuards();
     setupAIInsightToggles();
@@ -1130,6 +1240,7 @@ function initializeCreana() {
     setupFeedEngagementActions();
     setupMediaLightbox();
     setupVideoWatchTracking();
+    setupInstallApp();
     setupSettingsPage();
 }
 

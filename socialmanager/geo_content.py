@@ -34,24 +34,77 @@ PUBLIC_PAGES = {
     },
     "features": {
         "route_name": "features", "title": "Creana Features | Content, Campaigns and Analytics",
-        "description": "Explore Creana features for content creation, AI writing, campaign planning, publishing inside Creana, community sharing, and Creana analytics.",
+        "description": "Explore how Creana supports content creation, campaign planning, scheduling, community participation, and in-platform analytics.",
         "eyebrow": "Features", "heading": "What can Creana do?",
-        "lead": "Creana brings the main parts of an in-platform content workflow into one workspace.",
-        "sections": [
-            {"heading": "Content creation", "paragraphs": ["Create article-style, image, video, and carousel posts, save drafts, and choose public or private visibility."]},
-            {"heading": "Campaign planning", "paragraphs": ["Group related posts around an objective and manage their content and schedule together."]},
-            {"heading": "Scheduling inside Creana", "paragraphs": ["Choose a future date and time for content to be released inside Creana."]},
-            {"heading": "Creator community", "paragraphs": ["Publish eligible content to the Creana feed and participate through profiles, follows, comments, likes, and shares."]},
-            {"heading": "Creana analytics", "paragraphs": ["Review views, engagement, and campaign activity generated or tracked within Creana."]},
-            {"heading": "Video-retention insights", "paragraphs": ["Use watch-session and timed-engagement records from videos viewed inside Creana to understand audience retention."]},
-            {"heading": "AI assistance", "paragraphs": ["Use member-only AI assistance for writing and for interpreting relevant Creana activity. The AI Features page explains each tool and its data requirements."]},
-        ], "related": ("ai_features", "community", "supported_platforms"), "software_schema": True,
+        "lead": "Creana brings creation, organisation, publishing inside Creana, community participation, and performance review into one content workspace.",
+        "feature_groups": [
+            {
+                "heading": "Content Creation",
+                "intro": "Choose a format, prepare the content, and decide when and where it should be visible inside Creana.",
+                "features": [
+                    {"name": "Article", "purpose": "Write longer, structured content.", "scenario": "Use it for guides, explanations, updates, or ideas that need more context than a short caption.", "description": "The article workflow provides a rich text body, a separate short caption, tags, and an optional cover image."},
+                    {"name": "Image", "purpose": "Pair a visual with a concise message.", "scenario": "Use it for a single design, photograph, announcement, or visual update.", "description": "Upload an image, add a caption and hashtags, then save, schedule, or publish it inside Creana."},
+                    {"name": "Video", "purpose": "Share video content and review in-platform viewing activity.", "scenario": "Use it when motion, demonstration, or presentation is central to the post.", "description": "Upload a supported video, add its supporting copy, and publish it with a thumbnail where available."},
+                    {"name": "Carousel", "purpose": "Present several images as one post.", "scenario": "Use it for step-by-step visuals, collections, comparisons, or a sequence of related ideas.", "description": "Arrange multiple images in a single post while keeping one caption, visibility setting, and publishing status."},
+                    {"name": "Public / Private", "purpose": "Control who can discover a post.", "scenario": "Use Public for eligible community content and Private for content that should remain within the owner's authorised workspace view.", "description": "Only eligible published public posts are intended for anonymous discovery and search indexing."},
+                    {"name": "Draft", "purpose": "Keep unfinished work without publishing it.", "scenario": "Use a draft while researching, editing, awaiting approval, or preparing media.", "description": "Drafts remain editable and are not included in Creana's public feed or public sitemap."},
+                    {"name": "Rich editor", "purpose": "Structure article content for easier reading.", "scenario": "Use it when an article needs paragraphs, headings, lists, emphasis, or text alignment.", "description": "The editor supports a controlled set of formatting options that are sanitised when the article is displayed."},
+                ],
+            },
+            {
+                "heading": "Campaign Planning",
+                "intro": "Group related work so individual posts contribute to a clear campaign plan.",
+                "features": [
+                    {"name": "Campaign", "purpose": "Keep related posts together.", "scenario": "Use a campaign for a launch, event, promotion, awareness theme, or multi-post content series.", "description": "A campaign provides one place to review the posts connected to the same body of work."},
+                    {"name": "Objectives", "purpose": "Record what the campaign is intended to achieve.", "scenario": "Use an objective to keep planning decisions aligned with the campaign's intended outcome.", "description": "Campaign context helps users organise work and interpret the in-platform results shown by Creana."},
+                    {"name": "Scheduling", "purpose": "Coordinate when campaign posts become available inside Creana.", "scenario": "Use it when several posts need a planned sequence rather than being released at once.", "description": "Scheduled campaign posts retain their campaign relationship while waiting for their chosen release time."},
+                    {"name": "Organisation", "purpose": "Reduce scattered content and status tracking.", "scenario": "Use campaign organisation when drafts, scheduled posts, and published work belong to one initiative.", "description": "Campaign views keep the relevant content, status, platform labels, and analytics context together."},
+                ],
+            },
+            {
+                "heading": "Scheduling",
+                "intro": "Prepare content in advance and choose a future release time inside Creana.",
+                "features": [
+                    {"name": "Schedule a post", "purpose": "Set a future publishing date and time.", "scenario": "Use it after the content is ready but should not appear in the Creana feed immediately.", "description": "Choose the scheduled status and a valid future date and time when creating or editing the post."},
+                    {"name": "Manage Scheduled Posts", "purpose": "Review or change upcoming content.", "scenario": "Use it when timing, copy, media, campaign assignment, or visibility needs to change before release.", "description": "Scheduled posts remain editable and can be rescheduled before the publishing process makes them available."},
+                    {"name": "Why use scheduling", "purpose": "Separate content preparation from release time.", "scenario": "Use it to prepare a consistent sequence, coordinate a campaign, or avoid last-minute publishing work.", "description": "Creana scheduling controls release inside Creana; it does not claim automatic publishing to external social platforms."},
+                ],
+            },
+            {
+                "heading": "Community",
+                "intro": "Discover eligible public work and participate in the Creana creator community.",
+                "features": [
+                    {"name": "Feed", "purpose": "Browse published public posts.", "scenario": "Use it to discover recent creator content and filter the currently loaded feed by keyword or hashtag.", "description": "The feed presents eligible public posts with their author, format, content preview, and engagement controls."},
+                    {"name": "Follow", "purpose": "Maintain a connection to another creator profile.", "scenario": "Use it when you want the relationship to appear in profile follower and following information.", "description": "Following is an in-platform community action and does not create an external social-platform connection."},
+                    {"name": "Like", "purpose": "Show appreciation for a public post.", "scenario": "Use it as a lightweight response when a post is useful, relevant, or enjoyable.", "description": "Likes contribute to the engagement information recorded for that post inside Creana."},
+                    {"name": "Comment", "purpose": "Discuss a post with its author and community.", "scenario": "Use it to ask a question, add context, or provide a relevant response.", "description": "Comments and replies appear with the public post and must follow Creana's community rules."},
+                    {"name": "Share", "purpose": "Feature another eligible public post on a profile's shared-post view.", "scenario": "Use it when a post is worth passing on to people who view your Creana profile.", "description": "Sharing records an in-platform share; it does not automatically repost content to an external network."},
+                ],
+            },
+            {
+                "heading": "Analytics",
+                "intro": "Review activity generated or tracked inside Creana without presenting it as imported external-platform analytics.",
+                "features": [
+                    {"name": "Dashboard", "purpose": "See a workspace-level performance overview.", "scenario": "Use it when reviewing recent content activity and deciding where to investigate further.", "description": "The dashboard summarises relevant Creana posts, engagement, and trends available to the current workspace."},
+                    {"name": "Post Analytics", "purpose": "Inspect the performance of one post.", "scenario": "Use it after publishing when you need a focused view of that post's views and engagement.", "description": "Post analytics use the activity Creana records for the selected post."},
+                    {"name": "Campaign Analytics", "purpose": "Review results across related campaign posts.", "scenario": "Use it to compare the content contributing to one campaign objective.", "description": "Campaign analytics aggregate relevant in-platform activity for posts associated with the campaign."},
+                    {"name": "Video Retention", "purpose": "Understand how viewing changes across a video.", "scenario": "Use it when a published Creana video has enough watch-session or timed-engagement data to interpret.", "description": "Retention views are based on video activity recorded inside Creana and may be limited when the sample is small."},
+                ],
+            },
+            {
+                "heading": "AI",
+                "intro": "This feature is explained in the AI Features page.",
+                "features": [],
+                "link": ("ai_features", "Learn more about AI Features"),
+            },
+        ],
+        "sections": [], "related": ("ai_features", "community", "supported_platforms"), "software_schema": True,
     },
     "ai_features": {
         "route_name": "ai_features", "title": "Creana AI Features | Captions, Feedback and Insights",
         "description": "Understand Creana's AI caption generator, hashtag suggestions, content feedback, and insights based on data collected within Creana.",
         "eyebrow": "AI features", "heading": "Which Creana AI tool should you use?",
-        "lead": "Creana separates writing assistance from insights that require activity collected or tracked inside Creana.",
+        "lead": "Use this reference to understand what each Creana AI feature does, when it is useful, and where human review is still required.",
         "tool_groups": [
             {"label": "AI writing tools", "heading": "Create and refine content", "items": ["AI Caption Generator", "Hashtag suggestions", "Article-style content support", "AI content feedback"], "summary": "These tools do not require analytics data. Users can review and copy the writing for content intended for external platforms."},
             {"label": "Creana-data tools", "heading": "Understand in-platform activity", "items": ["Post performance insights", "Campaign insights", "Dashboard insights", "Video-retention feedback"], "summary": "These tools require relevant posts, campaigns, engagement, watch sessions, or retention activity recorded inside Creana."},
@@ -59,7 +112,15 @@ PUBLIC_PAGES = {
         "matrix": [
             ("Write a caption", "AI Caption Generator", "No"), ("Generate hashtags", "Hashtag suggestions", "No"), ("Improve post wording", "AI content feedback", "No"), ("Review post performance", "Post performance insights", "Yes"), ("Review campaign performance", "Campaign insights", "Yes"), ("Review workspace trends", "Dashboard insights", "Yes"), ("Understand video retention", "Video-retention feedback", "Yes"),
         ],
-        "sections": [{"heading": "Review AI output", "paragraphs": ["AI output may be incomplete, inaccurate, or unsuitable. Review facts, rights, tone, and platform requirements before publishing or acting on a suggestion. See the AI Policy for responsible-use guidance."]}],
+        "ai_feature_docs": [
+            {"name": "AI Caption Generator", "what_it_does": "Produces a draft caption from the topic, platform, tone, and content details supplied by the user.", "when_to_use": "Use it when starting a caption, exploring a different angle, or turning a content idea into an editable first draft.", "limitations": "The output can miss context, facts, rights, brand requirements, or platform-specific rules and should not be treated as final copy.", "workflow": ["Choose the post format and target platform.", "Provide a clear topic or content description.", "Generate a caption.", "Review facts, tone, length, and rights before saving or publishing."]},
+            {"name": "Hashtag Suggestions", "what_it_does": "Suggests a bounded set of hashtags based on the content information and settings available to the request.", "when_to_use": "Use it when a post needs relevant topic labels or when an existing hashtag set needs another starting point.", "limitations": "Suggestions do not guarantee reach, trend relevance, platform eligibility, or improved performance.", "workflow": ["Describe the post accurately.", "Request hashtag suggestions.", "Remove irrelevant, misleading, or overly broad tags.", "Keep only tags that genuinely match the published content."]},
+            {"name": "AI Content Feedback", "what_it_does": "Reviews selected title, caption, article, or hashtag content and returns an improvement suggestion.", "when_to_use": "Use it before publishing when wording, clarity, structure, or audience fit needs a second review.", "limitations": "Feedback is generated from the information available to Creana and cannot verify every factual, legal, cultural, or brand consideration.", "workflow": ["Select the content field to review.", "Provide the current text and relevant post context.", "Compare the suggestion with the original.", "Accept only changes that remain accurate and appropriate."]},
+            {"name": "Dashboard Insights", "what_it_does": "Summarises patterns in the recent workspace activity and analytics available inside Creana.", "when_to_use": "Use it when reviewing overall performance and deciding which posts or campaigns deserve closer attention.", "limitations": "It depends on the quality and quantity of Creana-recorded data and does not import or infer complete external social-account performance.", "workflow": ["Allow enough relevant activity to be recorded.", "Open the dashboard insight.", "Review the supporting metrics and sample size.", "Use the result as one input to the next content decision."]},
+            {"name": "Campaign Insights", "what_it_does": "Interprets the posts and in-platform performance information associated with a selected campaign.", "when_to_use": "Use it when comparing campaign content, reviewing progress, or planning the next post in the same initiative.", "limitations": "An insight may be weak when a campaign has few posts, little activity, or an unclear objective, and it does not represent external-platform analytics.", "workflow": ["Keep the campaign objective and post assignments current.", "Collect relevant in-platform activity.", "Generate the campaign insight.", "Check the evidence before changing the campaign plan."]},
+            {"name": "Video Retention Feedback", "what_it_does": "Explains retention and timed-engagement patterns available for a video viewed inside Creana.", "when_to_use": "Use it after a video has enough watch sessions to investigate its opening, pacing, or drop-off points.", "limitations": "Small samples and incomplete watch data can make patterns unreliable; the feature does not measure viewers on external video platforms.", "workflow": ["Publish an eligible video inside Creana.", "Allow watch-session and timed-engagement data to accumulate.", "Review the retention chart and generated feedback together.", "Test one evidence-supported change in a future video."]},
+        ],
+        "sections": [{"heading": "Responsible AI", "paragraphs": ["AI output may be incomplete, inaccurate, or unsuitable. Users should review facts, rights, tone, and platform requirements before using any suggestion.", "Creana AI assists with drafting and interpreting available signals. The user remains responsible for the final content and decision.", "AI features do not automatically publish content. A user must review and complete the relevant save, schedule, or publish action."]}],
         "related": ("ai_policy", "pricing", "supported_platforms"), "software_schema": True,
     },
     "pricing": {

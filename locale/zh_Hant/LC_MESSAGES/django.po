@@ -1,6 +1,36 @@
 msgid ""
 msgstr "Project-Id-Version: Creana\nReport-Msgid-Bugs-To: \nPOT-Creation-Date: 2026-06-05 00:00+1000\nPO-Revision-Date: 2026-06-05 00:00+1000\nLast-Translator: Creana\nLanguage-Team: Creana\nLanguage: zh_Hant\nMIME-Version: 1.0\nContent-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\n"
 
+msgid "Followers"
+msgstr "追蹤者"
+
+msgid "Following"
+msgstr "追蹤中"
+
+msgid "Connections"
+msgstr "人際連結"
+
+msgid "No followers yet."
+msgstr "目前還沒有追蹤者。"
+
+msgid "Not following anyone yet."
+msgstr "目前尚未追蹤任何人。"
+
+msgid "Search followers"
+msgstr "搜尋追蹤者"
+
+msgid "Search following"
+msgstr "搜尋追蹤中的帳號"
+
+msgid "No followers match your search."
+msgstr "找不到符合搜尋條件的追蹤者。"
+
+msgid "No followed accounts match your search."
+msgstr "找不到符合搜尋條件的追蹤中帳號。"
+
+msgid "Clear"
+msgstr "清除"
+
 msgid "AI features are available for members only."
 msgstr "AI 功能僅供會員使用。"
 
