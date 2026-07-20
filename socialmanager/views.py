@@ -35,6 +35,7 @@ from django.templatetags.static import static
 from django.template.loader import render_to_string
 from django.urls import reverse, reverse_lazy
 from django.utils.html import escape
+from django.utils.formats import date_format
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone, translation
 from django.utils.timesince import timesince
@@ -1703,6 +1704,42 @@ def _post_tracking_metrics(post):
     return metrics
 
 
+def _post_tracking_metric_context(post, metrics):
+    has_analytics = bool(
+        post.metrics.exists()
+        or post.views.exists()
+        or post.engagements.exists()
+        or post.comments.exists()
+        or post.likes_count
+        or post.shares_count
+    )
+    context = {
+        "availability": {
+            "views": has_analytics,
+            "likes": has_analytics,
+            "comments": has_analytics,
+            "shares": has_analytics,
+            "engagement_rate": has_analytics,
+            "retention_percent": metrics["retention_percent"] is not None,
+        },
+        "video_metrics": None,
+    }
+    if post.content_format == SocialMediaPost.Format.VIDEO:
+        watch_sessions = post.video_watch_sessions.all()
+        watch_count = watch_sessions.count()
+        watch_summary = watch_sessions.aggregate(
+            average_watch_seconds=Avg("watched_seconds"),
+            average_retention=Avg("watched_percentage"),
+        )
+        completion_count = watch_sessions.filter(watched_percentage__gte=100).count() if watch_count else 0
+        context["video_metrics"] = {
+            "average_watch_seconds": round(watch_summary["average_watch_seconds"], 1) if watch_summary["average_watch_seconds"] is not None else None,
+            "completion_rate": round((completion_count / watch_count) * 100, 1) if watch_count else None,
+            "retention_rate": round(watch_summary["average_retention"], 1) if watch_summary["average_retention"] is not None else None,
+        }
+    return context
+
+
 def _historical_post_recommendation(post, language):
     topic = f"ai-insight:post:{AI_ANALYSIS_CACHE_VERSION}:{post.pk}:{ai_language_cache_key(language)}"
     record = get_cached_ai_insight(post.subscription, topic)
@@ -1731,9 +1768,15 @@ def _create_tracking_baseline_recommendation(post, user, language):
     try:
         report = generate_post_analysis(payload, language=language)
     except Exception:
-        report = generate_post_rule_based_analysis(payload, language=language)
+        try:
+            report = generate_post_rule_based_analysis(payload, language=language)
+        except Exception:
+            return ""
     topic = f"ai-insight:post:{AI_ANALYSIS_CACHE_VERSION}:{post.pk}:{ai_language_cache_key(language)}"
-    cache_ai_insight(post.subscription, user, topic, report, "Post tracking baseline")
+    try:
+        cache_ai_insight(post.subscription, user, topic, report, "Post tracking baseline")
+    except Exception:
+        return ""
     return _historical_post_recommendation(post, language)
 
 
@@ -1754,13 +1797,16 @@ class AnalysisAgentPostTrackView(AIMemberRequiredMixin, ActiveSubscriptionMixin,
     def post(self, request, *args, **kwargs):
         post = get_object_or_404(_tracking_post_queryset(self.subscription), pk=kwargs.get("pk"))
         previous = post.tracking_snapshots.filter(subscription=self.subscription).first()
+        baseline = post.tracking_snapshots.filter(subscription=self.subscription).order_by("captured_at", "pk").first()
         now = timezone.now()
         current = _post_tracking_metrics(post)
+        metric_context = _post_tracking_metric_context(post, current)
         language = get_user_ai_language(request.user)
         historical_recommendation = (previous.recommendation if previous else "") or _historical_post_recommendation(post, language)
         recommendation = historical_recommendation
         if not recommendation:
             recommendation = _create_tracking_baseline_recommendation(post, request.user, language)
+        interpretation_available = bool(recommendation)
         elapsed = now - previous.captured_at if previous else timedelta(0)
         status = _tracking_status(previous, current, elapsed)
         if status not in TRACKING_STATUSES:
@@ -1772,38 +1818,69 @@ class AnalysisAgentPostTrackView(AIMemberRequiredMixin, ActiveSubscriptionMixin,
         retention_delta = None
         if previous and current["retention_percent"] is not None and previous.retention_percent is not None:
             retention_delta = round(current["retention_percent"] - previous.retention_percent, 1)
-        PostTrackingSnapshot.objects.create(
+        deltas["retention_percent"] = retention_delta
+        current_snapshot = PostTrackingSnapshot.objects.create(
             post=post,
             subscription=self.subscription,
             created_by=request.user,
             recommendation=recommendation,
+            captured_at=now,
             **current,
         )
         no_recommendation = gettext("No previous recommendation is available yet. This analysis will be used as the tracking baseline.")
         if not previous:
-            update = gettext("This is the first tracking review for this post. Current metrics have been recorded for future comparison.")
+            update = gettext("This is the first tracking review for this post. Current metrics have been recorded as the baseline for future comparison.")
+            what_changed = gettext("No previous tracking data is available yet.")
             next_action = gettext("Use the current AI recommendation and check the post again after more engagement data is collected.")
         elif status == "not_enough_data":
             update = gettext("This post does not have enough performance data yet.")
+            what_changed = gettext("No measured metrics changed since the last review.")
             next_action = gettext("Check the post again after more engagement data is collected.")
         else:
             changed = [f"{key}: {value:+g}" for key, value in deltas.items() if value]
             if retention_delta:
                 changed.append(f"retention: {retention_delta:+g}%")
             update = "; ".join(changed) or gettext("No measured metrics changed since the last review.")
+            what_changed = update
             next_action = gettext("Continue the strongest-performing approach and review the post again after more data is collected.")
+        if not interpretation_available:
+            next_action = gettext("AI interpretation is temporarily unavailable, but the latest performance data is shown below.")
+        baseline_snapshot = baseline or current_snapshot
+        previous_metrics = None
+        if previous:
+            previous_metrics = {
+                key: getattr(previous, key)
+                for key in ("views", "likes", "comments", "shares", "engagement_rate", "retention_percent")
+            }
+        baseline_local = timezone.localtime(baseline_snapshot.captured_at)
+        latest_local = timezone.localtime(current_snapshot.captured_at)
         return JsonResponse({
             "success": True,
             "report": {
-                "post": {"id": post.pk, "title": post.title},
+                "post": {
+                    "id": post.pk,
+                    "title": post.title,
+                    "thumbnail_url": _tracking_thumbnail(post),
+                    "thumbnail_alt": gettext("Thumbnail for %(title)s") % {"title": post.title},
+                },
                 "previous_recommendation": historical_recommendation or no_recommendation,
                 "performance_update": update,
                 "progress_status": status,
                 "metrics": current,
+                "metric_availability": metric_context["availability"],
+                "video_metrics": metric_context["video_metrics"],
+                "previous_metrics": previous_metrics,
                 "deltas": deltas,
                 "retention_delta": retention_delta,
-                "what_changed": update,
+                "what_changed": what_changed,
                 "elapsed_seconds": round(elapsed.total_seconds()) if previous else None,
+                "snapshot": {
+                    "baseline_at": baseline_snapshot.captured_at.isoformat(),
+                    "latest_at": current_snapshot.captured_at.isoformat(),
+                    "baseline_display": date_format(baseline_local, "DATETIME_FORMAT"),
+                    "latest_display": date_format(latest_local, "DATETIME_FORMAT"),
+                    "elapsed_display": timesince(baseline_snapshot.captured_at, current_snapshot.captured_at) if previous else gettext("Just created"),
+                },
                 "content_goal": None,
                 "content_goal_note": gettext("No saved Content Goal is available for this post."),
                 "next_action": next_action,

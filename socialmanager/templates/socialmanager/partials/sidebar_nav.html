@@ -29,7 +29,7 @@
             <span class="material-symbols-outlined">add_box</span>{% trans "Create Post" %}
         </a>
         <a class="nav-item {% if request.resolver_match.url_name == 'campaign_list' or request.resolver_match.url_name == 'campaign_create' or request.resolver_match.url_name == 'campaign_detail' or request.resolver_match.url_name == 'campaign_update' or request.resolver_match.url_name == 'campaign_delete' %}active{% endif %}" href="{% url 'socialmanager:campaign_list' %}">
-            <span class="material-symbols-outlined">campaign</span>{% trans "Campaigns" %}
+            <span class="material-symbols-outlined">campaign</span>{% trans "Projects" %}
         </a>
         <a class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'socialmanager:dashboard' %}">
             <span class="material-symbols-outlined">dashboard</span>{% trans "Dashboard" %}

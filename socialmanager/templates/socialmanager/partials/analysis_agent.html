@@ -1,0 +1,92 @@
+{% load i18n static %}
+<div class="analysis-agent"
+     data-analysis-agent
+     data-context-type="{{ agent_context_type }}"
+     data-primary-url="{{ agent_primary_url }}"
+     data-secondary-url="{{ agent_secondary_url|default:'' }}"
+     data-posts-url="{% url 'socialmanager:analysis_agent_posts' %}"
+     data-track-url-template="{% url 'socialmanager:analysis_agent_post_track' 0 %}"
+     data-opening="{% trans 'Opening...' %}"
+     data-thinking="{% trans 'AI Thinking...' %}"
+     data-analysing="{% trans 'Analysing...' %}"
+     data-loading-posts="{% trans 'Loading posts...' %}"
+     data-no-posts="{% trans 'No published posts are available to track.' %}"
+     data-no-results="{% trans 'No posts found.' %}"
+     data-load-error="{% trans 'Unable to load posts. Try again.' %}"
+     data-search-error="{% trans 'Unable to search posts. Try again.' %}"
+     data-track-error="{% trans 'Unable to track this post right now. Try again later.' %}">
+    <div hidden data-analysis-agent-i18n
+         data-select="{% trans 'Select a post to track' %}"
+         data-search="{% trans 'Search posts' %}"
+         data-back="{% trans 'Back' %}"
+         data-track-performance="{% trans 'Track performance' %}"
+         data-previous="{% trans 'Previous' %}"
+         data-next="{% trans 'Next' %}"
+         data-posts-found="{% trans 'posts found' %}"
+         data-tracked-post="{% trans 'Tracked post' %}"
+         data-previous-recommendation="{% trans 'Previous recommendation' %}"
+         data-performance-update="{% trans 'Performance update' %}"
+         data-progress-status="{% trans 'Progress status' %}"
+         data-what-changed="{% trans 'What changed' %}"
+         data-content-goal="{% trans 'Content Goal' %}"
+         data-next-action="{% trans 'Next action' %}"
+         data-performance-metrics="{% trans 'Performance metrics' %}"
+         data-performance-comparison="{% trans 'Performance comparison' %}"
+         data-current="{% trans 'Current' %}"
+         data-baseline="{% trans 'Baseline' %}"
+         data-since-last="{% trans 'Since last tracking' %}"
+         data-percentage-points="{% trans 'percentage points' %}"
+         data-baseline-time="{% trans 'Baseline time' %}"
+         data-latest-time="{% trans 'Latest tracking time' %}"
+         data-time-elapsed="{% trans 'Time elapsed' %}"
+         data-first-chart="{% trans 'This is the first tracking snapshot. A comparison chart will appear after the next tracking review.' %}"
+         data-unavailable="{% trans 'Unavailable' %}"
+         data-views="{% trans 'Views' %}"
+         data-likes="{% trans 'Likes' %}"
+         data-comments="{% trans 'Comments' %}"
+         data-shares="{% trans 'Shares' %}"
+         data-engagement-rate="{% trans 'Engagement rate' %}"
+         data-average-watch-time="{% trans 'Average watch time' %}"
+         data-completion-rate="{% trans 'Completion rate' %}"
+         data-retention-rate="{% trans 'Retention rate' %}"
+         data-tracking-summary="{% trans 'Tracking snapshot summary' %}"
+         data-baseline-created="{% trans 'Baseline created' %}"
+         data-not-enough-data="{% trans 'Not enough data' %}"
+         data-improved="{% trans 'Improved' %}"
+         data-stable="{% trans 'Stable' %}"
+         data-declined="{% trans 'Declined' %}"
+         data-another-post="{% trans 'Another post' %}"
+         data-dashboard-insight="{% trans 'Dashboard insight' %}"></div>
+    <button class="analysis-agent-launcher" type="button" aria-label="{% trans 'Open AI Agent' %}" aria-haspopup="dialog" aria-controls="analysis-agent-panel" aria-expanded="false" data-analysis-agent-open>
+        <img src="{% static 'socialmanager/images/agent.PNG' %}" alt="" aria-hidden="true">
+    </button>
+
+    <section class="analysis-agent-panel" id="analysis-agent-panel" role="dialog" aria-modal="false" aria-labelledby="analysis-agent-title" hidden data-analysis-agent-panel>
+        <header class="analysis-agent-header">
+            <h2 id="analysis-agent-title">{% trans "AI Agent" %}</h2>
+            <button class="analysis-agent-close" type="button" aria-label="{% trans 'Close AI Agent' %}" data-analysis-agent-close>&times;</button>
+        </header>
+        <div class="analysis-agent-body" aria-live="polite">
+            <div class="analysis-agent-loading" data-analysis-agent-loading>
+                <span class="analysis-agent-spinner" aria-hidden="true"></span>
+                <strong data-analysis-agent-status>{% trans "Opening..." %}</strong>
+                <span>{% trans "AI Thinking..." %}</span>
+            </div>
+            <div class="analysis-agent-results" hidden data-analysis-agent-results></div>
+            <div class="analysis-agent-error" role="alert" hidden data-analysis-agent-error>
+                <p>{% trans "Unable to generate AI insight." %}</p>
+                <button class="btn btn-secondary" type="button" data-analysis-agent-retry>{% trans "Retry" %}</button>
+            </div>
+        </div>
+        <footer class="analysis-agent-followups" hidden data-analysis-agent-followups>
+            {% if agent_context_type == "dashboard" %}<button type="button" data-agent-action="track" data-analysis-agent-track>{% trans "Track a post" %}</button>{% endif %}
+            <button type="button" data-agent-action="refresh" data-analysis-agent-refresh>{% trans "Refresh analysis" %}</button>
+            {% if agent_context_type == "dashboard" %}
+                <button type="button" data-agent-action="picker-back" hidden>{% trans "Back" %}</button>
+                <button class="is-primary" type="button" data-agent-action="track-performance" hidden disabled>{% trans "Track performance" %}</button>
+                <button type="button" data-agent-action="another-post" hidden>{% trans "Another post" %}</button>
+                <button class="is-primary" type="button" data-agent-action="dashboard-insight" hidden>{% trans "Dashboard insight" %}</button>
+            {% endif %}
+        </footer>
+    </section>
+</div>

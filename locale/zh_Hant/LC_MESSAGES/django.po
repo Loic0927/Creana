@@ -649,6 +649,117 @@ msgstr "春季產品發布"
 msgid "Strategic objective / goal"
 msgstr "策略目標 / 目的"
 
+msgid "Objective / Goal"
+msgstr "目標"
+
+msgid "What you want to achieve in the Project"
+msgstr "你希望在這個專案中達成什麼"
+
+msgid "Related posts"
+msgstr "相關貼文"
+
+msgid "No related posts for this Project."
+msgstr "此專案目前沒有相關貼文。"
+
+msgid "Open AI Agent"
+msgstr "開啟 AI 助理"
+
+msgid "Close AI Agent"
+msgstr "關閉 AI 助理"
+
+msgid "Opening..."
+msgstr "正在開啟……"
+
+msgid "AI Thinking..."
+msgstr "AI 正在思考……"
+
+msgid "Analysing..."
+msgstr "正在分析……"
+
+msgid "Refresh analysis"
+msgstr "重新分析"
+
+msgid "Track a post"
+msgstr "追蹤貼文"
+
+msgid "Select a post to track"
+msgstr "選擇要追蹤的貼文"
+
+msgid "Search posts"
+msgstr "搜尋貼文"
+
+msgid "Track performance"
+msgstr "追蹤成效"
+
+msgid "Loading posts..."
+msgstr "正在載入貼文..."
+
+msgid "No posts found."
+msgstr "找不到貼文。"
+
+msgid "Unable to load posts. Try again."
+msgstr "無法載入貼文，請再試一次。"
+
+msgid "Unable to search posts. Try again."
+msgstr "無法搜尋貼文，請再試一次。"
+
+msgid "Tracked post"
+msgstr "追蹤的貼文"
+
+msgid "Previous recommendation"
+msgstr "先前建議"
+
+msgid "Performance update"
+msgstr "成效更新"
+
+msgid "Progress status"
+msgstr "進度狀態"
+
+msgid "What changed"
+msgstr "變化內容"
+
+msgid "Next action"
+msgstr "下一步行動"
+
+msgid "No previous recommendation is available yet. This analysis will be used as the tracking baseline."
+msgstr "目前尚無先前建議。這次分析將作為日後追蹤的基準。"
+
+msgid "Baseline created"
+msgstr "已建立基準"
+
+msgid "Not enough data"
+msgstr "資料不足"
+
+msgid "Improved"
+msgstr "有所改善"
+
+msgid "Stable"
+msgstr "維持穩定"
+
+msgid "Declined"
+msgstr "有所下降"
+
+msgid "Use the current AI recommendation and check the post again after more engagement data is collected."
+msgstr "採用目前的 AI 建議，並在累積更多互動資料後再次檢視貼文。"
+
+msgid "Refresh tracking"
+msgstr "重新整理追蹤"
+
+msgid "No published posts are available to track."
+msgstr "目前沒有可追蹤的已發布貼文。"
+
+msgid "This post does not have enough performance data yet."
+msgstr "此貼文目前尚無足夠的成效資料。"
+
+msgid "The selected post is no longer available."
+msgstr "所選貼文已無法使用。"
+
+msgid "Unable to track this post right now. Try again later."
+msgstr "目前無法追蹤此貼文，請稍後再試。"
+
+msgid "No saved Content Goal is available for this post."
+msgstr "此貼文沒有已儲存的內容目標。"
+
 msgid "Define the business goal this campaign supports."
 msgstr "定義此活動支持的商業目標。"
 
@@ -1483,3 +1594,225 @@ msgstr "公告已刪除。"
 
 msgid "Delete \"%(title)s\"? This action cannot be undone."
 msgstr "要刪除「%(title)s」嗎？此操作無法復原。"
+
+# AI Post Agent phase one
+msgid "Open AI Post Agent"
+msgstr "開啟 AI 貼文助理"
+
+msgid "Close AI Post Agent"
+msgstr "關閉 AI 貼文助理"
+
+msgid "Create with Creana"
+msgstr "使用 Creana 建立內容"
+
+msgid "Agent progress"
+msgstr "助理進度"
+
+msgid "Briefly describe what this post is about, its goal, and the audience you want to reach. You may press Next if you do not have an idea yet."
+msgstr "請簡要描述這篇貼文的內容、目標，以及您希望觸及的受眾。如果您還沒有想法，可以直接按下一步。"
+
+msgid "Would you like to create only this post, or create a Project to manage and track related posts?"
+msgstr "您要只建立這篇貼文，還是建立專案來管理及追蹤相關貼文？"
+
+msgid "Choose a Project"
+msgstr "選擇一個專案"
+
+msgid "Generate title"
+msgstr "產生標題"
+
+msgid "Generate caption"
+msgstr "產生說明文字"
+
+msgid "Generate hashtags"
+msgstr "產生主題標籤"
+
+msgid "Some fields already contain content. You can review the AI suggestions before replacing them."
+msgstr "部分欄位已有內容；您可以先檢視 AI 建議，再決定是否取代。"
+
+msgid "Replace existing content?"
+msgstr "取代現有內容？"
+
+msgid "Apply all"
+msgstr "全部套用"
+
+msgid "Projects"
+msgstr "專案"
+
+msgid "Project"
+msgstr "專案"
+
+msgid "Project name"
+msgstr "專案名稱"
+
+msgid "Unassigned Project"
+msgstr "未指派專案"
+
+msgid "Generate suggestions"
+msgstr "產生建議"
+
+msgid "Generating..."
+msgstr "正在產生內容……"
+
+msgid "Retry"
+msgstr "重試"
+
+msgid "AI generation is temporarily unavailable. Please try again."
+msgstr "AI 內容生成功能暫時無法使用，請再試一次。"
+
+msgid "AI generation timed out. Please try again."
+msgstr "AI 內容生成逾時，請再試一次。"
+
+msgid "AI is busy right now. Please try again shortly."
+msgstr "AI 目前忙碌中，請稍後再試。"
+
+msgid "Select at least one field to generate."
+msgstr "請至少選擇一個要產生的欄位。"
+
+# AI Post Agent three-step flow
+msgid "Step 1 of 3"
+msgstr "步驟 1／3"
+
+msgid "Step 2 of 3"
+msgstr "步驟 2／3"
+
+msgid "here"
+msgstr "這裡建立專案"
+
+msgid "Please add an article, image, or video before using the AI Agent."
+msgstr "請先加入文章、圖片或影片，再使用 AI Agent。"
+
+msgid "Step 3 of 3"
+msgstr "步驟 3／3"
+
+msgid "Information"
+msgstr "資訊"
+
+msgid "What is the main goal of this post?"
+msgstr "這篇貼文的主要目標是什麼？"
+
+msgid "Select a content goal"
+msgstr "請選擇內容目標"
+
+msgid "Other"
+msgstr "其他"
+
+msgid "Custom content goal"
+msgstr "自訂內容目標"
+
+msgid "Describe your content goal..."
+msgstr "請描述您的內容目標..."
+
+msgid "Please describe your content goal."
+msgstr "請描述您的內容目標。"
+
+msgid "No information added. Continue using the image or video content for AI analysis?"
+msgstr "尚未加入資訊。是否繼續使用圖片或影片內容進行 AI 分析？"
+
+msgid "Add an image, video, or some information before continuing."
+msgstr "請先加入圖片、影片或一些資訊再繼續。"
+
+msgid "Go back"
+msgstr "返回輸入資訊"
+
+msgid "Continue"
+msgstr "繼續"
+
+msgid "This image is larger than the 10 MB AI analysis limit. Choose a smaller image or compress it before trying again."
+msgstr "此圖片超過 AI 分析的 10 MB 限制。請選擇較小的圖片或壓縮後再試一次。"
+
+#, python-format
+msgid "%(filename)s is larger than the 10 MB AI analysis limit."
+msgstr "%(filename)s 超過 AI 分析的 10 MB 限制。"
+
+msgid "The post media changed. Close and reopen the AI Agent to analyse the current media."
+msgstr "貼文媒體已變更。請關閉並重新開啟 AI Agent，以分析目前的媒體。"
+
+msgid "Increase reach"
+msgstr "增加觸及"
+
+msgid "Encourage engagement"
+msgstr "鼓勵互動"
+
+msgid "Promote a product or service"
+msgstr "推廣產品或服務"
+
+msgid "Build brand awareness"
+msgstr "建立品牌知名度"
+
+msgid "Drive profile visits"
+msgstr "增加個人檔案瀏覽"
+
+msgid "Share information"
+msgstr "分享資訊"
+
+msgid "Please select a content goal."
+msgstr "請選擇一個內容目標。"
+
+msgid "Performance metrics"
+msgstr "成效指標"
+
+msgid "Performance comparison"
+msgstr "成效比較"
+
+msgid "Previous"
+msgstr "先前"
+
+msgid "Current"
+msgstr "目前"
+
+msgid "Baseline"
+msgstr "基準"
+
+msgid "Since last tracking"
+msgstr "自上次追蹤以來"
+
+msgid "percentage points"
+msgstr "個百分點"
+
+msgid "Baseline time"
+msgstr "基準時間"
+
+msgid "Latest tracking time"
+msgstr "最近追蹤時間"
+
+msgid "Time elapsed"
+msgstr "經過時間"
+
+msgid "Just created"
+msgstr "剛建立"
+
+msgid "This is the first tracking snapshot. A comparison chart will appear after the next tracking review."
+msgstr "這是第一個追蹤快照。下次追蹤檢視後將顯示比較圖表。"
+
+msgid "No previous tracking data is available yet."
+msgstr "目前尚無先前的追蹤資料可供比較。"
+
+msgid "Another post"
+msgstr "其他貼文"
+
+msgid "Dashboard insight"
+msgstr "Dashboard 洞察"
+
+msgid "AI interpretation is temporarily unavailable, but the latest performance data is shown below."
+msgstr "AI 解讀暫時無法使用，但最新成效資料仍顯示如下。"
+
+msgid "Unavailable"
+msgstr "無法取得"
+
+msgid "Average watch time"
+msgstr "平均觀看時間"
+
+msgid "Completion rate"
+msgstr "完成率"
+
+msgid "Retention rate"
+msgstr "留存率"
+
+msgid "Tracking snapshot summary"
+msgstr "追蹤快照摘要"
+
+msgid "This is the first tracking review for this post. Current metrics have been recorded as the baseline for future comparison."
+msgstr "這是此貼文的首次追蹤檢視。目前指標已記錄為日後比較的基準。"
+
+msgid "This field already contains content. Replace it with the AI suggestion?"
+msgstr "此欄位已有內容。要用 AI 建議取代嗎？"

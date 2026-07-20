@@ -10,52 +10,10 @@
 
 {% block content %}
 <div class="stack">
-    {% trans "Delete this campaign? This cannot be undone." as delete_campaign_confirm %}
     <section class="page-header campaign-detail-header">
         <div>
             <h1 class="page-title">{{ object.name }}</h1>
-            <div class="campaign-detail-platforms">
-                {% for platform in object.platform_focus_list %}
-                    <span class="platform-badge">{{ platform }}</span>
-                {% empty %}
-                    <span class="platform-badge">{% trans "No platform selected" %}</span>
-                {% endfor %}
-            </div>
         </div>
-        <div class="button-row">
-            <a class="btn btn-secondary" href="{% url 'socialmanager:campaign_update' object.pk %}?next={{ request.get_full_path|urlencode }}">{% trans "Edit" %}</a>
-            <form class="campaign-delete-form" method="post" action="{% url 'socialmanager:campaign_delete' object.pk %}?next={{ request.get_full_path|urlencode }}" onsubmit="return confirm('{{ delete_campaign_confirm|escapejs }}');">
-                {% csrf_token %}
-                <button class="btn btn-secondary" type="submit">{% trans "Delete" %}</button>
-            </form>
-        </div>
-        <div class="campaign-card-menu campaign-detail-action-menu">
-            <button class="campaign-menu-button" type="button" aria-label="{% trans 'Campaign options' %}" aria-expanded="false" data-campaign-menu-button>
-                <span class="material-symbols-outlined" aria-hidden="true">more_horiz</span>
-            </button>
-            <div class="campaign-menu-dropdown" hidden data-campaign-menu-dropdown>
-                <a href="{% url 'socialmanager:campaign_update' object.pk %}?next={{ request.get_full_path|urlencode }}">{% trans "Edit" %}</a>
-                <form method="post" action="{% url 'socialmanager:campaign_delete' object.pk %}?next={{ request.get_full_path|urlencode }}" onsubmit="return confirm('{{ delete_campaign_confirm|escapejs }}');">
-                    {% csrf_token %}
-                    <button class="campaign-menu-delete" type="submit">{% trans "Delete" %}</button>
-                </form>
-            </div>
-        </div>
-    </section>
-
-    <section class="metrics-grid campaign-summary-grid">
-        <article class="card content-card">
-            <p class="metric-label">{% trans "Posts" %}</p>
-            <p class="metric-value">{{ campaign_summary.post_count }}</p>
-        </article>
-        <article class="card content-card">
-            <p class="metric-label">{% trans "Scheduled" %}</p>
-            <p class="metric-value">{{ campaign_summary.scheduled_count }}</p>
-        </article>
-        <article class="card content-card">
-            <p class="metric-label">{% trans "Engagement rate" %}</p>
-            <p class="metric-value">{{ campaign_summary.engagement_rate }}%</p>
-        </article>
     </section>
 
     <section class="campaign-detail-grid">
@@ -65,7 +23,7 @@
             </div>
             {% if campaign_trend_chart %}
                 <div class="campaign-performance-chart">
-                    <svg aria-label="{% trans 'Campaign performance trend chart' %}" viewBox="0 0 {{ campaign_trend_chart.width }} {{ campaign_trend_chart.height }}" role="img">
+                    <svg aria-label="{% trans 'Project performance trend chart' %}" viewBox="0 0 {{ campaign_trend_chart.width }} {{ campaign_trend_chart.height }}" role="img">
                         <g class="campaign-performance-grid">
                             {% for tick in campaign_trend_chart.y_ticks %}
                                 <line x1="{{ campaign_trend_chart.left }}" x2="{{ campaign_trend_chart.right }}" y1="{{ tick.y }}" y2="{{ tick.y }}"></line>
@@ -118,43 +76,25 @@
                 <span><strong>{{ campaign_summary.likes }}</strong> {% trans "likes" %}</span>
                 <span><strong>{{ campaign_summary.comments }}</strong> {% trans "comments" %}</span>
                 <span><strong>{{ campaign_summary.shares }}</strong> {% trans "shares" %}</span>
+                <span><strong>{{ campaign_summary.engagement_rate }}%</strong> {% trans "Engagement rate" %}</span>
             </div>
         </aside>
     </section>
 
-    <section class="insight-box ai-insight-card">
-        <button class="ai-insight-toggle" type="button" data-ai-insight-url="{% url 'socialmanager:campaign_ai_insight' object.pk %}" data-ai-insight-target="campaign-ai-insight-panel" data-ai-insight-loaded="false">
-            <span class="ai-insight-label">{% trans "AI Insight" %}</span>
-        </button>
-        <div class="ai-insight-panel" id="campaign-ai-insight-panel" hidden></div>
-    </section>
+    {% url 'socialmanager:campaign_ai_insight' object.pk as project_agent_url %}
+    {% include "socialmanager/partials/analysis_agent.html" with agent_context_type="project" agent_primary_url=project_agent_url %}
 
     <section class="stack">
         <div class="section-head">
             <div>
-                <h2 class="section-title">{% trans "Scheduled posts" %}</h2>
+                <h2 class="section-title">{% trans "Related posts" %}</h2>
             </div>
         </div>
         <div class="post-stack">
-            {% for post in scheduled_posts %}
+            {% for post in related_posts %}
                 {% include "socialmanager/partials/post_card.html" with badge_context="campaign_detail" %}
             {% empty %}
-                <div class="empty-state">{% trans "No scheduled posts for this campaign." %}</div>
-            {% endfor %}
-        </div>
-    </section>
-
-    <section class="stack">
-        <div class="section-head">
-            <div>
-                <h2 class="section-title">{% trans "Released posts" %}</h2>
-            </div>
-        </div>
-        <div class="post-stack">
-            {% for post in released_posts %}
-                {% include "socialmanager/partials/post_card.html" with badge_context="campaign_detail" %}
-            {% empty %}
-                <div class="empty-state">{% trans "No released posts for this campaign." %}</div>
+                <div class="empty-state">{% trans "No related posts for this Project." %}</div>
             {% endfor %}
         </div>
     </section>

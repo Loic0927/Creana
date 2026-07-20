@@ -264,15 +264,6 @@ class AnnouncementForm(DesignSystemFormMixin, forms.ModelForm):
 
 
 class SocialMediaCampaignForm(DesignSystemFormMixin, forms.ModelForm):
-    PLATFORM_OPTIONS = (
-        "TikTok",
-        "Instagram",
-        "YouTube",
-        "Facebook",
-        "X / Twitter",
-        "Reddit",
-    )
-    platform_focus = forms.CharField(required=False, widget=forms.HiddenInput)
     campaign_posts = forms.CharField(required=False, widget=forms.HiddenInput)
 
     class Meta:
@@ -280,15 +271,8 @@ class SocialMediaCampaignForm(DesignSystemFormMixin, forms.ModelForm):
         fields = [
             "name",
             "objective",
-            "platform_focus",
             "campaign_posts",
-            "start_date",
-            "end_date",
         ]
-        widgets = {
-            "start_date": forms.DateInput(attrs={"type": "date"}),
-            "end_date": forms.DateInput(attrs={"type": "date"}),
-        }
 
     def __init__(self, *args, subscription=None, user=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -309,21 +293,15 @@ class SocialMediaCampaignForm(DesignSystemFormMixin, forms.ModelForm):
             self.post_queryset = SocialMediaPost.objects.filter(author=user).order_by("-updated_at", "-created_at")
         self.post_options = list(self.post_queryset.only("id", "title"))
         self._apply_design_system()
-        self.fields["name"].label = _("Campaign name")
+        self.fields["name"].label = _("Project name")
         apply_character_counter(self.fields["name"], CAMPAIGN_NAME_MAX_LENGTH)
         self.fields["name"].widget.attrs.setdefault("placeholder", _("Spring product launch"))
-        self.fields["objective"].label = _("Strategic objective / goal")
+        self.fields["objective"].label = _("Objective / Goal")
         self.fields["objective"].widget.attrs.setdefault(
             "placeholder",
-            _("Define the business goal this campaign supports."),
+            _("What you want to achieve in the Project"),
         )
-        self.fields["platform_focus"].label = _("Target platform or platforms")
-        self.fields["platform_focus"].initial = json.dumps(getattr(self.instance, "platform_focus_list", []))
-        self.fields["platform_focus"].widget.attrs.setdefault(
-            "placeholder",
-            _("Select platforms"),
-        )
-        self.fields["campaign_posts"].label = _("Campaign posts")
+        self.fields["campaign_posts"].label = _("Project posts")
         if not self.is_bound and self.instance.pk:
             selected_post_ids = list(
                 self.instance.campaign_posts.all().values_list("pk", flat=True)
@@ -332,36 +310,6 @@ class SocialMediaCampaignForm(DesignSystemFormMixin, forms.ModelForm):
             self.initial["campaign_posts"] = selected_post_ids_json
             self.fields["campaign_posts"].initial = selected_post_ids_json
         self.fields["campaign_posts"].widget.attrs.setdefault("placeholder", _("Select posts"))
-
-    def clean_platform_focus(self):
-        value = self.cleaned_data.get("platform_focus") or ""
-
-        if isinstance(value, list):
-            candidates = value
-        else:
-            try:
-                decoded = json.loads(value)
-                candidates = decoded if isinstance(decoded, list) else []
-            except (TypeError, json.JSONDecodeError):
-                candidates = str(value).split(",")
-
-        option_lookup = {
-            option.lower().replace(" ", "").replace("/", ""): option
-            for option in self.PLATFORM_OPTIONS
-        }
-        option_lookup["twitter"] = "X / Twitter"
-        option_lookup["x"] = "X / Twitter"
-        option_lookup["reddit"] = "Reddit"
-
-        platforms = []
-        for platform in candidates:
-            cleaned = str(platform).strip().strip(",")
-            lookup_key = cleaned.lower().replace(" ", "").replace("/", "")
-            canonical = option_lookup.get(lookup_key)
-            if canonical and canonical.lower() not in {existing.lower() for existing in platforms}:
-                platforms.append(canonical)
-
-        return platforms
 
     def clean_campaign_posts(self):
         value = self.cleaned_data.get("campaign_posts") or ""
@@ -415,7 +363,6 @@ class SocialMediaPostForm(DesignSystemFormMixin, forms.ModelForm):
         fields = [
             "campaign",
             "title",
-            "platform",
             "content_format",
             "status",
             "visibility",
@@ -450,7 +397,6 @@ class SocialMediaPostForm(DesignSystemFormMixin, forms.ModelForm):
         apply_character_counter(self.fields["title"], POST_TITLE_MAX_LENGTH)
         self.fields["caption"].label = _("Caption")
         self.fields["hashtags"].label = _("Hashtag")
-        self.fields["platform"].label = _("Platform")
         self.fields["visibility"].label = _("Visibility")
         self.fields["title"].widget.attrs.setdefault("placeholder", _("Optional article title"))
         self.fields["caption"].widget.attrs.setdefault(
@@ -473,9 +419,8 @@ class SocialMediaPostForm(DesignSystemFormMixin, forms.ModelForm):
         self.fields["hashtags"].widget.attrs.setdefault("data-max-tags", str(POST_HASHTAGS_MAX_COUNT))
         self.fields["hashtags"].help_text = _(f"Add up to {POST_HASHTAGS_MAX_COUNT} hashtags.")
         self.fields["visibility"].widget.attrs.setdefault("aria-label", _("Visibility"))
-        self.fields["campaign"].empty_label = _("Unassigned campaign")
-        self.fields["campaign"].label = _("Campaign")
-        self.fields["platform"].widget.attrs.setdefault("aria-label", _("Platform"))
+        self.fields["campaign"].empty_label = _("Unassigned Project")
+        self.fields["campaign"].label = _("Project")
         self.fields["status"].widget.attrs.setdefault("aria-label", _("Post status"))
         self.fields["content_format"].widget.attrs.setdefault("aria-label", _("Content format"))
         self.fields["image"].widget.attrs.setdefault("accept", "image/*")
@@ -493,8 +438,6 @@ class SocialMediaPostForm(DesignSystemFormMixin, forms.ModelForm):
             getattr(settings, "VIDEO_FORM_UPLOAD_MAX_BYTES", 20 * 1024 * 1024)
         )
         self.fields["video_thumbnail"].widget.attrs.setdefault("accept", "image/webp,image/jpeg,image/png,image/*")
-        if not self.is_bound and not self.initial.get("platform") and not getattr(self.instance, "platform", None):
-            self.initial["platform"] = SocialMediaPost.Platform.INSTAGRAM
         if not self.is_bound and user_settings:
             self.initial.setdefault("ai_tone", user_settings.get_ai_tone_display())
         scheduled_value = self.initial.get("scheduled_for") or getattr(self.instance, "scheduled_for", None)

@@ -463,6 +463,15 @@
             {% endfor %}
         </div>
     </section>
+    {% if request.user == object.author %}
+        {% url 'socialmanager:post_ai_insight' object.pk as detail_agent_url %}
+        {% if object.content_format == 'video' %}
+            {% url 'socialmanager:post_retention_ai_insight' object.pk as detail_video_agent_url %}
+            {% include "socialmanager/partials/analysis_agent.html" with agent_context_type="video" agent_primary_url=detail_agent_url agent_secondary_url=detail_video_agent_url %}
+        {% else %}
+            {% include "socialmanager/partials/analysis_agent.html" with agent_context_type="post" agent_primary_url=detail_agent_url %}
+        {% endif %}
+    {% endif %}
 </div>
 {% endblock %}
 

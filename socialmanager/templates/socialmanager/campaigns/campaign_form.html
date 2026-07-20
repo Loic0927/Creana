@@ -1,7 +1,7 @@
 {% extends "socialmanager/base.html" %}
 {% load i18n static %}
 
-{% block title %}Creana | {% if object %}{% trans "Edit campaign" %}{% else %}{% trans "Create campaign" %}{% endif %}{% endblock %}
+{% block title %}Creana | {% if object %}{% trans "Edit Project" %}{% else %}{% trans "Create Project" %}{% endif %}{% endblock %}
 {% block body_class %}campaign-page campaign-form-page{% endblock %}
 
 {% block extra_css %}
@@ -12,7 +12,7 @@
 <div class="campaign-form-shell stack">
     <section class="page-header">
         <div>
-            <h1 class="page-title">{% if object %}{% trans "Edit campaign" %}{% else %}{% trans "Create campaign" %}{% endif %}</h1>
+            <h1 class="page-title">{% if object %}{% trans "Edit Project" %}{% else %}{% trans "Create Project" %}{% endif %}</h1>
         </div>
     </section>
 
@@ -25,25 +25,7 @@
             {% for field in form %}
                 <div class="field {% if field.name == 'name' or field.name == 'objective' %}campaign-field-full{% endif %}">
                     <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                    {% if field.name == "platform_focus" %}
-                        {{ field }}
-                        <div class="platform-multiselect" data-platform-multiselect>
-                            <button class="platform-multiselect-toggle" type="button" aria-expanded="false" data-platform-toggle>
-                                <span class="platform-selected-inline" data-platform-selected-inline>
-                                    <span class="platform-placeholder" data-platform-placeholder>{% trans "Select platforms" %}</span>
-                                </span>
-                                <span class="material-symbols-outlined" aria-hidden="true">expand_more</span>
-                            </button>
-                            <div class="platform-multiselect-menu" hidden data-platform-menu>
-                                <button type="button" data-platform-option="TikTok">TikTok</button>
-                                <button type="button" data-platform-option="Instagram">Instagram</button>
-                                <button type="button" data-platform-option="YouTube">YouTube</button>
-                                <button type="button" data-platform-option="Facebook">Facebook</button>
-                                <button type="button" data-platform-option="X / Twitter">X / Twitter</button>
-                                <button type="button" data-platform-option="Reddit">Reddit</button>
-                            </div>
-                        </div>
-                    {% elif field.name == "campaign_posts" %}
+                    {% if field.name == "campaign_posts" %}
                         {{ field }}
                         <div class="post-multiselect" data-campaign-posts-multiselect>
                             <button class="post-multiselect-toggle" type="button" aria-expanded="false" data-campaign-posts-toggle>
@@ -73,7 +55,7 @@
             {% endfor %}
         </div>
         <div class="button-row">
-            <button class="btn btn-primary" type="submit">{% trans "Save campaign" %}</button>
+            <button class="btn btn-primary" type="submit">{% trans "Save Project" %}</button>
             <a class="btn btn-secondary" href="{% url 'socialmanager:campaign_list' %}">{% trans "Cancel" %}</a>
         </div>
     </form>

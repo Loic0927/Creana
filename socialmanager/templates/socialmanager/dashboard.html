@@ -59,12 +59,8 @@
     </script>
     <div id="dashboard-analytics-root"></div>
 
-    <section class="insight-box ai-insight-card">
-        <button class="ai-insight-toggle" type="button" data-ai-insight-url="{% url 'socialmanager:dashboard_ai_insight' %}" data-ai-insight-target="dashboard-ai-insight-panel" data-ai-insight-loaded="false">
-            <span class="ai-insight-label">{% trans "AI Insight" %}</span>
-        </button>
-        <div class="ai-insight-panel" id="dashboard-ai-insight-panel" hidden></div>
-    </section>
+    {% url 'socialmanager:dashboard_ai_insight' as dashboard_agent_url %}
+    {% include "socialmanager/partials/analysis_agent.html" with agent_context_type="dashboard" agent_primary_url=dashboard_agent_url %}
 
     <section class="card chart-card dashboard-chart-card">
         <div>
@@ -77,7 +73,7 @@
                         <tr>
                             <th>{% trans "Post" %}</th>
                             <th>{% trans "Platform" %}</th>
-                            <th>{% trans "Campaign" %}</th>
+                            <th>{% trans "Project" %}</th>
                             <th>{% trans "Views" %}</th>
                             <th>{% trans "Likes" %}</th>
                             <th>{% trans "Comments" %}</th>
@@ -93,7 +89,7 @@
                                     {% for campaign in row.post.campaign_groups.all %}
                                         <span class="campaign-badge">{{ campaign.name }}</span>
                                     {% empty %}
-                                        <span class="campaign-badge">{% trans "Unassigned campaign" %}</span>
+                                        <span class="campaign-badge">{% trans "Unassigned Project" %}</span>
                                     {% endfor %}
                                 </td>
                                 <td>{{ row.views }}</td>

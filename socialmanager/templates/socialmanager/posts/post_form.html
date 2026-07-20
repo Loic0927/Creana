@@ -6,6 +6,7 @@
 
 {% block extra_css %}
 <link href="{% static 'socialmanager/css/pages/create_post.css' %}?v=video-preview-bounds-1" rel="stylesheet">
+  <link href="{% static 'socialmanager/css/components/ai_post_agent.css' %}?v=agent-modal-8" rel="stylesheet">
 {% endblock %}
 
 {% block content %}
@@ -117,11 +118,10 @@
                                                 <div class="post-card-meta">
                                                     <span class="status-badge draft">{% trans "Draft" %}</span>
                                                     <span class="type-badge">{{ draft.get_content_format_display }}</span>
-                                                    <span class="platform-badge">{% if draft.get_platform_display %}{{ draft.get_platform_display }}{% else %}{% trans "No platform selected" %}{% endif %}</span>
                                                     {% for campaign in draft.campaign_groups.all %}
                                                         <span class="campaign-badge">{{ campaign.name }}</span>
                                                     {% empty %}
-                                                        <span class="campaign-badge">{% trans "Unassigned campaign" %}</span>
+                                                        <span class="campaign-badge">{% trans "Unassigned Project" %}</span>
                                                     {% endfor %}
                                                     <span class="meta-item meta-item-date"><span class="material-symbols-outlined">edit_calendar</span>{% blocktrans with date=draft.updated_at|date:"M d, Y" %}Last edited {{ date }}{% endblocktrans %}</span>
                                                 </div>
@@ -221,7 +221,6 @@
                     <div class="field field-shell" id="caption-field-shell" data-ai-field="caption">
                         <div class="field-label-row">
                             <label for="{{ form.caption.id_for_label }}">{% trans "Caption" %}</label>
-                            <button class="create-post-ai-link" data-ai-target="caption" type="button">{% trans "AI Feedback" %}</button>
                         </div>
                         {{ form.caption }}
                         <p aria-live="polite" class="helper-text character-counter" data-character-counter-for="{{ form.caption.id_for_label }}" hidden></p>
@@ -234,7 +233,6 @@
                     <div class="field field-shell" id="title-field-shell" data-ai-field="title">
                         <div class="field-label-row">
                             <label for="{{ form.title.id_for_label }}">{{ form.title.label }}</label>
-                            <button class="create-post-ai-link" data-ai-target="title" type="button">{% trans "AI Feedback" %}</button>
                         </div>
                         {{ form.title }}
                         <p aria-live="polite" class="helper-text character-counter" data-character-counter-for="{{ form.title.id_for_label }}" hidden></p>
@@ -245,7 +243,6 @@
                     <div class="field field-shell" id="article-caption-field-shell" data-ai-field="caption">
                         <div class="field-label-row">
                             <label for="{{ form.article_caption.id_for_label }}">{{ form.article_caption.label }}</label>
-                            <button class="create-post-ai-link" data-ai-target="caption" type="button">{% trans "AI Feedback" %}</button>
                         </div>
                         {{ form.article_caption }}
                         <p aria-live="polite" class="helper-text character-counter" data-character-counter-for="{{ form.article_caption.id_for_label }}" hidden></p>
@@ -256,7 +253,6 @@
                     <div class="field field-shell" data-ai-field="hashtags">
                         <div class="field-label-row">
                             <label for="{{ form.hashtags.id_for_label }}">{{ form.hashtags.label }}</label>
-                            <button class="create-post-ai-link" data-ai-target="hashtags" type="button">{% trans "AI Feedback" %}</button>
                         </div>
                         {{ form.hashtags }}
                         {% if form.hashtags.errors %}
@@ -268,16 +264,9 @@
                         {{ form.visibility }}
                     </div>
                     <div class="field">
-                        <label for="{{ form.platform.id_for_label }}">{{ form.platform.label }}</label>
-                        {{ form.platform }}
-                        {% if form.platform.errors %}
-                            <div class="field-error">{{ form.platform.errors|join:", " }}</div>
-                        {% endif %}
-                    </div>
-                    <div class="field">
                         <div class="field-label-row">
                             <label for="{{ form.campaign.id_for_label }}">{{ form.campaign.label }}</label>
-                            <a class="text-link" href="{% url 'socialmanager:campaign_create' %}">{% trans "Create new campaign" %}</a>
+                            <a class="text-link" href="{% url 'socialmanager:campaign_create' %}">{% trans "Create new Project" %}</a>
                         </div>
                         {{ form.campaign }}
                         {% if form.campaign.errors %}
@@ -319,8 +308,10 @@
         </div>
     </form>
 </div>
+{% include "socialmanager/posts/_ai_post_agent.html" %}
 {% endblock %}
 
 {% block extra_scripts %}
 <script defer src="{% static 'socialmanager/js/create_post.js' %}?v=video-ai-fallback-thumbnail-1"></script>
+  <script defer src="{% static 'socialmanager/js/ai_post_agent.js' %}?v=agent-modal-8"></script>
 {% endblock %}

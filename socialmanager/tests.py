@@ -322,9 +322,11 @@ class VideoContentAnalysisTests(TestCase):
         self.assertNotContains(detail, "Video content analysis")
         self.assertNotContains(detail, "Creator summary")
         self.assertNotContains(analytics, "Video content analysis")
-        self.assertContains(analytics, "Audience Engagement & Retention")
-        self.assertContains(analytics, "post-retention-ai-insight-panel")
-        self.assertContains(analytics, "Retention AI Insight")
+        self.assertNotContains(analytics, "Audience Engagement & Retention")
+        self.assertNotContains(analytics, "Retention AI Insight")
+        self.assertContains(analytics, 'data-context-type="video"')
+        self.assertContains(analytics, reverse("socialmanager:post_ai_insight", args=[post.pk]))
+        self.assertContains(analytics, reverse("socialmanager:post_retention_ai_insight", args=[post.pk]))
 
     def test_retention_ai_block_is_hidden_without_video_retention_data(self):
         user, video_post = self.create_user_and_post()
@@ -343,8 +345,9 @@ class VideoContentAnalysisTests(TestCase):
             reverse("socialmanager:post_analytics", args=[image_post.pk])
         )
 
-        self.assertNotContains(video_analytics, "post-retention-ai-insight-panel")
+        self.assertContains(video_analytics, 'data-context-type="video"')
         self.assertNotContains(image_analytics, "Audience Engagement & Retention")
+        self.assertContains(image_analytics, 'data-context-type="post"')
 
     @patch("socialmanager.views.generate_video_retention_analysis")
     def test_retention_ai_endpoint_uses_timed_event_types_and_structured_renderer(self, generate):

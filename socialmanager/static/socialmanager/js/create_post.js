@@ -84,7 +84,6 @@ function setupCreatePostPage() {
     const articleCaptionInput = document.getElementById("id_article_caption");
     const hashtagsInput = document.getElementById("id_hashtags");
     const hashtagsFieldShell = hashtagsInput?.closest("[data-ai-field]");
-    const platformInput = document.getElementById("id_platform");
     const visibilityInput = document.getElementById("id_visibility");
     const campaignInput = document.getElementById("id_campaign");
     const titleLabel = titleFieldShell?.querySelector("label");
@@ -118,7 +117,6 @@ function setupCreatePostPage() {
     let selectedIllustrationFiles = [];
     let illustrationObjectUrls = [];
     let currentPostType = "article";
-    const defaultPlatformValue = platformInput?.value || "";
     const defaultVisibilityValue = visibilityInput?.value || "";
     const defaultTitlePlaceholder = titleInput?.getAttribute("placeholder") || "Optional article title";
     const defaultCaptionPlaceholder =
@@ -1131,7 +1129,6 @@ function setupCreatePostPage() {
             current_value: normalizeAiValue(input?.value),
             post_type: aiPostType,
             article_text: getArticleText(),
-            platform: getSelectedOptionText(platformInput) || platformInput?.value || "",
             campaign: campaignInput?.value ? getSelectedOptionText(campaignInput) : "",
             title: normalizeAiValue(fields.title?.value),
             caption: normalizeAiValue(fields.caption?.value),

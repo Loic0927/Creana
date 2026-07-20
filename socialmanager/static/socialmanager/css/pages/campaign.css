@@ -175,10 +175,6 @@
     width: 100%;
 }
 
-.campaign-summary-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
 .campaign-detail-grid {
     display: grid;
     grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);

@@ -1,0 +1,93 @@
+{% load i18n static %}
+<div class="ai-post-agent" data-ai-post-agent data-generate-url="{% url 'socialmanager:post_agent_generate_content' %}"
+    data-media-modal-title="{% trans 'Content needed' %}" data-media-modal-message="{% trans 'Please add an article, image, or video before using the AI Agent.' %}"
+    data-ok="{% trans 'OK' %}" data-close="{% trans 'Close' %}"
+    data-replace-title="{% trans 'Replace existing content?' %}" data-replace-message="{% trans 'This field already contains content. Replace it with the AI suggestion?' %}"
+    data-replace="{% trans 'Replace' %}" data-cancel="{% trans 'Cancel' %}" data-apply="{% trans 'Apply' %}" data-applied="{% trans 'Applied' %}" data-regenerate="{% trans 'Regenerate' %}" data-apply-all="{% trans 'Apply all' %}"
+    data-result-title="{% trans 'Title' %}" data-result-caption="{% trans 'Caption' %}" data-result-hashtags="{% trans 'Hashtags' %}"
+    data-generate="{% trans 'Generate suggestions' %}" data-generating="{% trans 'Generating...' %}" data-retry="{% trans 'Retry' %}"
+    data-generic-error="{% trans 'AI generation is temporarily unavailable. Please try again.' %}" data-timeout-error="{% trans 'AI generation timed out. Please try again.' %}" data-rate-limit-error="{% trans 'AI is busy right now. Please try again shortly.' %}"
+    data-no-fields-error="{% trans 'Select at least one field to generate.' %}"
+    data-goal-required="{% trans 'Please select a content goal.' %}"
+    data-information-title="{% trans 'Information' %}"
+    data-empty-information="{% trans 'No information added. Continue using the image or video content for AI analysis?' %}"
+    data-no-media-information="{% trans 'Add an image, video, or some information before continuing.' %}"
+    data-go-back="{% trans 'Go back' %}" data-continue="{% trans 'Continue' %}"
+    data-media-changed="{% trans 'The post media changed. Close and reopen the AI Agent to analyse the current media.' %}"
+    data-membership-message="{% trans 'AI features are available for members only.' %}">
+    <button class="ai-agent-launcher" type="button" aria-label="{% trans 'Open AI Post Agent' %}" aria-haspopup="dialog" aria-controls="ai-post-agent-panel" aria-expanded="false" data-agent-open>
+        <img src="{% static 'socialmanager/images/agent.PNG' %}" alt="" aria-hidden="true">
+    </button>
+
+    <div class="ai-agent-page-backdrop" hidden data-agent-page-backdrop></div>
+
+    <section class="ai-agent-panel" id="ai-post-agent-panel" role="dialog" aria-modal="true" aria-labelledby="ai-agent-title" hidden data-agent-panel>
+        <header class="ai-agent-header">
+            <h2 id="ai-agent-title">{% trans "Create with Creana" %}</h2>
+            <button class="ai-agent-icon-button" type="button" aria-label="{% trans 'Close AI Post Agent' %}" data-agent-close>&times;</button>
+        </header>
+        <div class="ai-agent-progress" aria-label="{% trans 'Agent progress' %}">
+            <span data-progress-step="1">1</span><span data-progress-step="2">2</span><span data-progress-step="3">3</span>
+        </div>
+        <div class="ai-agent-body">
+            <section data-agent-step="1">
+                <p class="ai-agent-eyebrow">{% trans "Step 1 of 3" %}</p>
+                <h3 tabindex="-1">{% trans "Information" %}</h3>
+                <label for="ai-agent-context">{% trans "Briefly describe what this post is about, its goal, and the audience you want to reach. You may press Next if you do not have an idea yet." %}</label>
+                <textarea id="ai-agent-context" maxlength="1000" rows="7" data-agent-context></textarea>
+                <div class="ai-agent-count"><span data-context-count>0</span>/1000</div>
+            </section>
+            <section data-agent-step="2" hidden>
+                <p class="ai-agent-eyebrow">{% trans "Step 2 of 3" %}</p>
+                <fieldset class="ai-agent-goals">
+                    <legend>{% trans "What is the main goal of this post?" %}</legend>
+                    <select class="field-select ai-agent-goal-select" id="ai-agent-content-goal" data-content-goal>
+                        <option value="" selected disabled hidden>{% trans "Select a content goal" %}</option>
+                        <option value="increase_reach">{% trans "Increase reach" %}</option>
+                        <option value="encourage_engagement">{% trans "Encourage engagement" %}</option>
+                        <option value="promote_product_service">{% trans "Promote a product or service" %}</option>
+                        <option value="build_brand_awareness">{% trans "Build brand awareness" %}</option>
+                        <option value="drive_profile_visits">{% trans "Drive profile visits" %}</option>
+                        <option value="share_information">{% trans "Share information" %}</option>
+                        <option value="other">{% trans "Other" %}</option>
+                    </select>
+                    <p class="ai-agent-error" role="alert" tabindex="-1" hidden data-content-goal-error>{% trans "Please select a content goal." %}</p>
+                    <div class="ai-agent-custom-goal" hidden data-custom-goal-wrap>
+                        <label for="ai-agent-custom-goal">{% trans "Custom content goal" %}</label>
+                        <input class="field-input" type="text" id="ai-agent-custom-goal" maxlength="150" placeholder="{% trans 'Describe your content goal...' %}" aria-describedby="ai-agent-custom-goal-count ai-agent-custom-goal-error" aria-invalid="false" data-custom-goal>
+                        <div class="ai-agent-count" id="ai-agent-custom-goal-count" aria-live="polite"><span data-custom-goal-count>0</span>/150</div>
+                        <p class="ai-agent-error" id="ai-agent-custom-goal-error" role="alert" tabindex="-1" hidden data-custom-goal-error>{% trans "Please describe your content goal." %}</p>
+                    </div>
+                </fieldset>
+            </section>
+            <section data-agent-step="3" hidden>
+                <div class="ai-agent-generation-controls" data-agent-generation-controls>
+                    <p class="ai-agent-eyebrow">{% trans "Step 3 of 3" %}</p>
+                    <h3>{% trans "Generate" %}</h3>
+                    <div class="ai-agent-checkboxes">
+                        <label><input type="checkbox" value="title" checked data-generate-field> {% trans "Generate title" %}</label>
+                        <label><input type="checkbox" value="caption" checked data-generate-field> {% trans "Generate caption" %}</label>
+                        <label><input type="checkbox" value="hashtags" checked data-generate-field> {% trans "Generate hashtags" %}</label>
+                    </div>
+                    <p class="ai-agent-note" hidden data-existing-content-warning>{% trans "Some fields already contain content. You can review the AI suggestions before replacing them." %}</p>
+                    <button class="btn btn-primary" type="button" data-agent-generate>{% trans "Generate suggestions" %}</button>
+                </div>
+                <p class="ai-agent-api-error" role="alert" hidden data-agent-api-error></p>
+                <p class="ai-agent-api-warning" role="status" hidden data-agent-api-warning></p>
+                <div class="ai-agent-results" hidden data-agent-results></div>
+            </section>
+        </div>
+        <footer class="ai-agent-footer">
+            <button class="btn btn-secondary" type="button" data-agent-back>{% trans "Back" %}</button>
+            <button class="btn btn-primary" type="button" data-agent-next>{% trans "Next" %}</button>
+        </footer>
+    </section>
+
+    <div class="ai-agent-modal-backdrop" hidden data-agent-modal>
+        <section class="ai-agent-modal" role="alertdialog" aria-modal="true" aria-labelledby="ai-agent-modal-title">
+            <h2 id="ai-agent-modal-title" data-modal-title></h2>
+            <p data-modal-message></p>
+            <div class="button-row" data-modal-actions></div>
+        </section>
+    </div>
+</div>

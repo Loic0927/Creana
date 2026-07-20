@@ -41,11 +41,9 @@
                     <span class="type-badge">{{ post.get_content_format_display }}</span>
                 {% elif badge_context == "campaign_detail" %}
                     <span class="type-badge">{{ post.get_content_format_display }}</span>
-                    <span class="platform-badge">{% if post.get_platform_display %}{{ post.get_platform_display }}{% else %}{% trans "No platform selected" %}{% endif %}</span>
                 {% else %}
                     <span class="status-badge {{ post.status_badge_class }}">{{ post.status_badge_label }}</span>
                     <span class="type-badge">{{ post.get_content_format_display }}</span>
-                    <span class="platform-badge">{% if post.get_platform_display %}{{ post.get_platform_display }}{% else %}{% trans "No platform selected" %}{% endif %}</span>
                     {% for campaign in post.campaign_groups.all %}
                         <span class="campaign-badge">{{ campaign.name }}</span>
                     {% endfor %}

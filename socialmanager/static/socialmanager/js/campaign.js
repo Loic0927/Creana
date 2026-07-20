@@ -445,7 +445,6 @@ function setupCampaignCardMenus() {
 }
 
 function initializeCampaign() {
-    setupCampaignPlatformInput();
     setupCampaignPostInput();
     setupCampaignStrategyModal();
     setupCampaignCardMenus();
