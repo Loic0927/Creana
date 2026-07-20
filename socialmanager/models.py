@@ -957,6 +957,44 @@ class PostMetric(models.Model):
         return f"Metrics for {self.post} at {self.captured_at:%Y-%m-%d %H:%M}"
 
 
+class PostTrackingSnapshot(models.Model):
+    """A lightweight, immutable baseline for Dashboard Agent tracking reviews."""
+
+    post = models.ForeignKey(
+        SocialMediaPost,
+        on_delete=models.CASCADE,
+        related_name="tracking_snapshots",
+    )
+    subscription = models.ForeignKey(
+        SaaSSubscription,
+        on_delete=models.CASCADE,
+        related_name="post_tracking_snapshots",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="post_tracking_snapshots",
+    )
+    captured_at = models.DateTimeField(default=timezone.now)
+    views = models.PositiveIntegerField(default=0)
+    likes = models.PositiveIntegerField(default=0)
+    comments = models.PositiveIntegerField(default=0)
+    shares = models.PositiveIntegerField(default=0)
+    engagement_rate = models.FloatField(default=0)
+    retention_percent = models.FloatField(blank=True, null=True)
+    recommendation = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-captured_at", "-pk"]
+        indexes = [
+            models.Index(fields=["post", "-captured_at"], name="post_track_post_time_idx"),
+            models.Index(fields=["subscription", "-captured_at"], name="post_track_sub_time_idx"),
+        ]
+
+    def __str__(self):
+        return f"Tracking snapshot for {self.post} at {self.captured_at:%Y-%m-%d %H:%M}"
+
+
 class PostView(models.Model):
     post = models.ForeignKey(
         SocialMediaPost,

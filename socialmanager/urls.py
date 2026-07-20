@@ -3,6 +3,7 @@ from django.urls import path
 
 from .forms import CreanaPasswordResetForm
 from . import views
+from .agent_views import PostAgentGenerateContentView
 
 
 app_name = "socialmanager"
@@ -61,6 +62,8 @@ urlpatterns = [
     path("signup/", views.SignUpView.as_view(), name="signup"),
     path("dashboard/", views.DashboardView.as_view(), name="dashboard"),
     path("dashboard/ai-insight/", views.DashboardAIInsightView.as_view(), name="dashboard_ai_insight"),
+    path("analysis-agent/posts/", views.AnalysisAgentPostListView.as_view(), name="analysis_agent_posts"),
+    path("analysis-agent/posts/<int:pk>/track/", views.AnalysisAgentPostTrackView.as_view(), name="analysis_agent_post_track"),
     path("notifications/", views.NotificationListView.as_view(), name="notifications"),
     path("notifications/<int:pk>/open/", views.NotificationOpenView.as_view(), name="notification_open"),
     path("notifications/mark-all-read/", views.NotificationMarkAllReadView.as_view(), name="notifications_mark_all_read"),
@@ -96,6 +99,7 @@ urlpatterns = [
     path("announcements/<int:pk>/delete/", views.AnnouncementDeleteView.as_view(), name="announcement_delete"),
     path("posts/", views.PostListView.as_view(), name="post_list"),
     path("posts/ai-feedback/", views.PostAIFeedbackView.as_view(), name="post_ai_feedback"),
+    path("post-agent/generate-content/", PostAgentGenerateContentView.as_view(), name="post_agent_generate_content"),
     path("posts/video-upload/start/", views.VideoUploadStartView.as_view(), name="video_upload_start"),
     path("posts/new/", views.PostCreateView.as_view(), name="post_create"),
     path("posts/<int:pk>/analytics/", views.PostAnalyticsView.as_view(), name="post_analytics"),

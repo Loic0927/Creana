@@ -26,11 +26,12 @@ from django.core.exceptions import DisallowedHost, ValidationError
 from django.core.files.storage import default_storage
 from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
-from django.db.models import Case, Count, DateTimeField, Exists, Max, OuterRef, Prefetch, Q, Sum, When
+from django.db.models import Avg, Case, Count, DateTimeField, Exists, Max, OuterRef, Prefetch, Q, Sum, When
 from django.db.models.functions import Coalesce, Lower, TruncDate
 from django.http import HttpResponseBadRequest, HttpResponseForbidden, HttpResponseRedirect, JsonResponse
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
+from django.templatetags.static import static
 from django.template.loader import render_to_string
 from django.urls import reverse, reverse_lazy
 from django.utils.html import escape
@@ -60,6 +61,7 @@ from .models import (
     PostComment,
     PostEngagement,
     PostImage,
+    PostTrackingSnapshot,
     PushSubscription,
     PostView,
     SaaSSubscription,
@@ -1622,6 +1624,193 @@ class DashboardAIInsightView(AIMemberRequiredMixin, ActiveSubscriptionMixin, Vie
             return JsonResponse({"success": False, "error": "Unable to generate AI insight."}, status=500)
 
 
+TRACKING_PAGE_SIZE = 10
+TRACKING_STATUSES = {"baseline_created", "not_enough_data", "improved", "stable", "declined"}
+
+
+def _tracking_post_queryset(subscription):
+    """Published workspace posts only; drafts, scheduled and private posts are explicit exclusions."""
+    return (
+        SocialMediaPost.objects.filter(
+            subscription=subscription,
+            status=SocialMediaPost.Status.PUBLISHED,
+        )
+        .exclude(visibility=SocialMediaPost.Visibility.PRIVATE)
+        .only("id", "title", "content_format", "video_thumbnail", "created_at", "published_at")
+        .prefetch_related(
+            Prefetch(
+                "images",
+                queryset=PostImage.objects.only("id", "post_id", "thumbnail", "order", "created_at").order_by("order", "created_at", "pk"),
+                to_attr="ordered_images",
+            )
+        )
+        .order_by("-published_at", "-created_at", "-pk")
+    )
+
+
+def _tracking_thumbnail(post):
+    if post.content_format == SocialMediaPost.Format.VIDEO:
+        return post.video_thumbnail.url if post.video_thumbnail else static("socialmanager/images/default_video_placeholder.webp")
+    image = next((item for item in post.ordered_images if item.thumbnail), None)
+    if image:
+        return image.thumbnail.url
+    return ""
+
+
+class AnalysisAgentPostListView(AIMemberRequiredMixin, ActiveSubscriptionMixin, View):
+    def get(self, request, *args, **kwargs):
+        if not self.subscription:
+            return JsonResponse({"success": False, "error": "No active subscription."}, status=400)
+        query = (request.GET.get("q") or "").strip()[:150]
+        posts = _tracking_post_queryset(self.subscription)
+        if query:
+            posts = posts.filter(title__icontains=query)
+        paginator = Paginator(posts, TRACKING_PAGE_SIZE)
+        try:
+            page_number = max(int(request.GET.get("page", 1)), 1)
+        except (TypeError, ValueError):
+            page_number = 1
+        page = paginator.get_page(page_number)
+        return JsonResponse({
+            "success": True,
+            "posts": [
+                {
+                    "id": post.pk,
+                    "title": post.title,
+                    "thumbnail_url": _tracking_thumbnail(post),
+                    "thumbnail_alt": gettext("Thumbnail for %(title)s") % {"title": post.title},
+                }
+                for post in page.object_list
+            ],
+            "page": page.number,
+            "has_previous": page.has_previous(),
+            "has_next": page.has_next(),
+            "count": paginator.count,
+        })
+
+
+def _post_tracking_metrics(post):
+    analytics = PostAnalyticsView()
+    analytics.object = post
+    metrics = analytics.get_metric_totals()
+    total_engagement = metrics["likes"] + metrics["comments"] + metrics["shares"]
+    metrics["engagement_rate"] = analytics.get_percent(total_engagement, metrics["views"])
+    retention = None
+    if post.content_format == SocialMediaPost.Format.VIDEO:
+        retention = post.video_watch_sessions.aggregate(value=Avg("watched_percentage"))["value"]
+        retention = round(retention, 1) if retention is not None else None
+    metrics["retention_percent"] = retention
+    return metrics
+
+
+def _historical_post_recommendation(post, language):
+    topic = f"ai-insight:post:{AI_ANALYSIS_CACHE_VERSION}:{post.pk}:{ai_language_cache_key(language)}"
+    record = get_cached_ai_insight(post.subscription, topic)
+    if not record:
+        return ""
+    sections = parse_ai_insight_sections(record.generated_caption)
+    preferred = ("suggested improvements", "next action", "next content recommendation", "建議改善方向", "下一則內容建議")
+    for section in sections:
+        if str(section.get("heading", "")).strip().lower() in preferred:
+            return " ".join(section.get("points") or [])[:4000]
+    return " ".join(point for section in sections for point in (section.get("points") or []))[:4000]
+
+
+def _create_tracking_baseline_recommendation(post, user, language):
+    analytics = PostAnalyticsView()
+    analytics.object = post
+    metrics = analytics.get_metric_totals()
+    total = metrics["likes"] + metrics["comments"] + metrics["shares"]
+    rates = {
+        "engagement_rate": analytics.get_percent(total, metrics["views"]),
+        "like_rate": analytics.get_percent(metrics["likes"], metrics["views"]),
+        "comment_rate": analytics.get_percent(metrics["comments"], metrics["views"]),
+        "share_rate": analytics.get_percent(metrics["shares"], metrics["views"]),
+    }
+    payload = analytics.get_post_ai_payload(metrics, rates)
+    try:
+        report = generate_post_analysis(payload, language=language)
+    except Exception:
+        report = generate_post_rule_based_analysis(payload, language=language)
+    topic = f"ai-insight:post:{AI_ANALYSIS_CACHE_VERSION}:{post.pk}:{ai_language_cache_key(language)}"
+    cache_ai_insight(post.subscription, user, topic, report, "Post tracking baseline")
+    return _historical_post_recommendation(post, language)
+
+
+def _tracking_status(previous, current, elapsed):
+    if previous is None:
+        return "baseline_created"
+    if elapsed < timedelta(hours=1):
+        return "not_enough_data"
+    deltas = [current[key] - getattr(previous, key) for key in ("views", "likes", "comments", "shares")]
+    if any(value > 0 for value in deltas) and sum(deltas) > 0:
+        return "improved"
+    if sum(deltas) < 0 or current["engagement_rate"] < previous.engagement_rate - 0.5:
+        return "declined"
+    return "stable"
+
+
+class AnalysisAgentPostTrackView(AIMemberRequiredMixin, ActiveSubscriptionMixin, View):
+    def post(self, request, *args, **kwargs):
+        post = get_object_or_404(_tracking_post_queryset(self.subscription), pk=kwargs.get("pk"))
+        previous = post.tracking_snapshots.filter(subscription=self.subscription).first()
+        now = timezone.now()
+        current = _post_tracking_metrics(post)
+        language = get_user_ai_language(request.user)
+        historical_recommendation = (previous.recommendation if previous else "") or _historical_post_recommendation(post, language)
+        recommendation = historical_recommendation
+        if not recommendation:
+            recommendation = _create_tracking_baseline_recommendation(post, request.user, language)
+        elapsed = now - previous.captured_at if previous else timedelta(0)
+        status = _tracking_status(previous, current, elapsed)
+        if status not in TRACKING_STATUSES:
+            status = "stable"
+        deltas = {
+            key: current[key] - getattr(previous, key) if previous else None
+            for key in ("views", "likes", "comments", "shares", "engagement_rate")
+        }
+        retention_delta = None
+        if previous and current["retention_percent"] is not None and previous.retention_percent is not None:
+            retention_delta = round(current["retention_percent"] - previous.retention_percent, 1)
+        PostTrackingSnapshot.objects.create(
+            post=post,
+            subscription=self.subscription,
+            created_by=request.user,
+            recommendation=recommendation,
+            **current,
+        )
+        no_recommendation = gettext("No previous recommendation is available yet. This analysis will be used as the tracking baseline.")
+        if not previous:
+            update = gettext("This is the first tracking review for this post. Current metrics have been recorded for future comparison.")
+            next_action = gettext("Use the current AI recommendation and check the post again after more engagement data is collected.")
+        elif status == "not_enough_data":
+            update = gettext("This post does not have enough performance data yet.")
+            next_action = gettext("Check the post again after more engagement data is collected.")
+        else:
+            changed = [f"{key}: {value:+g}" for key, value in deltas.items() if value]
+            if retention_delta:
+                changed.append(f"retention: {retention_delta:+g}%")
+            update = "; ".join(changed) or gettext("No measured metrics changed since the last review.")
+            next_action = gettext("Continue the strongest-performing approach and review the post again after more data is collected.")
+        return JsonResponse({
+            "success": True,
+            "report": {
+                "post": {"id": post.pk, "title": post.title},
+                "previous_recommendation": historical_recommendation or no_recommendation,
+                "performance_update": update,
+                "progress_status": status,
+                "metrics": current,
+                "deltas": deltas,
+                "retention_delta": retention_delta,
+                "what_changed": update,
+                "elapsed_seconds": round(elapsed.total_seconds()) if previous else None,
+                "content_goal": None,
+                "content_goal_note": gettext("No saved Content Goal is available for this post."),
+                "next_action": next_action,
+            },
+        })
+
+
 class ProfileSettingsView(ActiveSubscriptionMixin, TemplateView):
     template_name = "socialmanager/profile_settings.html"
 
@@ -2200,11 +2389,6 @@ class CampaignDetailView(TenantQuerysetMixin, DetailView):
                 "objective": self.object.objective,
                 "strategy": getattr(self.object, "strategy", "") or "",
                 "description": getattr(self.object, "description", "") or "",
-                "platform_focus": self.object.platform_focus_list,
-                "platform": self.object.platform_focus_display,
-                "status": str(self.object.effective_status_display),
-                "start_date": self.object.start_date.isoformat() if self.object.start_date else "",
-                "end_date": self.object.end_date.isoformat() if self.object.end_date else "",
             },
             "metrics": {
                 "views": total_views,
@@ -2226,7 +2410,6 @@ class CampaignDetailView(TenantQuerysetMixin, DetailView):
                     "status": post.status,
                     "content_format": post.content_format,
                     "post_type": post.content_format,
-                    "platform": str(post.get_platform_display()),
                     "caption": post.caption,
                     "article_caption": post.article_caption,
                     "article_body": getattr(post, "article_body", "") or getattr(post, "body", ""),
@@ -2255,7 +2438,7 @@ class CampaignDetailView(TenantQuerysetMixin, DetailView):
             ],
         }
         return {
-            "related_posts": released_posts,
+            "related_posts": related_posts,
             "released_posts": released_posts,
             "scheduled_posts": scheduled_posts,
             "campaign_trend_chart": self.get_campaign_trend_chart(campaign_trend_points) if released_posts else None,
@@ -2316,7 +2499,7 @@ class CampaignCreateView(ActiveSubscriptionMixin, CreateView):
     def form_valid(self, form):
         form.instance.subscription = self.subscription
         form.instance.created_by = self.request.user
-        messages.success(self.request, _("Campaign created."))
+        messages.success(self.request, _("Project created."))
         return super().form_valid(form)
 
 
@@ -2336,7 +2519,7 @@ class CampaignUpdateView(SafeNextRedirectMixin, OwnerOrAdminMixin, UpdateView):
         return kwargs
 
     def form_valid(self, form):
-        messages.success(self.request, _("Campaign updated."))
+        messages.success(self.request, _("Project updated."))
         return super().form_valid(form)
 
     def get_fallback_success_url(self):
@@ -2359,7 +2542,7 @@ class CampaignDeleteView(SafeNextRedirectMixin, OwnerOrAdminMixin, DeleteView):
         return self.get_fallback_success_url()
 
     def form_valid(self, form):
-        messages.success(self.request, _("Campaign deleted."))
+        messages.success(self.request, _("Project deleted."))
         return super().form_valid(form)
 
 
@@ -4803,7 +4986,7 @@ class PostFormMixin(SafeNextRedirectMixin, ActiveSubscriptionMixin):
             return ai_members_only_response()
 
         topic = form.data.get("ai_topic", "").strip()
-        platform = form.data.get("platform", "").strip()
+        platform = ""
         user_settings, _ = UserSettings.objects.get_or_create(user=self.request.user)
         tone = user_settings.get_ai_tone_display()
         hashtag_count = min(max(user_settings.ai_hashtag_count or 5, 1), POST_HASHTAGS_MAX_COUNT)
@@ -4827,7 +5010,7 @@ class PostFormMixin(SafeNextRedirectMixin, ActiveSubscriptionMixin):
         result.caption = limit_text(result.caption, POST_CAPTION_MAX_LENGTH)
         result.hashtags_text = limit_hashtags_text(result.hashtags_text, hashtag_count)
         if self.subscription:
-            store_suggestion_history(self.subscription, self.request.user, topic or "Untitled topic", platform or "instagram", tone or "Professional", result)
+            store_suggestion_history(self.subscription, self.request.user, topic or "Untitled topic", "general", tone or "Professional", result)
         data = form.data.copy()
         data["ai_tone"] = tone
         data["ai_caption_language"] = user_settings.ai_language
