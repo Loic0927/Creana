@@ -64,7 +64,7 @@ def validate_video_upload(file):
         raise ValidationError(_("Upload a supported video file: MP4, WebM, or MOV."))
 
     max_bytes = getattr(settings, "VIDEO_FORM_UPLOAD_MAX_BYTES", 20 * 1024 * 1024)
-    if getattr(file, "size", 0) > max_bytes:
+    if max_bytes > 0 and getattr(file, "size", 0) > max_bytes:
         max_mb = max_bytes // (1024 * 1024)
         raise ValidationError(
             _("This video is too large. Choose a video smaller than %(max_mb)s MB.")

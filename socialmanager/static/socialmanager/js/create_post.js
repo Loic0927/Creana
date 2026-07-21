@@ -2222,7 +2222,7 @@ function setupCreatePostPage() {
         const maxBytes = directVideoUploadEnabled
             ? directUploadMaxBytes
             : fallbackMaxBytes;
-        if (file.size > maxBytes) {
+        if (maxBytes > 0 && file.size > maxBytes) {
             videoInput.value = "";
             clearVideoThumbnailInput();
             setUploadError(`This video is too large. Choose a video smaller than ${Math.floor(maxBytes / 1024 / 1024)} MB.`);

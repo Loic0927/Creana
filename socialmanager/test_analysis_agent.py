@@ -68,6 +68,35 @@ class SharedAnalysisAgentTests(SimpleTestCase):
         self.assertIn("requestVersion", javascript)
         self.assertIn("window.clearTimeout(closeTimer)", javascript)
 
+    def test_loading_state_has_one_spinner_and_one_visible_live_status(self):
+        partial = (APP_DIR / "templates/socialmanager/partials/analysis_agent.html").read_text(encoding="utf-8")
+        loading = partial.split('class="analysis-agent-loading"', 1)[1].split("</div>", 1)[0]
+
+        self.assertEqual(loading.count("analysis-agent-spinner"), 1)
+        self.assertEqual(loading.count('data-analysis-agent-status'), 1)
+        self.assertEqual(loading.count('{% trans "AI Thinking..." %}'), 1)
+        self.assertIn('role="status"', loading)
+        self.assertIn('aria-live="polite"', loading)
+        self.assertIn('aria-atomic="true"', loading)
+        self.assertNotIn("Opening...", loading)
+
+    def test_loading_renderer_reuses_nodes_for_all_request_paths(self):
+        javascript = (APP_DIR / "static/socialmanager/js/analysis_agent.js").read_text(encoding="utf-8")
+        show_loading = javascript.split("function showLoading(label) {", 1)[1].split("}", 1)[0]
+
+        self.assertIn("status.textContent = label", show_loading)
+        self.assertNotIn("append", show_loading)
+        self.assertNotIn("insertAdjacentHTML", show_loading)
+        self.assertNotIn("innerHTML", show_loading)
+        self.assertEqual(javascript.count("function showLoading(label)"), 1)
+        self.assertIn("showLoading(root.dataset.thinking)", javascript)
+        self.assertIn("showLoading(root.dataset.thinking);", javascript)
+        self.assertIn('root.querySelector("[data-analysis-agent-retry]")?.addEventListener', javascript)
+        self.assertIn('refreshButton?.addEventListener("click", () => loadAnalysis(true))', javascript)
+        self.assertIn('url.searchParams.set("force_refresh", "1")', javascript)
+        self.assertIn('force ? {cache: "no-store"} : {}', javascript)
+        self.assertIn("trackPerformanceButton?.addEventListener", javascript)
+
     def test_footer_label_is_removed_and_track_action_is_dashboard_only(self):
         partial = (APP_DIR / "templates/socialmanager/partials/analysis_agent.html").read_text(encoding="utf-8")
         self.assertNotIn("Follow-up suggestions", partial)

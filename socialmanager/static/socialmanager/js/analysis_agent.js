@@ -77,14 +77,20 @@
             const version = ++requestVersion;
             loadingRequest = true;
             currentView = "dashboard-insight";
-            showLoading(force ? root.dataset.thinking : root.dataset.opening);
+            showLoading(root.dataset.thinking);
             try {
-                const primary = await requestJson(root.dataset.primaryUrl);
+                const analysisUrl = (value) => {
+                    const url = new URL(value, window.location.origin);
+                    if (force) url.searchParams.set("force_refresh", "1");
+                    return url;
+                };
+                const requestOptions = force ? {cache: "no-store"} : {};
+                const primary = await requestJson(analysisUrl(root.dataset.primaryUrl), requestOptions);
                 if (version !== requestVersion) return;
                 status.textContent = root.dataset.analysing;
                 let secondary = "";
                 if (root.dataset.secondaryUrl) {
-                    try { secondary = (await requestJson(root.dataset.secondaryUrl)).insight_html || ""; } catch (_) { secondary = ""; }
+                    try { secondary = (await requestJson(analysisUrl(root.dataset.secondaryUrl), requestOptions)).insight_html || ""; } catch (_) { secondary = ""; }
                 }
                 if (version !== requestVersion) return;
                 insightHtml = (primary.insight_html || "") + secondary;

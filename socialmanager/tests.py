@@ -191,6 +191,34 @@ class VideoContentAnalysisTests(TestCase):
         )
         return user, post
 
+    @patch("socialmanager.views.generate_post_analysis")
+    @patch("socialmanager.views.PostAnalyticsView.get_metric_totals")
+    def test_post_insight_refresh_bypasses_cache_and_persists_latest_analysis(self, metric_totals, generate):
+        user, post = self.create_user_and_post(content_format=SocialMediaPost.Format.IMAGE)
+        metric_totals.side_effect = [
+            {"views": 2, "likes": 0, "comments": 0, "shares": 0},
+            {"views": 5, "likes": 0, "comments": 0, "shares": 0},
+        ]
+        generate.side_effect = lambda payload, **kwargs: {
+            "sections": [{"heading": "Overall performance", "points": [f"{payload['metrics']['views']} views"]}]
+        }
+        self.client.force_login(user)
+        url = reverse("socialmanager:post_ai_insight", args=[post.pk])
+
+        initial = self.client.get(url)
+        cached = self.client.get(url)
+        refreshed = self.client.get(url, {"force_refresh": "1"})
+
+        self.assertIn("2 views", initial.json()["insight_html"])
+        self.assertTrue(cached.json()["cached"])
+        self.assertIn("2 views", cached.json()["insight_html"])
+        self.assertFalse(refreshed.json()["cached"])
+        self.assertIn("5 views", refreshed.json()["insight_html"])
+        self.assertEqual(generate.call_count, 2)
+        self.assertEqual(AISuggestionHistory.objects.filter(subscription=post.subscription).count(), 2)
+        latest = AISuggestionHistory.objects.filter(subscription=post.subscription).latest("created_at")
+        self.assertIn("5 views", latest.generated_caption)
+
     def test_video_chart_uses_bucket_intensity_and_preserves_retention_formula(self):
         user, post = self.create_user_and_post()
         second_viewer = User.objects.create_user(username="video-chart-second-viewer")
@@ -322,7 +350,8 @@ class VideoContentAnalysisTests(TestCase):
         self.assertNotContains(detail, "Video content analysis")
         self.assertNotContains(detail, "Creator summary")
         self.assertNotContains(analytics, "Video content analysis")
-        self.assertNotContains(analytics, "Audience Engagement & Retention")
+        self.assertContains(analytics, "Audience Engagement & Retention")
+        self.assertContains(analytics, "Audience engagement and retention chart")
         self.assertNotContains(analytics, "Retention AI Insight")
         self.assertContains(analytics, 'data-context-type="video"')
         self.assertContains(analytics, reverse("socialmanager:post_ai_insight", args=[post.pk]))
@@ -345,6 +374,8 @@ class VideoContentAnalysisTests(TestCase):
             reverse("socialmanager:post_analytics", args=[image_post.pk])
         )
 
+        self.assertContains(video_analytics, "Audience Engagement & Retention")
+        self.assertContains(video_analytics, "No retention data yet")
         self.assertContains(video_analytics, 'data-context-type="video"')
         self.assertNotContains(image_analytics, "Audience Engagement & Retention")
         self.assertContains(image_analytics, 'data-context-type="post"')
@@ -2069,6 +2100,17 @@ class SubscriptionPostCreationTests(TestCase):
         self.assertContains(response, 'data-max-bytes="20971520"')
         self.assertContains(response, 'data-video-max-duration-seconds="60"')
 
+    @override_settings(USE_GCS=False, VIDEO_FORM_UPLOAD_MAX_BYTES=0)
+    def test_local_post_form_renders_unlimited_video_size(self):
+        user, _ = self.create_workspace_user("local-video-limit")
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("socialmanager:post_create"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-fallback-max-bytes="0"')
+        self.assertContains(response, 'data-max-bytes="0"')
+
     def test_post_create_assigns_current_users_subscription(self):
         user = User.objects.create_user(username="desktop", password="password12345")
         subscription = SaaSSubscription.objects.create(name="Desktop Workspace", owner=user)
@@ -2161,6 +2203,17 @@ class SubscriptionPostCreationTests(TestCase):
 
         self.assertFalse(form.is_valid())
         self.assertIn("smaller than", form.errors["video_file"][0])
+
+    @override_settings(VIDEO_FORM_UPLOAD_MAX_BYTES=0)
+    @patch("socialmanager.forms.validate_video_duration_file")
+    def test_unlimited_video_setting_skips_form_size_validation(self, _validate_duration):
+        video = SimpleUploadedFile("clip.mp4", b"x" * 100, content_type="video/mp4")
+        form = SocialMediaPostForm(
+            data={**self.post_data(), "content_format": SocialMediaPost.Format.VIDEO},
+            files={"video_file": video},
+        )
+
+        self.assertNotIn("video_file", form.errors)
 
     @override_settings(DEBUG=True)
     @patch("socialmanager.views.generate_post_field_feedback", side_effect=RuntimeError("provider down"))

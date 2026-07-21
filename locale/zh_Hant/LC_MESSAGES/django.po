@@ -670,6 +670,7 @@ msgstr "關閉 AI 助理"
 msgid "Opening..."
 msgstr "正在開啟……"
 
+#. Single visible loading status used by the shared Analysis Agent.
 msgid "AI Thinking..."
 msgstr "AI 正在思考……"
 

@@ -6,7 +6,6 @@
      data-secondary-url="{{ agent_secondary_url|default:'' }}"
      data-posts-url="{% url 'socialmanager:analysis_agent_posts' %}"
      data-track-url-template="{% url 'socialmanager:analysis_agent_post_track' 0 %}"
-     data-opening="{% trans 'Opening...' %}"
      data-thinking="{% trans 'AI Thinking...' %}"
      data-analysing="{% trans 'Analysing...' %}"
      data-loading-posts="{% trans 'Loading posts...' %}"
@@ -66,11 +65,10 @@
             <h2 id="analysis-agent-title">{% trans "AI Agent" %}</h2>
             <button class="analysis-agent-close" type="button" aria-label="{% trans 'Close AI Agent' %}" data-analysis-agent-close>&times;</button>
         </header>
-        <div class="analysis-agent-body" aria-live="polite">
-            <div class="analysis-agent-loading" data-analysis-agent-loading>
+        <div class="analysis-agent-body">
+            <div class="analysis-agent-loading" role="status" aria-live="polite" aria-atomic="true" data-analysis-agent-loading>
                 <span class="analysis-agent-spinner" aria-hidden="true"></span>
-                <strong data-analysis-agent-status>{% trans "Opening..." %}</strong>
-                <span>{% trans "AI Thinking..." %}</span>
+                <strong data-analysis-agent-status>{% trans "AI Thinking..." %}</strong>
             </div>
             <div class="analysis-agent-results" hidden data-analysis-agent-results></div>
             <div class="analysis-agent-error" role="alert" hidden data-analysis-agent-error>

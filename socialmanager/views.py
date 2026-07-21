@@ -988,6 +988,10 @@ def get_cached_ai_insight(subscription, topic):
     )
 
 
+def ai_insight_force_refresh(request):
+    return request.GET.get("force_refresh") == "1"
+
+
 def cache_ai_insight(subscription, user, topic, report, tone):
     sections = parse_ai_insight_sections(report)
     if not sections:
@@ -1610,9 +1614,10 @@ class DashboardAIInsightView(AIMemberRequiredMixin, ActiveSubscriptionMixin, Vie
                 end_date,
             )
             current_fallback = generate_dashboard_rule_based_analysis(dashboard_summary_data, language=ai_language)
-            cached = get_cached_ai_insight(subscription, topic)
-            if cached:
-                return ai_insight_json_response(cached.generated_caption, True)
+            if not ai_insight_force_refresh(request):
+                cached = get_cached_ai_insight(subscription, topic)
+                if cached:
+                    return ai_insight_json_response(cached.generated_caption, True)
             try:
                 analysis = generate_dashboard_analysis(dashboard_summary_data, language=ai_language)
             except Exception:
@@ -2542,9 +2547,10 @@ class CampaignAIInsightView(AIMemberRequiredMixin, ActiveSubscriptionMixin, View
         self.object = get_object_or_404(SocialMediaCampaign.objects.filter(subscription=self.subscription), pk=kwargs.get("pk"))
         ai_language = get_user_ai_language(request.user)
         topic = f"ai-insight:campaign:{CAMPAIGN_AI_CACHE_VERSION}:{self.object.pk}:{ai_language_cache_key(ai_language)}"
-        cached = get_cached_ai_insight(self.object.subscription, topic)
-        if cached:
-            return ai_insight_json_response(cached.generated_caption, True)
+        if not ai_insight_force_refresh(request):
+            cached = get_cached_ai_insight(self.object.subscription, topic)
+            if cached:
+                return ai_insight_json_response(cached.generated_caption, True)
 
         try:
             detail_view = CampaignDetailView()
@@ -4082,9 +4088,10 @@ class PostAIInsightView(AIMemberRequiredMixin, OwnerOrAdminMixin, View):
         topic = f"ai-insight:post:{AI_ANALYSIS_CACHE_VERSION}:{post.pk}:{ai_language_cache_key(ai_language)}"
         payload = None
         try:
-            cached = get_cached_ai_insight(post.subscription, topic)
-            if cached:
-                return ai_insight_json_response(cached.generated_caption, True)
+            if not ai_insight_force_refresh(request):
+                cached = get_cached_ai_insight(post.subscription, topic)
+                if cached:
+                    return ai_insight_json_response(cached.generated_caption, True)
         except Exception as exc:
             logger.warning("Post AI insight cache/render failed: %s", exc.__class__.__name__)
 
@@ -4245,9 +4252,10 @@ class PostRetentionAIInsightView(AIMemberRequiredMixin, OwnerOrAdminMixin, View)
         post = self.get_object()
         ai_language = get_user_ai_language(request.user)
         topic = f"{get_retention_ai_insight_topic(post.pk)}:{ai_language_cache_key(ai_language)}"
-        cached = get_cached_ai_insight(post.subscription, topic)
-        if cached:
-            return ai_insight_json_response(cached.generated_caption, True)
+        if not ai_insight_force_refresh(request):
+            cached = get_cached_ai_insight(post.subscription, topic)
+            if cached:
+                return ai_insight_json_response(cached.generated_caption, True)
 
         try:
             analytics_view = PostAnalyticsView()

@@ -136,9 +136,15 @@ MEDIA_ROOT = BASE_DIR / "media"
 # Keep uploads below Cloud Run's request-body ceiling so Django can return a
 # useful validation error instead of the platform rejecting the request first.
 VIDEO_UPLOAD_MAX_BYTES = int(os.getenv("VIDEO_UPLOAD_MAX_BYTES", str(500 * 1024 * 1024)))
-# A no-JavaScript/local fallback may still pass through Django. Keep that path
-# safely below Cloud Run's request ceiling even when direct uploads are larger.
-VIDEO_FORM_UPLOAD_MAX_BYTES = int(os.getenv("VIDEO_FORM_UPLOAD_MAX_BYTES", str(20 * 1024 * 1024)))
+# A no-JavaScript production fallback may still pass through Django. Keep that
+# path below Cloud Run's request ceiling. Local development uses 0 (unlimited)
+# so larger videos can be used for testing without weakening production.
+VIDEO_FORM_UPLOAD_MAX_BYTES = int(
+    os.getenv(
+        "VIDEO_FORM_UPLOAD_MAX_BYTES",
+        "0" if DEBUG else str(20 * 1024 * 1024),
+    )
+)
 
 USE_GCS = env_bool("USE_GCS", False)
 GS_BUCKET_NAME = os.getenv("GS_BUCKET_NAME", "").strip()
@@ -250,10 +256,12 @@ SOCIALACCOUNT_PROVIDERS = {
     }
 }
 
-OPENAI_API_KEY = (
-    os.getenv("OPENAI_API_KEY")
-    or os.getenv("LLM_API_KEY")
-)
+# AI provider selection is configuration-only for now. Existing Gemini features
+# continue to use the Gemini settings and service paths below.
+AI_PROVIDER = (os.getenv("AI_PROVIDER", "gemini") or "gemini").strip().lower()
+OPENAI_API_KEY = (os.getenv("OPENAI_API_KEY") or os.getenv("LLM_API_KEY") or "").strip()
+OPENAI_AGENT_ENABLED = env_bool("OPENAI_AGENT_ENABLED", False)
+OPENAI_AGENT_MODEL = (os.getenv("OPENAI_AGENT_MODEL", "") or "").strip()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_ENABLED = env_bool("GEMINI_ENABLED", True)
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash") or "gemini-2.5-flash"
